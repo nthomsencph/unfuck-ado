@@ -73,8 +73,19 @@ html[${TWO_UP_ATTR}] .taskboard-expanded-cell .flex-row.flex-wrap > .taskboard-c
   padding-top: 8px !important;
   padding-bottom: 8px !important;
 }
+/* Count pinned to the header's right edge, same line — never wrapping under
+   a long state name (absolute, with the th reserving room for it). */
+th:has(> .adofix-col-count) {
+  position: relative;
+  padding-right: 40px !important;
+}
 .adofix-col-count {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
   color: var(--text-secondary-color, #a19f9d);
+  white-space: nowrap;
 }
 /* The assignment/parent column is capped (PARENT_MAX in colTargets) — let
    long names wrap instead of ellipsizing at the cap. TWO nowrap+ellipsis

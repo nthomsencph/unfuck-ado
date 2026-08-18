@@ -52,58 +52,49 @@ describe("columnCss", () => {
 });
 
 describe("colTargets", () => {
-  it("pins borders, zeroes hidden, shares the rest in pixels summing to the container", () => {
-    // 14 cols, container 1616, parent 220: 4 + 220 + 4×347 + 4 = 1616.
-    const { widths, tableMin } = colTargets([7, 8, 9, 10, 11, 12, 13], [3, 4, 5, 6], 14, 1616, 220);
+  it("lays tracks out compactly: border, shares, border, then zeros", () => {
+    // 14 cols, container 1616, parent 220, 4 visible: 4+220+4×347+4 = 1616.
+    const { widths, tableMin } = colTargets(4, 14, 1616, 220);
     expect(widths.get(1)).toBe(4);
-    expect(widths.get(14)).toBe(4);
-    expect(widths.get(7)).toBe(0);
     expect(widths.get(3)).toBe(347);
+    expect(widths.get(6)).toBe(347);
+    expect(widths.get(7)).toBe(4); // right border cell shifts to track 7
+    expect(widths.get(8)).toBe(0);
+    expect(widths.get(14)).toBe(0);
     const total = 220 + [...widths.values()].reduce((a, w) => a + w, 0);
     expect(total).toBe(1616);
     expect(tableMin).toBe(1616);
   });
 
-  it("gives the rounding remainder to the last visible column", () => {
-    const { widths } = colTargets([3], [4, 5, 6], 8, 1030, 220);
-    // avail = 1030 - 228 = 802 → 267 + 267 + 268
-    expect(widths.get(4)).toBe(267);
-    expect(widths.get(6)).toBe(268);
+  it("gives the rounding remainder to the last visible track", () => {
+    const { widths } = colTargets(3, 8, 1030, 220);
+    // avail = 1030 - 228 = 802 → tracks 3,4 = 267, track 5 = 268
+    expect(widths.get(3)).toBe(267);
+    expect(widths.get(5)).toBe(268);
+    expect(widths.get(6)).toBe(4);
   });
 
-  it("renders native columns with reduced scroll when the share would be a sliver", () => {
-    // The first Firefox report: 9 visible in a 1192px pane → 107px shares
-    // read as "the table shrank". Native 204 + scroll instead.
-    const { widths, tableMin } = colTargets(
-      [9, 10],
-      [3, 4, 5, 6, 7, 8, 11, 12, 13],
-      14,
-      1192,
-      220
-    );
+  it("renders native tracks with reduced scroll when the share would be a sliver", () => {
+    // 9 visible in a 1192px pane → 107px shares read as "the table shrank".
+    const { widths, tableMin } = colTargets(9, 14, 1192, 220);
     expect(widths.get(3)).toBe(204);
-    expect(widths.get(13)).toBe(204);
+    expect(widths.get(11)).toBe(204);
+    expect(widths.get(12)).toBe(4);
     expect(tableMin).toBe(228 + 9 * 204);
   });
 
   it("fills the pane with sub-native shares as long as they stay usable", () => {
-    // The second Firefox report: 8 visible in a 1483px pane → 156px shares
-    // were EXPECTED to fill (8×204 with scroll read as "they don't widen").
-    const { widths, tableMin } = colTargets(
-      [8, 9, 10],
-      [3, 4, 5, 6, 7, 11, 12, 13],
-      14,
-      1483,
-      220
-    );
+    // 8 visible in a 1483px pane → 156px shares fill (tracks 3..10).
+    const { widths, tableMin } = colTargets(8, 14, 1483, 220);
     expect(widths.get(3)).toBe(156);
-    expect(widths.get(13)).toBe(1255 - 156 * 7); // remainder → 163
+    expect(widths.get(10)).toBe(1255 - 156 * 7); // remainder → 163
+    expect(widths.get(11)).toBe(4);
     expect(tableMin).toBe(1483);
   });
 
   it("is empty for degenerate input", () => {
-    expect(colTargets([3], [], 8, 1000, 220).widths.size).toBe(0);
-    expect(colTargets([3], [4], 8, 0, 220).widths.size).toBe(0);
+    expect(colTargets(0, 8, 1000, 220).widths.size).toBe(0);
+    expect(colTargets(1, 8, 0, 220).widths.size).toBe(0);
   });
 });
 

@@ -257,7 +257,13 @@ throws). Key live findings baked into the code:
   while the equal share is ≥ 150px (the card flex basis); below that render
   native 204px columns with a reduced h-scroll (table min-width set to the
   exact computed sum, not 0) — never sub-150 slivers, never scroll when a
-  usable fill exists.
+  usable fill exists. And the one that bit LAST (both engines, masked in
+  every Chrome proto because those only hid TRAILING columns):
+  `display:none` table cells make every later cell in the row SHIFT LEFT —
+  cells map to column tracks by rendered order, not index — so track widths
+  must be laid out COMPACTLY (shares first, zeros at the end), never zeroed
+  at the hidden columns' original positions (hiding middle columns bunched
+  the shifted header labels into the zeroed tracks and left dead space).
 
 Remaining unverified (inert if wrong): swimlane header rules in `density.css`
 (`grep -rn "TODO(selector)" src/`). Footer-text status fallback assumes an

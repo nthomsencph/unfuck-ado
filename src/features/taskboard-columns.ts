@@ -153,33 +153,38 @@ export interface ColPlan {
 }
 
 /**
- * Pixel plan for the current container width: borders 4px, hidden 0, visible
- * columns share the rest equally when that keeps them usable (≥ FILL_MIN),
- * otherwise native width plus a reduced h-scroll that disappears as more
- * columns are hidden.
+ * Pixel plan for the current container width, keyed by COLUMN TRACK (1-based
+ * <col> position), laid out COMPACTLY: border, parent (untouched, absent
+ * here), the n visible shares in order, the trailing border, then zeros.
+ * Track positions deliberately do NOT correspond to the hidden columns'
+ * original positions: display:none'd cells make every later cell in the row
+ * SHIFT LEFT into earlier tracks (cells map to tracks by rendered order,
+ * not index). Zeroing tracks in place — v0.15.4 — worked only when the
+ * hidden columns were trailing; hiding MIDDLE columns bunched the shifted
+ * header labels into the zeroed tracks and left the freed tracks as dead
+ * space at the right (user screenshot 2026-08-18).
+ * Widths: equal shares when that keeps columns usable (≥ FILL_MIN),
+ * otherwise native width plus a reduced h-scroll.
  */
 export function colTargets(
-  hiddenNth: number[],
-  visibleNth: number[],
+  visibleCount: number,
   colCount: number,
   containerW: number,
   parentPx: number
 ): ColPlan {
   const widths = new Map<number, number>();
-  if (visibleNth.length === 0 || containerW <= 0) return { widths, tableMin: 0 };
-  widths.set(1, 4);
-  widths.set(colCount, 4);
-  for (const k of hiddenNth) widths.set(k, 0);
+  const n = visibleCount;
+  if (n === 0 || containerW <= 0) return { widths, tableMin: 0 };
   const avail = Math.max(0, containerW - parentPx - 8);
-  const share = Math.floor(avail / visibleNth.length);
-  if (share >= FILL_MIN) {
-    visibleNth.forEach((k, i) => {
-      widths.set(k, i === visibleNth.length - 1 ? avail - share * (visibleNth.length - 1) : share);
-    });
-    return { widths, tableMin: containerW };
+  const share = Math.floor(avail / n);
+  const fill = share >= FILL_MIN;
+  widths.set(1, 4);
+  for (let i = 0; i < n; i++) {
+    widths.set(3 + i, fill ? (i === n - 1 ? avail - share * (n - 1) : share) : NATIVE_COL);
   }
-  for (const k of visibleNth) widths.set(k, NATIVE_COL);
-  return { widths, tableMin: parentPx + 8 + NATIVE_COL * visibleNth.length };
+  widths.set(3 + n, 4); // the right border cell shifts here
+  for (let track = 4 + n; track <= colCount; track++) widths.set(track, 0);
+  return { widths, tableMin: fill ? containerW : parentPx + 8 + NATIVE_COL * n };
 }
 
 /** "/{org}/{project}/_sprints/{tab}/{team}/…" → "org/project/team". */
@@ -240,8 +245,7 @@ function applyColWidths(hiddenNth: number[], visibleNth: number[]): number {
   }
 
   const { widths, tableMin } = colTargets(
-    hiddenNth,
-    visibleNth,
+    visibleNth.length,
     cols.length,
     container.clientWidth,
     parentColPx(cols)

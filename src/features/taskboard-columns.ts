@@ -62,10 +62,7 @@ html[${TWO_UP_ATTR}] .taskboard-expanded-cell .flex-row.flex-wrap > .taskboard-c
   max-width: min(100%, 280px);
   min-width: 0;
 }
-/* Airier cards (user request 2026-08-18; native padding is 12px all round). */
-.taskboard-card .card-content {
-  padding: 16px 12px !important;
-}
+/* Card padding lives with the card material in chrome.css (.wit-card). */
 /* Card layout: line 1 = type icon + id (+ ⋮), the title on its own line(s). */
 .taskboard-card a.title {
   display: block;

@@ -12,7 +12,8 @@ import { formatBacklogStatus, parseBacklogFilters } from "./backlog-status";
  *    icon proxy next to Filter (native ids differ per tab: taskboard uses
  *    #__bolt-taskboard-*, the sprint Backlog tab reuses the plain
  *    #__bolt-new-work-item/#__bolt-column-options ids);
- *  - the Analytics tab hidden (never used);
+ *  - the Analytics and Capacity tabs hidden (never used; the capacity page
+ *    itself stays reachable by URL and keeps its Save/Revert title row);
  *  - the icon commandbar lifts onto the title row — but only on the
  *    Taskboard and Backlog tabs: Capacity keeps Add user/Save/Revert in the
  *    title row and lifting the icons would collide with them;
@@ -56,7 +57,8 @@ html[${ATTR}] #__bolt-create-query {
   pointer-events: none;
   overflow: hidden;
 }
-html[${ATTR}] #__bolt-tab-analytics {
+html[${ATTR}] #__bolt-tab-analytics,
+html[${ATTR}] #__bolt-tab-capacity {
   display: none !important;
 }
 /* Title-row commandbar buttons pinned to the title's centerline (same

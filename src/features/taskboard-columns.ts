@@ -73,6 +73,9 @@ html[${TWO_UP_ATTR}] .taskboard-expanded-cell .flex-row.flex-wrap > .taskboard-c
   padding-top: 8px !important;
   padding-bottom: 8px !important;
 }
+.adofix-col-count {
+  color: var(--text-secondary-color, #a19f9d);
+}
 /* The assignment/parent column is capped (PARENT_MAX in colTargets) — let
    long names wrap instead of ellipsizing at the cap. TWO nowrap+ellipsis
    layers: .identity-view AND its inner .identity-display-name (verified
@@ -237,10 +240,41 @@ function prefs(key: string): Prefs {
   return getValue<Prefs>(FEATURE_ID, key, DEFAULT_PREFS);
 }
 
+const COUNT_CLASS = "adofix-col-count";
+
+/** The header's own name, with our appended " (n)" count stripped back out. */
+export function headerName(th: Element): string {
+  const count = th.querySelector(`.${COUNT_CLASS}`);
+  const full = th.textContent ?? "";
+  return count?.textContent ? full.replace(count.textContent, "") : full;
+}
+
 function boardHeaders(): string[] {
   const table = document.querySelector(TABLE);
   if (!table) return [];
-  return Array.from(table.querySelectorAll("th")).map((t) => t.textContent ?? "");
+  return Array.from(table.querySelectorAll("th")).map(headerName);
+}
+
+/** "New (7)" — card count per state column, appended as an adofix span. */
+function applyCounts(): void {
+  const table = document.querySelector(TABLE);
+  if (!table) return;
+  const ths = Array.from(table.querySelectorAll("th"));
+  for (const col of stateColumns(ths.map(headerName))) {
+    const th = ths[col.nth - 1];
+    if (!th) continue;
+    // Hidden cells stay in the DOM (display:none), so the original nth
+    // mapping counts correctly for hidden columns too.
+    const n = table.querySelectorAll(`tbody tr > td:nth-child(${col.nth}) .taskboard-card`).length;
+    let span = th.querySelector<HTMLElement>(`.${COUNT_CLASS}`);
+    if (!span) {
+      span = document.createElement("span");
+      span.className = COUNT_CLASS;
+      th.appendChild(span);
+    }
+    const text = ` (${n})`;
+    if (span.textContent !== text) span.textContent = text;
+  }
 }
 
 /** Original inline styles, remembered so "Show all columns" restores them. */
@@ -491,6 +525,7 @@ export const taskboardColumns: Feature = {
     if (!document.querySelector(TABLE)) return;
     applyColumnCss(key);
     ensureButton(key);
+    applyCounts();
   },
   dispose(): void {
     closeMenu();

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { colTargets, columnCss, stateColumns, taskboardTeamKey } from "./taskboard-columns";
+import { colTargets, columnCss, headerName, stateColumns, taskboardTeamKey } from "./taskboard-columns";
 
 /** The live taskboard header captured 2026-08-18. */
 const HEADERS = [
@@ -30,6 +30,24 @@ describe("stateColumns", () => {
   it("returns nothing for degenerate headers", () => {
     expect(stateColumns([])).toEqual([]);
     expect(stateColumns(["", "Collapse all", ""])).toEqual([]);
+  });
+});
+
+describe("headerName", () => {
+  it("strips the appended count so names stay stable for menu and storage", () => {
+    const th = document.createElement("th");
+    th.textContent = "New";
+    const span = document.createElement("span");
+    span.className = "adofix-col-count";
+    span.textContent = " (7)";
+    th.appendChild(span);
+    expect(headerName(th)).toBe("New");
+  });
+
+  it("passes untouched headers through", () => {
+    const th = document.createElement("th");
+    th.textContent = "Ready For Review";
+    expect(headerName(th)).toBe("Ready For Review");
   });
 });
 

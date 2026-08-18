@@ -56,8 +56,10 @@ const CSS = `
 html[${TWO_UP_ATTR}] .taskboard-expanded-cell .flex-row.flex-wrap > .taskboard-card {
   flex: 1 1 150px;
   box-sizing: border-box;
-  /* a lone card in a wide column would otherwise grow to the full track */
-  max-width: min(100%, 360px);
+  /* single-file cards stop growing at 280px — with the fill regime's
+     150-330px tracks a 360px cap never bound (v0.16.1), so 1-up cards
+     still filled their column */
+  max-width: min(100%, 280px);
   min-width: 0;
 }
 /* Airier cards (user request 2026-08-18; native padding is 12px all round). */

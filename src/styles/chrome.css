@@ -1,0 +1,465 @@
+/*
+ * chrome-density — compresses ADO's header chrome. Injected once, route-
+ * agnostic. Selectors verified live 2026-08-01 on the sprint taskboard, the
+ * Kanban board and the PR Files view.
+ *
+ * Measured wins at that time: sprint taskboard header stack 295px -> 237px;
+ * Kanban board title row 63px -> 41px; PR header 86px -> 72px.
+ */
+
+/*
+ * Shared design tokens. --adofix-radius is THE corner radius for every
+ * adofix-styled container surface (cards, panels, menus, toasts) — change it
+ * here, not per-rule. Small controls (checkboxes, pills, badges) keep their
+ * own radii; those track control height, not surface language.
+ */
+:root {
+  --adofix-radius: 10px;
+}
+
+/*
+ * Page title rows across hubs — .bolt-header is ADO's shared page-header
+ * component (default padding-top 20-24px). Tab strips are ALSO .bolt-header
+ * but with zero padding; exclude them so this rule never ADDS padding
+ * ("tabbar" on sprints/PR pages, "tabs" on boards). Verified 2026-08-01.
+ */
+.bolt-header:not([class*="tabbar"]):not([class*="tabs"]) {
+  padding-top: 6px !important;
+}
+
+/* Page titles: 21px -> 16px drops the title row ~15px. Verified 2026-08-01. */
+.bolt-header-title.title-m {
+  font-size: 16px !important;
+}
+
+/* Sprint taskboard: the dates/person row sits 8px lower than needed. Verified 2026-08-01. */
+.sprints-header-dates {
+  margin-top: 0 !important;
+}
+
+/*
+ * The filter bar wrapper burns 32px of vertical padding (16 top + 16 bottom).
+ * :has() scopes the override to the filter bar — the utility class is used
+ * all over ADO. Verified 2026-08-01.
+ */
+div.padding-vertical-16:has(> .vss-FilterBar) {
+  padding: 2px 0 !important;
+}
+.vss-FilterBar {
+  min-height: 0 !important;
+}
+
+/*
+ * Left alone on purpose: .project-header (the 48px top banner). Its children
+ * overflow below 48px — shrinking it clips the search box. Verified 2026-08-01.
+ */
+
+/*
+ * PR Files toolbar merged into the tab row (verified live 2026-08-01).
+ * The strip ("All Changes / Filter / <file> / Inline / …") burned ~79px; this
+ * lifts it onto the free right side of the Overview/Files tab row. Pure CSS —
+ * the DOM stays where ADO's React put it (re-parenting invites reconciliation
+ * crashes). The lifted row is click-through except on its actual controls, so
+ * the tabs underneath stay clickable. Below 1350px the strip stays put — tabs
+ * and controls would collide.
+ */
+@media (min-width: 1350px) {
+  .repos-compare-toolbar {
+    margin-top: -48px !important; /* the tab row's height */
+    height: 48px !important;
+    padding: 0 !important;
+    background: transparent !important;
+    pointer-events: none;
+    justify-content: flex-end;
+    /* the tabbar is sticky with z-index 2 and an opaque background — without
+       this the lifted strip paints invisibly underneath it */
+    position: relative;
+    z-index: 3;
+  }
+  .repos-compare-toolbar > * {
+    pointer-events: auto;
+  }
+  /* the changed-files label must shrink-to-fit so the strip right-aligns
+     (the group itself is display:contents — see the toolbar-order block) */
+  .repos-compare-toolbar > .flex-grow > .flex-row.flex-grow {
+    flex-grow: 0 !important;
+  }
+  /* long file paths must not push the controls over the tabs */
+  .repos-compare-toolbar .bolt-breadcrumb {
+    max-width: 24vw;
+    overflow: hidden;
+  }
+  /*
+   * The iteration picker ("All Changes") sits in the lifted header row right
+   * before the Inline/Side-by-side dropdown — its natural flex position once
+   * the label is ordered first (user-tuned 2026-08-02 after a detour into
+   * the tree column: an overlay there had tree rows scrolling behind it,
+   * and a header-band variant lost tree height; the header row costs
+   * nothing). Visual order: [label] [All Changes] [Inline] [💬] [⤢].
+   */
+}
+
+/*
+ * Comment chrome consolidated into the pr-comments widget (2026-08-02):
+ * the native Filter button collapses to a zero-size, invisible — but still
+ * clickable-by-proxy — stub (its callout anchors to the stub's position;
+ * verified live), and the header's "n/m comments resolved" text disappears
+ * (the widget's button shows the same count).
+ */
+.repos-compare-filter {
+  width: 0 !important;
+  min-width: 0 !important;
+  margin: 0 !important; /* the toolbar's rhythm gap would leave 8px of dead space */
+  opacity: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.pr-header-resolved-comments {
+  display: none !important;
+}
+
+/*
+ * PR Files stacked view: slim per-file card headers (verified live 2026-08-01).
+ * ADO spends ~55px on two lines (bold filename + "-N+N", full path below).
+ * Collapse to one line — "/full/path -N +N" — by hiding the filename, turning
+ * the name column horizontal, and ordering the path before the counts. The
+ * :has() guard keeps the filename whenever a header has no path row.
+ * Measured live: header row 55.5px -> 33px.
+ */
+.repos-summary-header .flex-column.text-ellipsis.margin-right-4 {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 8px;
+}
+.repos-summary-header
+  .flex-column.text-ellipsis.margin-right-4:has(> .body-s.secondary-text)
+  > .flex-row.rhythm-horizontal-8
+  > .body-m.font-weight-semibold {
+  display: none;
+}
+.repos-summary-header .flex-column.text-ellipsis.margin-right-4 > .flex-row.rhythm-horizontal-8 {
+  order: 2;
+}
+.repos-summary-header .flex-column.text-ellipsis.margin-right-4 > .body-s.secondary-text {
+  order: 1;
+  font-size: 13px !important;
+  font-weight: 600;
+  color: var(--text-primary-color) !important;
+}
+/* "-20+13" reads as one token — space the two counts */
+.repos-summary-header .repos-compare-removed-lines {
+  margin-right: 4px;
+}
+/* Vertical fat: 12px pads on the sticky inner row, a 16px top margin on the
+   expand chevron, and a 31px View button. The row is top-aligned by ADO
+   (.flex-start, and the chevron carries .flex-self-start) — with one line
+   everything centers instead. Verified live 2026-08-01. */
+.repos-summary-header > .flex-row > .flex-row.flex-start.flex-grow {
+  padding-top: 4px !important;
+  padding-bottom: 4px !important;
+  align-items: center !important;
+}
+.repos-summary-header .bolt-card-expand-button {
+  margin-top: 0 !important;
+  align-self: center !important;
+}
+.repos-summary-header .repos-change-summary-file-icon-container {
+  margin-top: 0 !important;
+}
+.repos-summary-header .justify-end {
+  align-items: center;
+}
+/* The View button duplicates a tree click; hidden, not removed — the
+   Comment-on-file flow still clicks the link programmatically. Verified
+   live 2026-08-02. */
+.repos-summary-header .justify-end .bolt-link-button {
+  display: none !important;
+}
+
+/*
+ * File-type icons are decoration (verified live 2026-08-02). Headers carry
+ * them in a dedicated container; in the tree, file rows are the ones whose
+ * expand button is .invisible — folders keep their icons.
+ */
+.repos-change-summary-file-icon-container {
+  display: none !important;
+}
+.bolt-tree-row:has(.bolt-tree-expand-button.invisible) .icon-margin.fabric-icon {
+  display: none !important;
+}
+
+/*
+ * PR page chrome unified on the darker header grey (verified live 2026-08-02).
+ * ADO paints the PR page body, the file-tree pane and the sticky tabbar on
+ * palette-neutral-2 (#252423 dark) while the top region sits on
+ * --background-color (#201f1e dark) — the lighter band reads as clutter.
+ * Using the variable keeps light theme coherent.
+ * The splitter container (.repos-changes-explorer-splitter, carries
+ * .bolt-page-grey) is the element that actually paints behind BOTH the
+ * file tree and the diff-card backdrop — .repos-changes-explorer alone
+ * does not exist on the Files view (re-verified live 2026-08-02).
+ */
+.repos-pr-details-page,
+.repos-changes-explorer-splitter,
+.repos-pr-details-page-tabbar {
+  background: var(--background-color) !important;
+}
+
+/*
+ * File tree: room at the top and a real left gutter (user-tuned 2026-08-02;
+ * the ask was to push the tree RIGHT, away from the nav rail). The
+ * .absolute-fill child is the pane's scroll wrapper; padding there indents
+ * the repo header and the tree together, and the table reflows to the
+ * narrower content box (no horizontal overflow).
+ */
+.repos-changes-explorer-splitter .vss-Splitter--pane-fixed > .absolute-fill {
+  padding-left: 24px;
+  padding-top: 10px;
+}
+
+/*
+ * Hunk-continuation rows (.repos-elliplis-row — ADO's own class name typo,
+ * verified live 2026-08-02): each cell holds a div.flex drawing a dashed
+ * border-top. Keep the short gutter dashes, drop the full-width one that
+ * cuts across the code column.
+ */
+.repos-elliplis-row .repos-line-content > .flex {
+  border-top: none !important;
+}
+
+/*
+ * PR Files toolbar order (verified live 2026-08-02). ADO nests everything in
+ * one .flex-grow group: [All Changes+Filter][n changed files][Inline][⤢
+ * commandbar], with our toolbar buttons appended after the group. Flattening
+ * the group with display:contents lets flex `order` interleave across both:
+ * the label leads, the fullscreen commandbar trails our buttons.
+ */
+.repos-compare-toolbar > .flex-grow {
+  display: contents;
+}
+.repos-compare-toolbar > .flex-grow > .flex-row.flex-grow {
+  order: -1;
+  margin-right: 8px;
+}
+.repos-compare-toolbar .repos-compare-header-commandbar {
+  order: 10;
+}
+
+/*
+ * More de-noising (verified live 2026-08-02):
+ * - tab strip and left sidebar rail lose their hairlines; the rail
+ *   (.project-navigation, neutral-8 background) joins the unified dark grey;
+ * - per-file header rows drop their bottom hairline — the card/background
+ *   color difference already separates them.
+ * (The 4vw diff-card side gutters added here were REMOVED 2026-08-17: they
+ * misaligned the cards with the lifted toolbar row and starved the
+ * side-by-side view of width it badly needs.)
+ */
+/* Doubled classes: ADO declares these borders !important too, so we need to
+   win on specificity, not order (its sheets can load after ours). */
+.bolt-tabbar-tabs.bolt-tabbar-tabs {
+  border-top: none !important;
+  border-bottom: none !important;
+}
+.project-navigation.project-navigation {
+  background: var(--background-color) !important;
+  border-right: none !important;
+}
+.repos-summary-header > .flex-row {
+  border-bottom: none !important;
+}
+
+/*
+ * Stacked diff, side-by-side: each pane (.repos-summary-diff-container) is
+ * its own horizontal scroll container, and the diff body is a CSS TABLE —
+ * the discussion cell inherits the code column's full content width, so a
+ * comment on a long-lined file was wider than the pane and clipped/scrolled
+ * with the code (verified live 2026-08-17 on PR 6970). Fix: the pane becomes
+ * a container-query container and the discussion HOST (a normal block inside
+ * the table cell — the cell itself is width-locked by the table algorithm)
+ * is pinned with sticky + sized to the pane: always fully readable no matter
+ * how far the code is scrolled. 82px ≈ the line-number gutter (74px at
+ * 3-digit line counts) + breathing room; five-digit files may overhang a few
+ * px, still reachable because sticky follows the scroll. Inline view: same
+ * markup, pane rarely scrolls — the rule is a harmless no-op there.
+ */
+.repos-summary-diff-container {
+  container-type: inline-size;
+}
+.repos-summary-diff-container .repos-editor-discussion-host {
+  position: sticky !important;
+  left: 0;
+  width: calc(100cqw - 82px);
+  box-sizing: border-box;
+}
+
+/*
+ * The remaining "borders" were never borders (found via Firefox DOM dump,
+ * 2026-08-02) — ADO draws these separators as box-shadows and pseudo-elements,
+ * which border kills and hit-testing probes both miss:
+ * - .repos-compare-toolbar carries inset 1px white shadows top+bottom; once
+ *   we lift it into the tab row they read as tab-strip borders;
+ * - the tree/editor splitter line is a 1px ::after on the 4px divider (the
+ *   resting line goes; hover/drag feedback stays);
+ * - the icon rail's ::before draws a 3px white-29% stripe that reads as the
+ *   rail's right border.
+ */
+.repos-compare-toolbar {
+  box-shadow: none !important;
+}
+.vss-Splitter--divider:not(:hover):not(:active)::after {
+  background: transparent !important;
+}
+.project-navigation .hub-group-container::before {
+  background: transparent !important;
+}
+
+/* The top org bar's 1px drop shadow — same shadow-as-border trick. */
+.region-header {
+  box-shadow: none !important;
+}
+
+/*
+ * PR Overview: unified card theme (verified live 2026-08-14 on PR 6982).
+ * ADO paints every overview card (#323130 dark) with a light depth-8 shadow,
+ * 4px corners, and slices them with separator hairlines and 1px-outlined
+ * nested boxes. Simplified: cards join the page surface (the theme variable
+ * keeps light theme sane), a heavier shadow does the lifting, chrome dividers
+ * go — icons, author rows and spacing already group content — and nested
+ * boxes become soft raised surfaces instead of outlined ones.
+ * Scope: .shadow-padding is the Overview content column and exists ONLY
+ * there — the Files view has none (verified live 2026-08-14), so the tuned
+ * diff cards are untouched. Markdown-authored borders inside comments (<hr>,
+ * tables) carry no bolt-* classes and are deliberately left alone.
+ */
+.repos-pr-details-page .shadow-padding .bolt-card {
+  background: var(--background-color) !important;
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.6),
+    0 1px 4px rgba(0, 0, 0, 0.5) !important;
+  border-radius: var(--adofix-radius) !important;
+}
+.repos-pr-details-page .shadow-padding .separator-line-bottom {
+  border-bottom-color: transparent !important;
+}
+.repos-pr-details-page .shadow-padding .separator-line-top {
+  border-top-color: transparent !important;
+}
+/* Reply separators inside discussion threads and row separators inside the
+   commit-list / checks tables — author rows and spacing already do the work. */
+.repos-pr-details-page .shadow-padding .repos-discussion-comment {
+  border-bottom-color: transparent !important;
+}
+.repos-pr-details-page .shadow-padding .bolt-card .bolt-table-cell {
+  border-top-color: transparent !important;
+}
+/* File-anchored comment cards (verified live 2026-08-17 on PR 7033): the
+   code preview is fenced by .comment-file-diff-container's top border and
+   .comment-file-header's bottom border. Both go — the snippet's own diff
+   coloring separates it. The blue .diff-comment underline marking the
+   commented span is functional and stays. */
+.repos-pr-details-page .shadow-padding .comment-file-header {
+  border-bottom-color: transparent !important;
+}
+.repos-pr-details-page .shadow-padding .comment-file-diff-container {
+  border-top-color: transparent !important;
+}
+/* Grey overlay (not white) so the raised tint works in both themes. Inner
+   radius is deliberately tighter than --adofix-radius: nested corners. */
+.repos-pr-details-page .shadow-padding .status-details-container {
+  border: none !important;
+  background: rgba(128, 128, 128, 0.08) !important;
+  border-radius: 6px !important;
+}
+/*
+ * The right sidebar's sections (Reviewers, Tags, Work items) stay ADO's
+ * plain transparent columns, flat against the page (card-ified 0.8.2,
+ * reverted 2026-08-17 on user request — flat reads calmer next to the main
+ * column's cards). Only the tag picker's input outline goes: the pills and
+ * the + affordance carry the interaction, the box just added chrome.
+ */
+.repos-pr-details-page .repos-overview-right-pane .bolt-tag-picker {
+  border-color: transparent !important;
+}
+
+/*
+ * Non-comment feed entries ("pushed n commits" and other bolt-table-cards in
+ * timeline cells) flatten against the page: conversations are cards, events
+ * are just feed lines (user request 2026-08-17). The merge-status card at
+ * the top is a bolt-table-card too but lives OUTSIDE .bolt-timeline-cell, so
+ * it keeps the card treatment; so do .repos-comment-card and the no-padding
+ * file-anchored thread cards.
+ */
+.repos-pr-details-page .shadow-padding .bolt-timeline-cell .bolt-table-card {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+/*
+ * Reviewers merged into one list (verified live 2026-08-17 on PR 6982).
+ * ADO splits the card into .pr-required-reviewers-section and
+ * .pr-optional-reviewers-section, each with a group header and an empty-state
+ * well (.repos-pr-no-items-well). Merged: headers go, an empty group
+ * disappears entirely when the other has reviewers (required stays first —
+ * that is its DOM order), and each row is tagged in its subtitle instead —
+ * "Approved · Required" when ADO renders a status line, a synthesized
+ * "Required"/"Optional" line when it does not. Pure CSS via :has(); no DOM
+ * surgery for React to fight. When BOTH groups are empty the sections are
+ * left alone (ADO's own empty wells still render, minus the headers).
+ */
+.pr-required-reviewers-section > .body-s.secondary-text.font-weight-semibold,
+.pr-optional-reviewers-section > .body-s.secondary-text.font-weight-semibold {
+  display: none;
+}
+.pr-required-reviewers-section:not(:has(.repos-reviewer)):has(~ .pr-optional-reviewers-section .repos-reviewer),
+.pr-required-reviewers-section:has(.repos-reviewer) ~ .pr-optional-reviewers-section:not(:has(.repos-reviewer)) {
+  display: none;
+}
+.pr-required-reviewers-section .repos-reviewer .flex-column > .body-s.secondary-text::after {
+  content: " · Required";
+}
+.pr-optional-reviewers-section .repos-reviewer .flex-column > .body-s.secondary-text::after {
+  content: " · Optional";
+}
+.pr-required-reviewers-section .repos-reviewer > .flex-column:not(:has(> .body-s.secondary-text))::after,
+.pr-optional-reviewers-section .repos-reviewer > .flex-column:not(:has(> .body-s.secondary-text))::after {
+  font-size: 12px;
+  color: var(--text-secondary-color, #a19f9d);
+}
+.pr-required-reviewers-section .repos-reviewer > .flex-column:not(:has(> .body-s.secondary-text))::after {
+  content: "Required";
+}
+.pr-optional-reviewers-section .repos-reviewer > .flex-column:not(:has(> .body-s.secondary-text))::after {
+  content: "Optional";
+}
+
+/*
+ * PR Overview: discussion feed oldest-first, GitHub-style (verified live
+ * 2026-08-17 on PR 6982). ADO renders newest-first; column-reverse mirrors
+ * it visually without touching React's DOM. The rows are single-cell table
+ * rows, so flattening the row-group to flex and rows to block loses nothing.
+ * The composer is the DOM-first row and therefore lands at the bottom — also
+ * GitHub-style. Spine caps: the composer's below-icon segment and the
+ * DOM-last row's above-icon segment dangle once mirrored; hide them.
+ *
+ * SCOPE IS LOAD-BEARING: .can-add-comments is what separates the Overview
+ * feed from the Updates tab's feed. The Overview feed is NOT virtualized
+ * (all rows render; end spacers stay 0px under scroll — verified live). The
+ * Updates feed (no .can-add-comments) IS virtualized — its 748px end spacer
+ * lands on top when reversed and shoves every row below the fold, and the
+ * virtualizer mounts rows assuming DOM order == visual order. Never apply
+ * this to a virtualized bolt list.
+ */
+.repos-pr-details-page .activity-feed-list.can-add-comments > .relative {
+  display: flex;
+  flex-direction: column-reverse;
+}
+.repos-pr-details-page .activity-feed-list.can-add-comments > .relative > * {
+  display: block;
+}
+.repos-pr-details-page .activity-feed-list.can-add-comments .bolt-timeline-first-row .bolt-timeline-icon-suffix {
+  border-left-color: transparent !important;
+}
+.repos-pr-details-page .activity-feed-list.can-add-comments .bolt-timeline-last-row .bolt-timeline-icon-prefix {
+  border-left-color: transparent !important;
+}

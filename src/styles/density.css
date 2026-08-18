@@ -1,0 +1,49 @@
+/*
+ * board-density — injected once at startup, route-agnostic.
+ *
+ * Selectors verified live 2026-08-01 against a dev.azure.com Kanban board
+ * (New Boards hub), except where marked TODO. Measured defaults at that time:
+ * card margin 8px, .card-content padding 12px, tags row margin-top 8px —
+ * a 127px card + 8px gap. The rules below take that to roughly 100px + 4px.
+ *
+ * The legacy board (.board-tile etc.) no longer exists and its rules were
+ * removed. Do NOT shrink interactive hit targets below ~24px or drag-and-drop
+ * suffers.
+ */
+
+/* Card shell: 8px gaps -> 4px (verified 2026-08-01) */
+.wit-card {
+  margin: 4px 8px 0 !important;
+  min-height: 0 !important;
+}
+
+/* Card body padding: 12px -> 6px/8px (verified 2026-08-01) */
+.wit-card .card-content {
+  padding: 6px 8px !important;
+}
+
+/* Annotations row (icons under the title): 8px -> 4px (verified 2026-08-01) */
+.wit-card .card-content .annotations {
+  margin-top: 4px !important;
+}
+
+/* Tags row inside the card: 8px -> 2px (verified 2026-08-01) */
+.wit-card .tags-list {
+  margin-top: 2px !important;
+}
+
+/* Column headers (verified 2026-08-01) */
+.kanban-board-column-header,
+.kanban-board-column-header-container {
+  padding-top: 2px !important;
+  padding-bottom: 2px !important;
+  min-height: 0 !important;
+}
+
+/* Swimlane headers — the verified board had no swimlanes.
+   TODO(selector): verify on a board with swimlanes. Inert if wrong. */
+.swimlane-header,
+.board-swimlane-header {
+  min-height: 24px !important;
+  padding: 0 4px !important;
+}

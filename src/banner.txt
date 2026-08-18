@@ -1,0 +1,13 @@
+// ==UserScript==
+// @name        ado-unfuck
+// @namespace   ado-unfuck
+// @version     __VERSION__
+// @description Unfuck the Azure DevOps web UI: denser boards, PR keyboard nav, resolved-thread filtering, fast work item state changes.
+// @match       https://dev.azure.com/*
+// @match       https://*.visualstudio.com/*
+// @grant       GM_getValue
+// @grant       GM_setValue
+// @run-at      document-idle
+// @inject-into page
+// @noframes
+// ==/UserScript==

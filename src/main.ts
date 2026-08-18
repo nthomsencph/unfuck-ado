@@ -18,6 +18,7 @@ import { prReviewed } from "./features/pr-reviewed";
 import { prThreadFilter } from "./features/pr-thread-filter";
 import { sprintHeader } from "./features/sprint-header";
 import { taskboardColumns } from "./features/taskboard-columns";
+import { workitemLayout } from "./features/workitem-layout";
 import { workitemState } from "./features/workitem-state";
 
 declare global {
@@ -36,6 +37,7 @@ declare global {
 
   registry.register(boardDensity);
   registry.register(chromeDensity);
+  registry.register(workitemLayout);
   registry.register(backlogToolbar);
   registry.register(backlogGrid);
   registry.register(backlogStatus);
@@ -71,6 +73,6 @@ declare global {
   // debugging). Detail logging: localStorage.setItem("adofix.debug", "1").
   info(
     `ado-unfuck v${__ADOFIX_VERSION__} active`,
-    "— features: board-density, chrome-density, backlog-toolbar, backlog-grid, backlog-status, sprint-header, taskboard-columns, pr-keynav, pr-thread-filter, pr-drafts, pr-reviewed, pr-diff-totals, pr-comments, pr-checks, pr-actions, workitem-state"
+    "— features: board-density, chrome-density, workitem-layout, backlog-toolbar, backlog-grid, backlog-status, sprint-header, taskboard-columns, pr-keynav, pr-thread-filter, pr-drafts, pr-reviewed, pr-diff-totals, pr-comments, pr-checks, pr-actions, workitem-state"
   );
 })();

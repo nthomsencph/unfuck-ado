@@ -87,6 +87,7 @@ which Violentmonkey deletes with the script.
 | `chrome-density` | Pure CSS: compresses ADO's header chrome (title rows, filter bar) across hubs — ~58px reclaimed on a sprint taskboard. The top banner sits entirely on the canvas (`.region-header` AND its sibling `.region-header-menubar`, the top-right My Work/Marketplace/Help/avatar group, which natively paints its own #201f1e) with the site-wide search widget (`.expandable-search-header`) removed. The work item form (dialog + full page) goes fully to the canvas — shell, subheader, tab strip and all flat fields — with the discussion composer and zero-data hint boxes as content cards (the description editor needs the `--background-color` token override; see the ledger). Also themes the PR Overview: conversation cards (status, Description, comment threads) get page-surface background, heavier shadow and `--adofix-radius` corners with chrome divider lines removed, while non-comment feed entries ("pushed n commits") and the Reviewers/Tags/Work items sidebar sit flat against the page (tag-picker input outline removed). Reviewers render as one merged list (required first, per-row "Required"/"Optional" subtitle tags) instead of two headed groups. The discussion feed runs oldest-first with the composer at the bottom, GitHub-style (Overview feed only — the Updates tab's feed is virtualized and cannot be safely mirrored). Board cards (kanban `.boards-card` + sprint `.taskboard-card`, both `.wit-card`) get one material: `--adofix-card` surface, soft shadow, ADO's 1px grey content frame removed, 3px state flag, 20px vertical padding. Filter bars sit flat with the keyword box capped at 215px (natively it flex-grows across the whole bar) and the "Assigned to" / "Parent Work Item" filter items removed (aria-label prefix match, English-UI; an applied filter on a hidden item stays active — visible in the URL and status text). |
 | `pr-keynav` | Keyboard navigation in the PR Files view (see hotkeys). |
 | `pr-thread-filter` | Hides resolved **and closed** threads (plus ADO's collapsed thread sites), leaving a placeholder per thread — click it to reveal that one. In the diff it is a compact 💬 chip; on the Overview feed it is a full-width "💬 Resolved comment thread — click to show" row sized to align with the timeline rail icon. Persisted via `GM_setValue`. Toggled from the `pr-comments` widget (its own toolbar button retired 2026-08-02). |
+| `workitem-layout` | Work item form restructured GitHub-issue-style (dialog and full page): one readable main column (Description + Discussion) and a 320px right rail, capped at 1250px and centered. ADO's body is already a 3-track CSS grid with exactly three children, so the restructure is pure CSS — regrid to `minmax(0,1fr) 320px`, stack `.work-item-form-right`'s two field columns vertically, reassign grid areas. GH idioms: discussion mirrored oldest-first with the composer last (the PR-Overview column-reverse trick — the comment list is flat, not virtualized), the Description expands to its content in view mode (ADO caps the editor at 460px with an inner scrollbar; editing keeps the cap), comment cards on the card material, and rail noise removed (Deployment group, Development zero-state hint box). |
 | `workitem-state` | Hotkey opens a state picker for the current work item; PATCHes via REST. |
 
 ## Features (Phase 2, in progress)
@@ -286,6 +287,17 @@ throws). Key live findings baked into the code:
   rooster editor div carries `style="user-select: text"`. Winning the
   specificity war is futile; redefine `--background-color` on
   `.html-editor` instead and ADO's own rule paints our color.
+  Body layout: `.work-item-grid` (classes carry `first-column-wide
+  right-column-count-2 section-count-4`) is a CSS grid, natively
+  `852px 410px 410px` gap 16, with exactly three children — 
+  `.work-item-form-first-section` (1/1), `.work-item-form-discussion` (2/1)
+  and `.work-item-form-right.other-form-sections` (a flex-row of two
+  `.work-item-form-section` columns spanning rows 1-2). Discussion content
+  (`.work-item-form-collapsible-section-content`) is flat and NOT
+  virtualized: `.discussion-new-comment` composer first, then
+  `.comment-item.displayed-comment` per comment, newest first. The
+  Description caps via `.rooster-wrapper` max-height 500px +
+  `.rooster-editor` 460px (inner scrollbar).
 
 - Work item cards (verified live 2026-08-18, kanban + sprint taskboard):
   every card is `.wit-card` (`.taskboard-card` on sprints, `.boards-card` on

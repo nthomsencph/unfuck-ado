@@ -66,6 +66,13 @@ html[${TWO_UP_ATTR}] .taskboard-expanded-cell .flex-row.flex-wrap > .taskboard-c
 .taskboard-card .card-content {
   padding: 16px 12px !important;
 }
+/* Breathing room inside every board cell — natively cards sit ~5px from the
+   row edge (1px cell padding + 4px card margin). */
+.taskboard-expanded-cell,
+.taskboard-parent-cell {
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+}
 /* The assignment/parent column is capped (PARENT_MAX in colTargets) — let
    long names wrap instead of ellipsizing at the cap. TWO nowrap+ellipsis
    layers: .identity-view AND its inner .identity-display-name (verified

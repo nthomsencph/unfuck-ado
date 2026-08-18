@@ -56,10 +56,10 @@ const CSS = `
 html[${TWO_UP_ATTR}] .taskboard-expanded-cell .flex-row.flex-wrap > .taskboard-card {
   flex: 1 1 150px;
   box-sizing: border-box;
-  /* single-file cards stop growing at 280px — with the fill regime's
-     150-330px tracks a 360px cap never bound (v0.16.1), so 1-up cards
-     still filled their column */
-  max-width: min(100%, 280px);
+  /* single-file cards stop growing at 240px (was 280, 360 before that —
+     each lowered on live user feedback; a cap above the fill regime's
+     150-330px tracks never binds and 1-up cards fill their column) */
+  max-width: min(100%, 240px);
   min-width: 0;
 }
 /* Card padding lives with the card material in chrome.css (.wit-card). */

@@ -537,3 +537,10 @@ div.padding-vertical-16:has(> .vss-FilterBar) {
   width: 3px !important;
   opacity: 0.85;
 }
+/* Tags row: ADO stacks 8px pill margin + 12px list margin under the last
+   pill — 40px of slack with the card padding (measured live 2026-08-18).
+   -8px swallows both, leaving exactly the card padding; pills keep their
+   8px wrap gap between rows. */
+.wit-card .responsive-tags-list {
+  margin-bottom: -8px !important;
+}

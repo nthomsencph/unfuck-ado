@@ -71,19 +71,19 @@ html[${TWO_UP_ATTR}] .taskboard-expanded-cell .flex-row.flex-wrap > .taskboard-c
   display: block;
   margin: 4px 0 0 !important;
 }
-/* Board surface flat + the PR-overview card material (chrome.css language:
-   page-surface bg, heavy double shadow, --adofix-radius corners; overflow
-   hidden clips the state stripe to the rounded corners). */
+/* Lane surfaces with canvas gutters between them: transparent side borders
+   + padding-box clip make the near-black canvas shine through WITHOUT
+   touching the fixed-table geometry, and the show-lines cell borders go
+   invisible. Card material lives in chrome.css (.wit-card covers these). */
 .taskboard-expanded-cell {
   background: var(--adofix-lane, #1d1c1b) !important;
+  border-left: 4px solid transparent !important;
+  border-right: 4px solid transparent !important;
+  background-clip: padding-box !important;
 }
-.taskboard-card {
-  background: var(--adofix-card, #252423) !important;
-  box-shadow:
-    0 8px 24px rgba(0, 0, 0, 0.6),
-    0 1px 4px rgba(0, 0, 0, 0.5) !important;
-  border-radius: var(--adofix-radius, 10px) !important;
-  overflow: hidden;
+table:has(td.taskboard-expanded-cell) td,
+table:has(td.taskboard-expanded-cell) th {
+  border-color: transparent !important;
 }
 /* Breathing room inside every board cell — natively cards sit ~5px from the
    row edge (1px cell padding + 4px card margin). */

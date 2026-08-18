@@ -495,3 +495,26 @@ div.padding-vertical-16:has(> .vss-FilterBar) {
   box-shadow: none !important;
   border: none !important;
 }
+
+/*
+ * Kanban board joins the layered theme (verified live 2026-08-18): canvas
+ * behind the board and the column-header strip, lane surfaces on columns,
+ * card material on every wit-card — which covers the sprint taskboard's
+ * cards too (.taskboard-card is a .wit-card); overflow clips their state
+ * stripes to the rounded corners.
+ */
+.kanban-board,
+.kanban-board-column-header-container {
+  background: var(--adofix-bg) !important;
+}
+.kanban-board-column {
+  background: var(--adofix-lane) !important;
+}
+.wit-card {
+  background: var(--adofix-card) !important;
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.6),
+    0 1px 4px rgba(0, 0, 0, 0.5) !important;
+  border-radius: var(--adofix-radius) !important;
+  overflow: hidden;
+}

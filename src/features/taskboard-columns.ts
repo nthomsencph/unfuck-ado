@@ -122,20 +122,34 @@ export function stateColumns(headerTexts: string[]): Array<{ name: string; nth: 
  * Chrome resolves both. Widths are written as inline PIXELS by
  * applyColWidths, the mechanism backlog-grid already proved in Firefox.
  */
-export function columnCss(hiddenNth: number[], visibleNth: number[]): string {
+/** Columns never shrink below their native track (204px = 9.09% of 2464). */
+export const MIN_COL = 204;
+
+export function columnCss(hiddenNth: number[], visibleNth: number[], tableMin: number): string {
   if (hiddenNth.length === 0 || visibleNth.length === 0) return "";
   const hideCells = hiddenNth.map((k) => `${TABLE} tr > :nth-child(${k})`).join(",\n");
+  // The exact computed sum, NOT 0: overrides ADO's inline min-width (2464)
+  // deterministically in both engines, and keeps the reduced h-scroll honest
+  // when the visible columns can't all fit at MIN_COL.
   return `
 ${hideCells} { display: none !important; }
-${TABLE} { min-width: 0 !important; }
+${TABLE} { min-width: ${tableMin}px !important; }
 `;
 }
 
+export interface ColPlan {
+  /** 1-based nth → px. Parent col keeps ADO's own width, absent here. */
+  widths: Map<number, number>;
+  /** Exact table width: container when the shares fit, else the col sum. */
+  tableMin: number;
+}
+
 /**
- * Pixel width per col (1-based nth → px) for the current container width:
- * borders 4px, hidden 0, visible columns share the rest equally (last one
- * takes the rounding remainder). The parent col keeps ADO's own width and is
- * absent from the map.
+ * Pixel plan for the current container width: borders 4px, hidden 0, visible
+ * columns share the rest equally but never below MIN_COL — squeezing 9
+ * columns into a 1192px pane at 107px each reads as "the table shrank"
+ * (user-reported 2026-08-18); below the floor a reduced h-scroll is the
+ * honest outcome, and it disappears as more columns are hidden.
  */
 export function colTargets(
   hiddenNth: number[],
@@ -143,18 +157,22 @@ export function colTargets(
   colCount: number,
   containerW: number,
   parentPx: number
-): Map<number, number> {
-  const targets = new Map<number, number>();
-  if (visibleNth.length === 0 || containerW <= 0) return targets;
-  targets.set(1, 4);
-  targets.set(colCount, 4);
-  for (const k of hiddenNth) targets.set(k, 0);
+): ColPlan {
+  const widths = new Map<number, number>();
+  if (visibleNth.length === 0 || containerW <= 0) return { widths, tableMin: 0 };
+  widths.set(1, 4);
+  widths.set(colCount, 4);
+  for (const k of hiddenNth) widths.set(k, 0);
   const avail = Math.max(0, containerW - parentPx - 8);
   const share = Math.floor(avail / visibleNth.length);
-  visibleNth.forEach((k, i) => {
-    targets.set(k, i === visibleNth.length - 1 ? avail - share * (visibleNth.length - 1) : share);
-  });
-  return targets;
+  if (share >= MIN_COL) {
+    visibleNth.forEach((k, i) => {
+      widths.set(k, i === visibleNth.length - 1 ? avail - share * (visibleNth.length - 1) : share);
+    });
+    return { widths, tableMin: containerW };
+  }
+  for (const k of visibleNth) widths.set(k, MIN_COL);
+  return { widths, tableMin: parentPx + 8 + MIN_COL * visibleNth.length };
 }
 
 /** "/{org}/{project}/_sprints/{tab}/{team}/…" → "org/project/team". */
@@ -196,12 +214,12 @@ function parentColPx(cols: HTMLTableColElement[]): number {
   return match ? Number(match[1]) : 220;
 }
 
-function applyColWidths(hiddenNth: number[], visibleNth: number[]): void {
+function applyColWidths(hiddenNth: number[], visibleNth: number[]): number {
   const table = document.querySelector<HTMLTableElement>(TABLE);
   const container = table?.closest<HTMLElement>(".bolt-table-container");
-  if (!table || !container) return;
+  if (!table || !container) return 0;
   const cols = Array.from(table.querySelectorAll<HTMLTableColElement>("colgroup col"));
-  if (cols.length === 0) return;
+  if (cols.length === 0) return 0;
 
   if (hiddenNth.length === 0) {
     // Back to native: restore whatever ADO had written before our first fit.
@@ -211,22 +229,25 @@ function applyColWidths(hiddenNth: number[], visibleNth: number[]): void {
         col.setAttribute("style", original);
       }
     }
-    return;
+    return 0;
   }
 
-  const targets = colTargets(
+  const { widths, tableMin } = colTargets(
     hiddenNth,
     visibleNth,
     cols.length,
     container.clientWidth,
     parentColPx(cols)
   );
-  targets.forEach((px, nth) => {
+  widths.forEach((px, nth) => {
     const col = cols[nth - 1];
     if (!col) return;
     if (!originalColStyle.has(col)) originalColStyle.set(col, col.getAttribute("style") ?? "");
-    const current = col.getBoundingClientRect().width;
-    if (Math.abs(current - px) > 1) col.style.width = `${px}px`;
+    // Compare the ATTRIBUTE, never the rendered width: ADO's 9.09% tracks
+    // can render within 1px of the target, which left the percentages in
+    // place (the v0.15.2 Firefox bug — percentages must always give way to
+    // deterministic pixels).
+    if (col.style.width !== `${px}px`) col.style.width = `${px}px`;
   });
 
   // Splitter drags and window resizes never reach the childList-only settle
@@ -238,6 +259,7 @@ function applyColWidths(hiddenNth: number[], visibleNth: number[]): void {
     }, 100);
     new ResizeObserver(refit).observe(container);
   }
+  return tableMin;
 }
 
 function applyColumnCss(key: string): void {
@@ -246,7 +268,8 @@ function applyColumnCss(key: string): void {
   const hidden = new Set(prefs(key).hidden);
   const hiddenNth = cols.filter((c) => hidden.has(c.name)).map((c) => c.nth);
   const visibleNth = cols.filter((c) => !hidden.has(c.name)).map((c) => c.nth);
-  const css = columnCss(hiddenNth, visibleNth);
+  const tableMin = applyColWidths(hiddenNth, visibleNth);
+  const css = tableMin > 0 ? columnCss(hiddenNth, visibleNth, tableMin) : "";
   let style = document.querySelector<HTMLStyleElement>(
     `style[${ADOFIX_ATTR}="${FEATURE_ID}-dynamic"]`
   );
@@ -256,7 +279,6 @@ function applyColumnCss(key: string): void {
     document.head.appendChild(style);
   }
   if (style.textContent !== css) style.textContent = css;
-  applyColWidths(hiddenNth, visibleNth);
   const btn = document.querySelector<HTMLElement>(`.${BTN_CLASS}`);
   btn?.setAttribute("data-filtering", String(hiddenNth.length > 0));
 }

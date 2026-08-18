@@ -34,11 +34,11 @@ describe("stateColumns", () => {
 });
 
 describe("columnCss", () => {
-  it("hides the cells and kills the table min-width — but never sets col widths", () => {
-    const css = columnCss([12, 13], [3, 4, 5, 6, 7, 8, 9, 10, 11]);
+  it("hides the cells and pins the exact table min-width — never sets col widths", () => {
+    const css = columnCss([12, 13], [3, 4, 5, 6, 7, 8, 9, 10, 11], 2064);
     expect(css).toContain("tr > :nth-child(12)");
     expect(css).toContain("tr > :nth-child(13)");
-    expect(css).toContain("min-width: 0 !important");
+    expect(css).toContain("min-width: 2064px !important");
     // Firefox's fixed layout ignores auto AND percent/calc widths on <col> —
     // widths must be inline pixels (colTargets), never stylesheet rules.
     expect(css).not.toContain("width: calc");
@@ -46,33 +46,49 @@ describe("columnCss", () => {
   });
 
   it("emits nothing when no columns are hidden (native layout preserved)", () => {
-    expect(columnCss([], [3, 4, 5])).toBe("");
-    expect(columnCss([3], [])).toBe("");
+    expect(columnCss([], [3, 4, 5], 1000)).toBe("");
+    expect(columnCss([3], [], 1000)).toBe("");
   });
 });
 
 describe("colTargets", () => {
   it("pins borders, zeroes hidden, shares the rest in pixels summing to the container", () => {
     // 14 cols, container 1616, parent 220: 4 + 220 + 4×347 + 4 = 1616.
-    const t = colTargets([7, 8, 9, 10, 11, 12, 13], [3, 4, 5, 6], 14, 1616, 220);
-    expect(t.get(1)).toBe(4);
-    expect(t.get(14)).toBe(4);
-    expect(t.get(7)).toBe(0);
-    expect(t.get(3)).toBe(347);
-    const total = 220 + [...t.values()].reduce((a, w) => a + w, 0);
+    const { widths, tableMin } = colTargets([7, 8, 9, 10, 11, 12, 13], [3, 4, 5, 6], 14, 1616, 220);
+    expect(widths.get(1)).toBe(4);
+    expect(widths.get(14)).toBe(4);
+    expect(widths.get(7)).toBe(0);
+    expect(widths.get(3)).toBe(347);
+    const total = 220 + [...widths.values()].reduce((a, w) => a + w, 0);
     expect(total).toBe(1616);
+    expect(tableMin).toBe(1616);
   });
 
   it("gives the rounding remainder to the last visible column", () => {
-    const t = colTargets([3], [4, 5, 6], 8, 1030, 220);
+    const { widths } = colTargets([3], [4, 5, 6], 8, 1030, 220);
     // avail = 1030 - 228 = 802 → 267 + 267 + 268
-    expect(t.get(4)).toBe(267);
-    expect(t.get(6)).toBe(268);
+    expect(widths.get(4)).toBe(267);
+    expect(widths.get(6)).toBe(268);
+  });
+
+  it("floors columns at their native width and accepts reduced scroll", () => {
+    // The Firefox report: 9 visible in a 1192px pane would mean 107px
+    // columns — half native. Floor at 204 instead, table = 228 + 9×204.
+    const { widths, tableMin } = colTargets(
+      [9, 10],
+      [3, 4, 5, 6, 7, 8, 11, 12, 13],
+      14,
+      1192,
+      220
+    );
+    expect(widths.get(3)).toBe(204);
+    expect(widths.get(13)).toBe(204);
+    expect(tableMin).toBe(228 + 9 * 204);
   });
 
   it("is empty for degenerate input", () => {
-    expect(colTargets([3], [], 8, 1000, 220).size).toBe(0);
-    expect(colTargets([3], [4], 8, 0, 220).size).toBe(0);
+    expect(colTargets([3], [], 8, 1000, 220).widths.size).toBe(0);
+    expect(colTargets([3], [4], 8, 0, 220).widths.size).toBe(0);
   });
 });
 

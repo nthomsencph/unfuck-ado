@@ -245,11 +245,16 @@ throws). Key live findings baked into the code:
   virtualized — 89/89 mounted at every scroll position) sit in a
   `div.flex-row.flex-wrap` inside the cell; they only pack 2-up after
   `min-width: 0` (min-width:auto = flex min-content forces 1-per-row).
-  CROSS-BROWSER: in this fixed-layout table Firefox ignores BOTH
-  `width:auto` (v0.15.0) and percentage/calc widths (v0.15.1) on `<col>`
-  elements — the table shrink-wraps either way; Chrome resolves both fine.
-  The only cross-engine way to size ADO table columns is inline PIXEL widths
-  written by JS (what backlog-grid does; taskboard-columns since v0.15.2).
+  CROSS-BROWSER (diagnosed live in the user's Firefox 153, 2026-08-18): in
+  this fixed-layout table Firefox ignores `width:auto` (v0.15.0) and
+  `calc()` (v0.15.1) on `<col>` elements — plain percentages and pixels
+  resolve fine; Chrome resolves everything. The only safe cross-engine way
+  to size ADO table columns is inline PIXEL widths written by JS. And when
+  writing them, compare against the col's style ATTRIBUTE, never its
+  rendered width — ADO's 9.09% tracks can render within 1px of the target,
+  silently leaving the percentages in place (v0.15.2). Fit policy: never
+  squeeze columns below their native 204px track; below that keep a reduced
+  h-scroll (table min-width set to the exact computed sum, not 0).
 
 Remaining unverified (inert if wrong): swimlane header rules in `density.css`
 (`grep -rn "TODO(selector)" src/`). Footer-text status fallback assumes an

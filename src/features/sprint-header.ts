@@ -105,7 +105,8 @@ html[${ATTR}] .sprints-tabbar-header .bolt-tabbar {
     pointer-events: none;
   }
   /*
-   * Filter bar inline with the tabs (user request 2026-08-18). The bar
+   * Filter bar inline with the tabs, Taskboard AND Backlog tabs (user
+   * requests 2026-08-18). On the taskboard the bar
    * lives INSIDE .page-content, an overflow:auto scroll container — any
    * overlay lift (negative margin/relative top) above the container's top
    * edge gets CLIPPED, which is why the pickers' lift pattern cannot work
@@ -120,16 +121,30 @@ html[${ATTR}] .sprints-tabbar-header .bolt-tabbar {
   html[${ATTR}="taskboard"] div.padding-vertical-16:has(> .vss-FilterBar) {
     padding: 2px 0 2px 330px !important;
   }
+  /* Backlog tab, same treatment, own geometry (measured live 2026-08-18):
+     its filter bar mounts in .page-content-top (16px top padding, NOT the
+     taskboard's padding-vertical-16 wrapper), and trimming that to 2px
+     supplies 14 of the 52px lift, so the dates row collapses only -38px. */
+  html[${ATTR}="backlog"] .sprints-header-dates:has(~ * .vss-FilterBar) {
+    margin-bottom: -38px !important;
+  }
+  html[${ATTR}="backlog"] .page-content-top:has(> .vss-FilterBar) {
+    padding: 2px 0 0 330px !important;
+  }
   /* The compact filter cluster parks at the row's right edge (user
      2026-08-18) — left-packed it floated mid-row next to the tabs. */
-  html[${ATTR}="taskboard"] .vss-FilterBar--list {
+  html[${ATTR}="taskboard"] .vss-FilterBar--list,
+  html[${ATTR}="backlog"] .vss-FilterBar--list {
     justify-content: flex-end;
   }
-  html[${ATTR}="taskboard"] .sprints-tabbar-header {
+  html[${ATTR}="taskboard"] .sprints-tabbar-header,
+  html[${ATTR}="backlog"] .sprints-tabbar-header {
     pointer-events: none;
   }
   html[${ATTR}="taskboard"] .sprints-tabbar-header [role="tab"],
-  html[${ATTR}="taskboard"] .sprints-tabbar-header .bolt-header-commandbar {
+  html[${ATTR}="taskboard"] .sprints-tabbar-header .bolt-header-commandbar,
+  html[${ATTR}="backlog"] .sprints-tabbar-header [role="tab"],
+  html[${ATTR}="backlog"] .sprints-tabbar-header .bolt-header-commandbar {
     pointer-events: auto;
   }
   /* The pickers/icons overlay the title row from a separate layer, so flex

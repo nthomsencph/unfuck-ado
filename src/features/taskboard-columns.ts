@@ -113,16 +113,23 @@ export function stateColumns(headerTexts: string[]): Array<{ name: string; nth: 
     .filter((c) => c.name.length > 0);
 }
 
-/** CSS hiding the given columns and sharing the freed width. Empty = native. */
-export function columnCss(hiddenNth: number[], visibleNth: number[]): string {
-  if (hiddenNth.length === 0) return "";
+/**
+ * CSS hiding the given columns and sharing the freed width. Empty = native.
+ * Visible columns get explicit calc() shares, NOT width:auto — Firefox's
+ * fixed-table-layout gives auto cols nothing here and the table shrink-wraps
+ * instead of filling the pane (user-reported 2026-08-18; Chrome distributed
+ * the slack). parentPx is the parent-column track (ADO's inline width).
+ */
+export function columnCss(hiddenNth: number[], visibleNth: number[], parentPx = 220): string {
+  if (hiddenNth.length === 0 || visibleNth.length === 0) return "";
   const hideCells = hiddenNth.map((k) => `${TABLE} tr > :nth-child(${k})`).join(",\n");
   const hideCols = hiddenNth.map((k) => `${TABLE} > colgroup > col:nth-child(${k})`).join(",\n");
-  const autoCols = visibleNth.map((k) => `${TABLE} > colgroup > col:nth-child(${k})`).join(",\n");
+  const shareCols = visibleNth.map((k) => `${TABLE} > colgroup > col:nth-child(${k})`).join(",\n");
+  const reserved = parentPx + 8; // parent track + the two 4px border cols
   return `
 ${hideCells} { display: none !important; }
 ${hideCols} { width: 0 !important; }
-${autoCols} { width: auto !important; }
+${shareCols} { width: calc((100% - ${reserved}px) / ${visibleNth.length}) !important; }
 ${TABLE} { min-width: 0 !important; }
 ${TABLE} > colgroup > col:first-child,
 ${TABLE} > colgroup > col:last-child { width: 4px !important; }
@@ -158,12 +165,18 @@ function boardHeaders(): string[] {
   return Array.from(table.querySelectorAll("th")).map((t) => t.textContent ?? "");
 }
 
+function parentColPx(): number {
+  const col = document.querySelector(`${TABLE} > colgroup > col:nth-child(2)`);
+  const match = /(\d+(?:\.\d+)?)px/.exec(col?.getAttribute("style") ?? "");
+  return match ? Number(match[1]) : 220;
+}
+
 function applyColumnCss(key: string): void {
   const cols = stateColumns(boardHeaders());
   const hidden = new Set(prefs(key).hidden);
   const hiddenNth = cols.filter((c) => hidden.has(c.name)).map((c) => c.nth);
   const visibleNth = cols.filter((c) => !hidden.has(c.name)).map((c) => c.nth);
-  const css = hiddenNth.length > 0 && visibleNth.length > 0 ? columnCss(hiddenNth, visibleNth) : "";
+  const css = columnCss(hiddenNth, visibleNth, parentColPx());
   let style = document.querySelector<HTMLStyleElement>(
     `style[${ADOFIX_ATTR}="${FEATURE_ID}-dynamic"]`
   );

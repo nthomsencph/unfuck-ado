@@ -34,19 +34,26 @@ describe("stateColumns", () => {
 });
 
 describe("columnCss", () => {
-  it("hides cells and tracks, shares width among the visible, kills the min-width", () => {
+  it("hides cells and tracks, gives the visible explicit equal shares, kills the min-width", () => {
     const css = columnCss([12, 13], [3, 4, 5, 6, 7, 8, 9, 10, 11]);
     expect(css).toContain("tr > :nth-child(12)");
     expect(css).toContain("col:nth-child(13)");
-    expect(css).toContain("width: auto !important");
+    // Explicit calc shares, never width:auto — Firefox's fixed layout gives
+    // auto cols nothing and the table shrink-wraps.
+    expect(css).toContain("width: calc((100% - 228px) / 9) !important");
     expect(css).toContain("min-width: 0 !important");
     // The 0%-width border cols must be pinned: fixed layout treats 0% as
     // auto and would hand them a full share of the freed width.
     expect(css).toContain("col:first-child");
   });
 
+  it("reserves the actual parent-column width", () => {
+    expect(columnCss([3], [4, 5], 300)).toContain("calc((100% - 308px) / 2)");
+  });
+
   it("emits nothing when no columns are hidden (native layout preserved)", () => {
     expect(columnCss([], [3, 4, 5])).toBe("");
+    expect(columnCss([3], [])).toBe("");
   });
 });
 

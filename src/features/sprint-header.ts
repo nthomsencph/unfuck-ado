@@ -120,6 +120,11 @@ html[${ATTR}] .sprints-tabbar-header .bolt-tabbar {
   html[${ATTR}="taskboard"] div.padding-vertical-16:has(> .vss-FilterBar) {
     padding: 2px 0 2px 330px !important;
   }
+  /* The compact filter cluster parks at the row's right edge (user
+     2026-08-18) — left-packed it floated mid-row next to the tabs. */
+  html[${ATTR}="taskboard"] .vss-FilterBar--list {
+    justify-content: flex-end;
+  }
   html[${ATTR}="taskboard"] .sprints-tabbar-header {
     pointer-events: none;
   }

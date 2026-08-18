@@ -89,6 +89,12 @@ html[${ATTR}] .wit-backlogs-header-row .bolt-header-command-item-button.bolt-exp
   html[${ATTR}] .backlogs-tabbar-header .bolt-tabbar {
     padding-right: 44px !important;
   }
+  /* The lifted icon row overlays the title row from a separate layer —
+     reserve its width so the status text ellipsizes instead of sliding
+     underneath at narrow widths. */
+  html[${ATTR}] .wit-backlogs-header-row .bolt-header-title-row {
+    padding-right: 440px;
+  }
 }
 `;
 

@@ -66,6 +66,25 @@ html[${TWO_UP_ATTR}] .taskboard-expanded-cell .flex-row.flex-wrap > .taskboard-c
 .taskboard-card .card-content {
   padding: 16px 12px !important;
 }
+/* Card layout: line 1 = type icon + id (+ ⋮), the title on its own line(s). */
+.taskboard-card a.title {
+  display: block;
+  margin: 4px 0 0 !important;
+}
+/* Board surface flat + the PR-overview card material (chrome.css language:
+   page-surface bg, heavy double shadow, --adofix-radius corners; overflow
+   hidden clips the state stripe to the rounded corners). */
+.taskboard-expanded-cell {
+  background: transparent !important;
+}
+.taskboard-card {
+  background: var(--background-color, #201f1e) !important;
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.6),
+    0 1px 4px rgba(0, 0, 0, 0.5) !important;
+  border-radius: var(--adofix-radius, 10px) !important;
+  overflow: hidden;
+}
 /* Breathing room inside every board cell — natively cards sit ~5px from the
    row edge (1px cell padding + 4px card margin). */
 .taskboard-expanded-cell,

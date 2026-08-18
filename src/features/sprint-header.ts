@@ -125,6 +125,13 @@ html[${ATTR}] .sprints-tabbar-header .bolt-tabbar {
   html[${ATTR}="taskboard"] .sprints-tabbar-header .bolt-header-commandbar {
     pointer-events: auto;
   }
+  /* The pickers/icons overlay the title row from a separate layer, so flex
+     can't shrink the status text against them — reserve their width so the
+     status ellipsizes instead of sliding underneath (user 2026-08-18). */
+  html[${ATTR}="taskboard"] .wit-sprints-header-row .bolt-header-title-row,
+  html[${ATTR}="backlog"] .wit-sprints-header-row .bolt-header-title-row {
+    padding-right: 620px;
+  }
   /* Capacity keeps its title row for Add user/Save/Revert — the pickers go
      into the tab row's free middle instead (300px clears the tabs). */
   html[${ATTR}="capacity"] .sprints-header-dates {

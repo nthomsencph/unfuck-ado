@@ -135,22 +135,27 @@ function teleport(native: HTMLElement, row: HTMLElement): void {
   s.setProperty("left", `${r.left}px`, "important");
   s.setProperty("top", `${r.top}px`, "important");
   s.setProperty("width", `${r.width}px`, "important");
-  s.setProperty("height", `${r.height}px`, "important");
-  s.setProperty("opacity", "0", "important");
+  s.setProperty("min-height", `${r.height}px`, "important");
+  s.setProperty("height", "auto", "important");
+  /* VISIBLE while editing: the live control replaces the row in place —
+     fields without a callout (e.g. Story Points) are typed into directly. */
+  s.setProperty("opacity", "1", "important");
+  s.setProperty("visibility", "visible", "important");
+  s.setProperty("overflow", "visible", "important");
+  s.setProperty("background", "var(--adofix-bg, #141414)", "important");
   s.setProperty("z-index", "2000", "important");
-  /* none, not auto: the click is programmatic, and an invisible hit target
-     over the row would swallow the user's next click after an Esc-close. */
-  s.setProperty("pointer-events", "none", "important");
+  s.setProperty("pointer-events", "auto", "important");
   const input = native.querySelector<HTMLElement>("input") ?? native;
   input.click();
   input.focus();
-  window.setTimeout(() => {
-    document.addEventListener(
-      "mousedown",
-      () => native.removeAttribute("style"),
-      { once: true, capture: true }
-    );
-  }, 0);
+  const onDown = (e: MouseEvent): void => {
+    const t = e.target instanceof HTMLElement ? e.target : null;
+    // Clicks inside the control or its callout/portal keep the edit alive.
+    if (t && (native.contains(t) || t.closest('[class*="callout"], [class*="portal"], [class*="flyout"]'))) return;
+    document.removeEventListener("mousedown", onDown, true);
+    native.removeAttribute("style");
+  };
+  window.setTimeout(() => document.addEventListener("mousedown", onDown, true), 0);
 }
 
 interface DetailRow {
@@ -196,6 +201,44 @@ function collectRows(): DetailRow[] | null {
     { key: "area", label: "Area", value: leaf(valueOf(area)), native: area ?? undefined },
     { key: "iteration", label: "Iteration", value: leaf(valueOf(iteration)), native: iteration ?? undefined },
   ];
+
+  // Rail groups are matched by their header text (English-UI assumption,
+  // like the ledger's other label matches): Development and Implementation
+  // (bugs name it "System Info") disappear outright; Planning is absorbed —
+  // its fields join this list row-by-row (teleport-editable) and the native
+  // group becomes a zero-size stub.
+  for (const group of document.querySelectorAll<HTMLElement>(
+    ".work-item-form-right .work-item-form-group"
+  )) {
+    const label =
+      group
+        .querySelector(".work-item-form-collapsible-header")
+        ?.textContent?.trim() ?? "";
+    if (/^(Development|Implementation|System Info)/.test(label)) {
+      group.classList.add("adofix-wi-group-hide");
+      continue;
+    }
+    if (!/^Planning/.test(label)) continue;
+    group.classList.add("adofix-wi-group-absorb");
+    for (const wrapper of group.querySelectorAll<HTMLElement>(
+      ".work-item-form-control-wrapper"
+    )) {
+      const content = wrapper.querySelector(".work-item-form-control-content-wrapper");
+      const labelEl = content?.children[0] ?? null;
+      const fieldLabel = labelEl?.textContent?.trim() ?? "";
+      if (!fieldLabel) continue;
+      const value =
+        wrapper.querySelector("input")?.value ??
+        (content?.children[1] as HTMLElement | undefined)?.textContent?.trim() ??
+        "";
+      rows.push({
+        key: `planning-${fieldLabel.toLowerCase().replace(/\W+/g, "-")}`,
+        label: fieldLabel,
+        value: value || "—",
+        native: wrapper,
+      });
+    }
+  }
 
   const tagPicker = document.querySelector<HTMLElement>(
     ".work-item-form-header .work-item-tag-picker"
@@ -358,7 +401,11 @@ button.work-item-form-toggle[aria-label^="Maximize"] {
   overflow: hidden !important;
   padding: 0 !important;
   margin: 0 !important;
-  opacity: 0;
+  /* visibility, NOT opacity: opacity:0 on the ancestor renders even
+     position:fixed descendants invisible (opacity affects the whole
+     subtree); visibility is overridable per-descendant, which the teleport
+     relies on. */
+  visibility: hidden;
   pointer-events: none;
 }
 /* Every rail property as "key: value", one pair per row (user 2026-08-18;
@@ -375,6 +422,22 @@ button.work-item-form-toggle[aria-label^="Maximize"] {
 .work-item-form-right .work-item-form-control-content-wrapper > :last-child {
   flex: 1 1 auto !important;
   min-width: 0 !important;
+}
+/* Groups removed or absorbed by header text (set from enhance()):
+   Development / Implementation / System Info go entirely; Planning is a
+   zero-size stub — its controls stay renderable for the teleport trick
+   while its rows render in the adofix Details list. */
+.adofix-wi-group-hide {
+  display: none !important;
+}
+.adofix-wi-group-absorb {
+  height: 0 !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  visibility: hidden;
+  pointer-events: none;
 }
 /* The adofix "Details" group at the top of the rail. */
 #adofix-wi-details {

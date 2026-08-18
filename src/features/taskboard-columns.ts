@@ -83,9 +83,10 @@ table:has(td.taskboard-expanded-cell) th {
   border-color: transparent !important;
 }
 /* Collapsed assignee rows are one full-width td painted ADO-grey #323130 —
-   they stay on the lane surface (user 2026-08-18). */
+   they sit flat on the canvas (user 2026-08-18: lane #1d1c1b still read as
+   a grey band; the collapsed strip is chrome, not a lane). */
 td.taskboard-collapsed-row {
-  background: var(--adofix-lane, #1d1c1b) !important;
+  background: var(--adofix-bg, #141414) !important;
 }
 /* Assignee name centered on the chevron's 30px line. ADO's margin-top-8 on
    .identity-view bottom-parks it: in a collapsed row's flex-center strip the

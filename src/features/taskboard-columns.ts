@@ -82,6 +82,22 @@ table:has(td.taskboard-expanded-cell) td,
 table:has(td.taskboard-expanded-cell) th {
   border-color: transparent !important;
 }
+/* Collapsed assignee rows are one full-width td painted ADO-grey #323130 —
+   they stay on the lane surface (user 2026-08-18). */
+td.taskboard-collapsed-row {
+  background: var(--adofix-lane, #1d1c1b) !important;
+}
+/* Assignee name centered on the chevron's 30px line. ADO's margin-top-8 on
+   .identity-view bottom-parks it: in a collapsed row's flex-center strip the
+   8px leaves the name 1px off the row bottom (drop the margin, the parent
+   centers it); in an expanded row's block-flow .assigned-to-cell the 24px
+   identity needs (30-24)/2 = 3px to sit on the chevron's centerline. */
+td.taskboard-collapsed-row .identity-view {
+  margin-top: 0 !important;
+}
+.taskboard-parent-cell .assigned-to-cell > .identity-view {
+  margin-top: 3px !important;
+}
 /* Breathing room inside every board cell — natively cards sit ~5px from the
    row edge (1px cell padding + 4px card margin). */
 .taskboard-expanded-cell,

@@ -36,6 +36,18 @@ export const workitemLayout: Feature = {
 };
 
 const CSS = `
+/* The header rows and the State/Area subheader join the same centered
+   column — full-width header over a capped body clashed (user 2026-08-18).
+   The 10px work-item-type stripe on the window edge goes with it; the type
+   icon and the "BUG 36636" eyebrow already carry the type. */
+.work-item-form-header-type-deco {
+  display: none !important;
+}
+.work-item-form-header,
+.work-item-form-subheader {
+  max-width: 1250px !important;
+  margin: 0 auto !important;
+}
 /* One main column + a 320px rail, capped and centered like a GH issue. */
 .work-item-grid {
   grid-template-columns: minmax(0, 1fr) 320px !important;

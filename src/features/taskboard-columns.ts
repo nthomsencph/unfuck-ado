@@ -56,7 +56,8 @@ const CSS = `
 html[${TWO_UP_ATTR}] .taskboard-expanded-cell .flex-row.flex-wrap > .taskboard-card {
   flex: 1 1 150px;
   box-sizing: border-box;
-  max-width: 100%;
+  /* a lone card in a wide column would otherwise grow to the full track */
+  max-width: min(100%, 360px);
   min-width: 0;
 }
 /* Airier cards (user request 2026-08-18; native padding is 12px all round). */
@@ -64,8 +65,11 @@ html[${TWO_UP_ATTR}] .taskboard-expanded-cell .flex-row.flex-wrap > .taskboard-c
   padding: 16px 12px !important;
 }
 /* The assignment/parent column is capped (PARENT_MAX in colTargets) — let
-   long names wrap instead of ellipsizing at the cap. */
-.taskboard-parent-cell .identity-view {
+   long names wrap instead of ellipsizing at the cap. TWO nowrap+ellipsis
+   layers: .identity-view AND its inner .identity-display-name (verified
+   live 2026-08-18; unwrapping only the outer still ellipsized). */
+.taskboard-parent-cell .identity-view,
+.taskboard-parent-cell .identity-display-name {
   white-space: normal !important;
 }
 /* Same surface language as the pr-comments menu. */

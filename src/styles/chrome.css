@@ -463,3 +463,14 @@ div.padding-vertical-16:has(> .vss-FilterBar) {
 .repos-pr-details-page .activity-feed-list.can-add-comments .bolt-timeline-last-row .bolt-timeline-icon-prefix {
   border-left-color: transparent !important;
 }
+
+/*
+ * Filter bars are chrome, not cards — flat on the page (2026-08-18), same
+ * language as the flattened backlog pane. bolt-filterbar-white carries a
+ * dark-theme #323130 surface plus a depth-8 shadow.
+ */
+.vss-FilterBar {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+}

@@ -245,6 +245,9 @@ throws). Key live findings baked into the code:
   virtualized — 89/89 mounted at every scroll position) sit in a
   `div.flex-row.flex-wrap` inside the cell; they only pack 2-up after
   `min-width: 0` (min-width:auto = flex min-content forces 1-per-row).
+  CROSS-BROWSER: in this fixed-layout table Firefox gives `width:auto` cols
+  nothing (the table shrink-wraps); Chrome hands them the slack. Never rely
+  on auto distribution — emit explicit `calc((100% - reserved) / n)` shares.
 
 Remaining unverified (inert if wrong): swimlane header rules in `density.css`
 (`grep -rn "TODO(selector)" src/`). Footer-text status fallback assumes an

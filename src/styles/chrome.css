@@ -30,8 +30,14 @@
  */
 .bolt-page,
 .region-header,
+.region-header-menubar,
 .project-header {
   background: var(--adofix-bg) !important;
+}
+/* The banner's site-wide search widget — never used, and its 200px pill
+   broke the banner's quiet right edge (user 2026-08-18). */
+.region-header .expandable-search-header {
+  display: none !important;
 }
 table:has(td.taskboard-expanded-cell) th,
 .backlogs-view th {

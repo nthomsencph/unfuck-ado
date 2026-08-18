@@ -96,6 +96,15 @@ html[${ATTR}] .wit-backlogs-header-row .bolt-header-command-item-button.bolt-exp
     padding-right: 440px;
   }
 }
+/* Filter bar: compact row tight under the one-row header, cluster parked
+   right (user 2026-08-18, the sprints treatment; no tab row exists here to
+   merge into). Same .page-content-top mount as the sprint Backlog tab. */
+html[${ATTR}] .page-content-top:has(> .vss-FilterBar) {
+  padding: 2px 0 0 !important;
+}
+html[${ATTR}] .vss-FilterBar--list {
+  justify-content: flex-end;
+}
 `;
 
 

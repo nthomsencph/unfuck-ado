@@ -84,7 +84,7 @@ which Violentmonkey deletes with the script.
 | Feature | What it does |
 |---|---|
 | `board-density` | Pure CSS: tighter headers and swimlanes on Kanban boards, plus the card-shell margin (12px gap below every stacked card; card body padding lives with the card material in `chrome-density`). |
-| `chrome-density` | Pure CSS: compresses ADO's header chrome (title rows, filter bar) across hubs — ~58px reclaimed on a sprint taskboard. The top banner sits entirely on the canvas (`.region-header` AND its sibling `.region-header-menubar`, the top-right My Work/Marketplace/Help/avatar group, which natively paints its own #201f1e) with the site-wide search widget (`.expandable-search-header`) removed. Also themes the PR Overview: conversation cards (status, Description, comment threads) get page-surface background, heavier shadow and `--adofix-radius` corners with chrome divider lines removed, while non-comment feed entries ("pushed n commits") and the Reviewers/Tags/Work items sidebar sit flat against the page (tag-picker input outline removed). Reviewers render as one merged list (required first, per-row "Required"/"Optional" subtitle tags) instead of two headed groups. The discussion feed runs oldest-first with the composer at the bottom, GitHub-style (Overview feed only — the Updates tab's feed is virtualized and cannot be safely mirrored). Board cards (kanban `.boards-card` + sprint `.taskboard-card`, both `.wit-card`) get one material: `--adofix-card` surface, soft shadow, ADO's 1px grey content frame removed, 3px state flag, 20px vertical padding. Filter bars sit flat with the keyword box capped at 215px (natively it flex-grows across the whole bar) and the "Assigned to" / "Parent Work Item" filter items removed (aria-label prefix match, English-UI; an applied filter on a hidden item stays active — visible in the URL and status text). |
+| `chrome-density` | Pure CSS: compresses ADO's header chrome (title rows, filter bar) across hubs — ~58px reclaimed on a sprint taskboard. The top banner sits entirely on the canvas (`.region-header` AND its sibling `.region-header-menubar`, the top-right My Work/Marketplace/Help/avatar group, which natively paints its own #201f1e) with the site-wide search widget (`.expandable-search-header`) removed. The work item form (dialog + full page) goes fully to the canvas — shell, subheader, tab strip and all flat fields — with the discussion composer and zero-data hint boxes as content cards (the description editor needs the `--background-color` token override; see the ledger). Also themes the PR Overview: conversation cards (status, Description, comment threads) get page-surface background, heavier shadow and `--adofix-radius` corners with chrome divider lines removed, while non-comment feed entries ("pushed n commits") and the Reviewers/Tags/Work items sidebar sit flat against the page (tag-picker input outline removed). Reviewers render as one merged list (required first, per-row "Required"/"Optional" subtitle tags) instead of two headed groups. The discussion feed runs oldest-first with the composer at the bottom, GitHub-style (Overview feed only — the Updates tab's feed is virtualized and cannot be safely mirrored). Board cards (kanban `.boards-card` + sprint `.taskboard-card`, both `.wit-card`) get one material: `--adofix-card` surface, soft shadow, ADO's 1px grey content frame removed, 3px state flag, 20px vertical padding. Filter bars sit flat with the keyword box capped at 215px (natively it flex-grows across the whole bar) and the "Assigned to" / "Parent Work Item" filter items removed (aria-label prefix match, English-UI; an applied filter on a hidden item stays active — visible in the URL and status text). |
 | `pr-keynav` | Keyboard navigation in the PR Files view (see hotkeys). |
 | `pr-thread-filter` | Hides resolved **and closed** threads (plus ADO's collapsed thread sites), leaving a placeholder per thread — click it to reveal that one. In the diff it is a compact 💬 chip; on the Overview feed it is a full-width "💬 Resolved comment thread — click to show" row sized to align with the timeline rail icon. Persisted via `GM_setValue`. Toggled from the `pr-comments` widget (its own toolbar button retired 2026-08-02). |
 | `workitem-state` | Hotkey opens a state picker for the current work item; PATCHes via REST. |
@@ -272,6 +272,20 @@ throws). Key live findings baked into the code:
   dates row collapses the space above it (margin-bottom -54px, conditional
   on `:has(~ * .vss-FilterBar)` so the board never rides up under the tabs
   when the filter is toggled off).
+
+- Work item form (verified live 2026-08-18, opened as `workitem=` dialog on
+  a backlog): root `.work-item-form-dialog`, body `.work-item-form-page`,
+  strip `.work-item-form-subheader`, tabs `.wif-tabbar`. Four native greys:
+  #201f1e (page + every flat field/editor), #252423 (subheader/tabbar),
+  #323130 (dialog shell + `.discussion-new-comment` composer), #292827
+  (`.deployments-zero-data`, `.links-control-zero-state`). GOTCHA: the
+  description editor's surface cannot be painted directly — ADO's dark-theme
+  sanitizer rule (`.work-item-form-section-dark-theme-override .html-editor
+  [style]:not(a):not(pre):not(…)`) repaints every inline-styled descendant
+  `var(--background-color) !important` at ~(0,5,2) specificity, and the
+  rooster editor div carries `style="user-select: text"`. Winning the
+  specificity war is futile; redefine `--background-color` on
+  `.html-editor` instead and ADO's own rule paints our color.
 
 - Work item cards (verified live 2026-08-18, kanban + sprint taskboard):
   every card is `.wit-card` (`.taskboard-card` on sprints, `.boards-card` on

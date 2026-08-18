@@ -518,6 +518,60 @@ div.padding-vertical-16:has(> .vss-FilterBar) {
 }
 
 /*
+ * Work item form (dialog and full page, verified live 2026-08-18): the
+ * shell, page, subheader, tab strip and every flat field (bolt textfields,
+ * editable dropdowns, the description html-editor + rooster command bar)
+ * natively paint four different greys. ADO's fields are flat by design
+ * (same color as the page), so everything goes to the canvas; the
+ * discussion composer and the zero-data hint boxes are content cards.
+ */
+.work-item-form-dialog,
+.work-item-form-page,
+.work-item-form-subheader,
+.wif-tabbar,
+.work-item-form-page .bolt-textfield,
+.work-item-form-page .bolt-textfield-input,
+.work-item-form-page .bolt-editable-dropdown,
+.work-item-form-page .html-editor,
+.work-item-form-page .rooster-editor,
+.work-item-form-page .ms-CommandBar {
+  background: var(--adofix-bg) !important;
+}
+/* The description editor's visible surface CANNOT be painted directly:
+   ADO's dark-theme sanitizer (.work-item-form-section-dark-theme-override
+   .html-editor [style]:not(a):not(pre):not(…)) repaints every inline-styled
+   editor descendant var(--background-color) !important at unbeatable
+   specificity — and the editor div carries style="user-select: text".
+   Redefining the token in the editor's scope turns ADO's own hammer into
+   the paintbrush. */
+.work-item-form-page .html-editor {
+  --background-color: var(--adofix-bg);
+}
+.work-item-form-page .html-command-bar-button:not(:hover):not(.is-checked) {
+  background: transparent !important;
+}
+/* Content cards: the discussion composer (native #323130 + depth-8) with
+   its editor inset on canvas, and the Deployment/Development zero-data
+   hint boxes (#292827). */
+.discussion-new-comment {
+  background: var(--adofix-card) !important;
+  border-radius: var(--adofix-radius) !important;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.45),
+    0 2px 10px rgba(0, 0, 0, 0.25) !important;
+}
+.discussion-new-comment .markdown-editor,
+.discussion-new-comment .bolt-textfield,
+.discussion-new-comment .bolt-textfield-input {
+  background: var(--adofix-bg) !important;
+}
+.deployments-zero-data,
+.links-control-zero-state {
+  background: var(--adofix-card) !important;
+  border-radius: var(--adofix-radius) !important;
+}
+
+/*
  * Kanban board joins the layered theme (verified live 2026-08-18): canvas
  * behind the board and the column-header strip, lane surfaces on columns,
  * card material on every wit-card — which covers the sprint taskboard's

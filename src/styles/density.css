@@ -11,15 +11,13 @@
  * suffers.
  */
 
-/* Card shell: 8px gaps -> 4px (verified 2026-08-01) */
+/* Card shell: the dense-era margin (4px 8px 0, 2026-08-01) left stacked
+   cards touching once the layered material shipped — cards now separate
+   with a real 12px gap below each (user 2026-08-18). Body padding is owned
+   by the card material in chrome.css (.wit-card .card-content). */
 .wit-card {
-  margin: 4px 8px 0 !important;
+  margin: 0 8px 12px !important;
   min-height: 0 !important;
-}
-
-/* Card body padding: 12px -> 6px/8px (verified 2026-08-01) */
-.wit-card .card-content {
-  padding: 6px 8px !important;
 }
 
 /* Annotations row (icons under the title): 8px -> 4px (verified 2026-08-01) */

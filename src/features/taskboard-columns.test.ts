@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { columnCss, stateColumns, taskboardTeamKey } from "./taskboard-columns";
+import { colTargets, columnCss, stateColumns, taskboardTeamKey } from "./taskboard-columns";
 
 /** The live taskboard header captured 2026-08-18. */
 const HEADERS = [
@@ -34,26 +34,45 @@ describe("stateColumns", () => {
 });
 
 describe("columnCss", () => {
-  it("hides cells and tracks, gives the visible explicit equal shares, kills the min-width", () => {
+  it("hides the cells and kills the table min-width — but never sets col widths", () => {
     const css = columnCss([12, 13], [3, 4, 5, 6, 7, 8, 9, 10, 11]);
     expect(css).toContain("tr > :nth-child(12)");
-    expect(css).toContain("col:nth-child(13)");
-    // Explicit calc shares, never width:auto — Firefox's fixed layout gives
-    // auto cols nothing and the table shrink-wraps.
-    expect(css).toContain("width: calc((100% - 228px) / 9) !important");
+    expect(css).toContain("tr > :nth-child(13)");
     expect(css).toContain("min-width: 0 !important");
-    // The 0%-width border cols must be pinned: fixed layout treats 0% as
-    // auto and would hand them a full share of the freed width.
-    expect(css).toContain("col:first-child");
-  });
-
-  it("reserves the actual parent-column width", () => {
-    expect(columnCss([3], [4, 5], 300)).toContain("calc((100% - 308px) / 2)");
+    // Firefox's fixed layout ignores auto AND percent/calc widths on <col> —
+    // widths must be inline pixels (colTargets), never stylesheet rules.
+    expect(css).not.toContain("width: calc");
+    expect(css).not.toContain("width: auto");
   });
 
   it("emits nothing when no columns are hidden (native layout preserved)", () => {
     expect(columnCss([], [3, 4, 5])).toBe("");
     expect(columnCss([3], [])).toBe("");
+  });
+});
+
+describe("colTargets", () => {
+  it("pins borders, zeroes hidden, shares the rest in pixels summing to the container", () => {
+    // 14 cols, container 1616, parent 220: 4 + 220 + 4×347 + 4 = 1616.
+    const t = colTargets([7, 8, 9, 10, 11, 12, 13], [3, 4, 5, 6], 14, 1616, 220);
+    expect(t.get(1)).toBe(4);
+    expect(t.get(14)).toBe(4);
+    expect(t.get(7)).toBe(0);
+    expect(t.get(3)).toBe(347);
+    const total = 220 + [...t.values()].reduce((a, w) => a + w, 0);
+    expect(total).toBe(1616);
+  });
+
+  it("gives the rounding remainder to the last visible column", () => {
+    const t = colTargets([3], [4, 5, 6], 8, 1030, 220);
+    // avail = 1030 - 228 = 802 → 267 + 267 + 268
+    expect(t.get(4)).toBe(267);
+    expect(t.get(6)).toBe(268);
+  });
+
+  it("is empty for degenerate input", () => {
+    expect(colTargets([3], [], 8, 1000, 220).size).toBe(0);
+    expect(colTargets([3], [4], 8, 0, 220).size).toBe(0);
   });
 });
 

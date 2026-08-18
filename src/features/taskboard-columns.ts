@@ -2,6 +2,7 @@ import type { Feature } from "../core/registry";
 import type { Route } from "../core/router";
 import { ACCENT, ADOFIX_ATTR, injectStyleOnce } from "../core/dom";
 import { log } from "../core/log";
+import { debounce } from "../core/observe";
 import { getValue, setValue } from "../core/storage";
 import { sprintTab } from "./sprint-header";
 
@@ -114,26 +115,46 @@ export function stateColumns(headerTexts: string[]): Array<{ name: string; nth: 
 }
 
 /**
- * CSS hiding the given columns and sharing the freed width. Empty = native.
- * Visible columns get explicit calc() shares, NOT width:auto — Firefox's
- * fixed-table-layout gives auto cols nothing here and the table shrink-wraps
- * instead of filling the pane (user-reported 2026-08-18; Chrome distributed
- * the slack). parentPx is the parent-column track (ADO's inline width).
+ * CSS hiding the given columns' cells and unlocking the table width. Empty =
+ * native. Column WIDTHS are deliberately not set here: Firefox's fixed table
+ * layout ignores both width:auto (v0.15.0 — the table shrink-wrapped) and
+ * percentage/calc widths (v0.15.1 — same symptom) on <col> elements, while
+ * Chrome resolves both. Widths are written as inline PIXELS by
+ * applyColWidths, the mechanism backlog-grid already proved in Firefox.
  */
-export function columnCss(hiddenNth: number[], visibleNth: number[], parentPx = 220): string {
+export function columnCss(hiddenNth: number[], visibleNth: number[]): string {
   if (hiddenNth.length === 0 || visibleNth.length === 0) return "";
   const hideCells = hiddenNth.map((k) => `${TABLE} tr > :nth-child(${k})`).join(",\n");
-  const hideCols = hiddenNth.map((k) => `${TABLE} > colgroup > col:nth-child(${k})`).join(",\n");
-  const shareCols = visibleNth.map((k) => `${TABLE} > colgroup > col:nth-child(${k})`).join(",\n");
-  const reserved = parentPx + 8; // parent track + the two 4px border cols
   return `
 ${hideCells} { display: none !important; }
-${hideCols} { width: 0 !important; }
-${shareCols} { width: calc((100% - ${reserved}px) / ${visibleNth.length}) !important; }
 ${TABLE} { min-width: 0 !important; }
-${TABLE} > colgroup > col:first-child,
-${TABLE} > colgroup > col:last-child { width: 4px !important; }
 `;
+}
+
+/**
+ * Pixel width per col (1-based nth → px) for the current container width:
+ * borders 4px, hidden 0, visible columns share the rest equally (last one
+ * takes the rounding remainder). The parent col keeps ADO's own width and is
+ * absent from the map.
+ */
+export function colTargets(
+  hiddenNth: number[],
+  visibleNth: number[],
+  colCount: number,
+  containerW: number,
+  parentPx: number
+): Map<number, number> {
+  const targets = new Map<number, number>();
+  if (visibleNth.length === 0 || containerW <= 0) return targets;
+  targets.set(1, 4);
+  targets.set(colCount, 4);
+  for (const k of hiddenNth) targets.set(k, 0);
+  const avail = Math.max(0, containerW - parentPx - 8);
+  const share = Math.floor(avail / visibleNth.length);
+  visibleNth.forEach((k, i) => {
+    targets.set(k, i === visibleNth.length - 1 ? avail - share * (visibleNth.length - 1) : share);
+  });
+  return targets;
 }
 
 /** "/{org}/{project}/_sprints/{tab}/{team}/…" → "org/project/team". */
@@ -165,18 +186,67 @@ function boardHeaders(): string[] {
   return Array.from(table.querySelectorAll("th")).map((t) => t.textContent ?? "");
 }
 
-function parentColPx(): number {
-  const col = document.querySelector(`${TABLE} > colgroup > col:nth-child(2)`);
-  const match = /(\d+(?:\.\d+)?)px/.exec(col?.getAttribute("style") ?? "");
+/** Original inline styles, remembered so "Show all columns" restores them. */
+const originalColStyle = new WeakMap<HTMLTableColElement, string>();
+const observedContainers = new WeakSet<Element>();
+let refitKey: string | null = null;
+
+function parentColPx(cols: HTMLTableColElement[]): number {
+  const match = /(\d+(?:\.\d+)?)px/.exec(cols[1]?.getAttribute("style") ?? "");
   return match ? Number(match[1]) : 220;
 }
 
+function applyColWidths(hiddenNth: number[], visibleNth: number[]): void {
+  const table = document.querySelector<HTMLTableElement>(TABLE);
+  const container = table?.closest<HTMLElement>(".bolt-table-container");
+  if (!table || !container) return;
+  const cols = Array.from(table.querySelectorAll<HTMLTableColElement>("colgroup col"));
+  if (cols.length === 0) return;
+
+  if (hiddenNth.length === 0) {
+    // Back to native: restore whatever ADO had written before our first fit.
+    for (const col of cols) {
+      const original = originalColStyle.get(col);
+      if (original !== undefined && col.getAttribute("style") !== original) {
+        col.setAttribute("style", original);
+      }
+    }
+    return;
+  }
+
+  const targets = colTargets(
+    hiddenNth,
+    visibleNth,
+    cols.length,
+    container.clientWidth,
+    parentColPx(cols)
+  );
+  targets.forEach((px, nth) => {
+    const col = cols[nth - 1];
+    if (!col) return;
+    if (!originalColStyle.has(col)) originalColStyle.set(col, col.getAttribute("style") ?? "");
+    const current = col.getBoundingClientRect().width;
+    if (Math.abs(current - px) > 1) col.style.width = `${px}px`;
+  });
+
+  // Splitter drags and window resizes never reach the childList-only settle
+  // observer — refit from a ResizeObserver, same as backlog-grid.
+  if (!observedContainers.has(container)) {
+    observedContainers.add(container);
+    const refit = debounce(() => {
+      if (refitKey) applyColumnCss(refitKey);
+    }, 100);
+    new ResizeObserver(refit).observe(container);
+  }
+}
+
 function applyColumnCss(key: string): void {
+  refitKey = key;
   const cols = stateColumns(boardHeaders());
   const hidden = new Set(prefs(key).hidden);
   const hiddenNth = cols.filter((c) => hidden.has(c.name)).map((c) => c.nth);
   const visibleNth = cols.filter((c) => !hidden.has(c.name)).map((c) => c.nth);
-  const css = columnCss(hiddenNth, visibleNth, parentColPx());
+  const css = columnCss(hiddenNth, visibleNth);
   let style = document.querySelector<HTMLStyleElement>(
     `style[${ADOFIX_ATTR}="${FEATURE_ID}-dynamic"]`
   );
@@ -186,6 +256,7 @@ function applyColumnCss(key: string): void {
     document.head.appendChild(style);
   }
   if (style.textContent !== css) style.textContent = css;
+  applyColWidths(hiddenNth, visibleNth);
   const btn = document.querySelector<HTMLElement>(`.${BTN_CLASS}`);
   btn?.setAttribute("data-filtering", String(hiddenNth.length > 0));
 }

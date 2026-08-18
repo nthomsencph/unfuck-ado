@@ -496,9 +496,19 @@ div.padding-vertical-16:has(> .vss-FilterBar) {
   border: none !important;
 }
 /* The keyword box natively flex-grows across the whole bar (~867px on the
-   sprints taskboard) — half of that is plenty (user request 2026-08-18). */
+   sprints taskboard). 430px (v0.20.0) still read as a mostly-empty pill
+   with weird right padding — halved again (user 2026-08-18). */
 .vss-FilterBar--item-keyword-container {
-  max-width: 430px !important;
+  max-width: 215px !important;
+}
+/* Filter options the user never uses (2026-08-18). aria-label prefix match
+   because an applied filter may extend the label (the state item reads
+   "States filter: Active (+6)"); a hidden item's applied filter would stay
+   active invisibly — visible in the URL and the status text. English-UI
+   assumption, like the ledger's other label matches. */
+.vss-FilterBar--item:has(button[aria-label^="Assigned to"]),
+.vss-FilterBar--item:has(button[aria-label^="Parent Work Item"]) {
+  display: none !important;
 }
 
 /*

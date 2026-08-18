@@ -75,10 +75,10 @@ html[${TWO_UP_ATTR}] .taskboard-expanded-cell .flex-row.flex-wrap > .taskboard-c
    page-surface bg, heavy double shadow, --adofix-radius corners; overflow
    hidden clips the state stripe to the rounded corners). */
 .taskboard-expanded-cell {
-  background: transparent !important;
+  background: var(--adofix-lane, #1d1c1b) !important;
 }
 .taskboard-card {
-  background: var(--background-color, #201f1e) !important;
+  background: var(--adofix-card, #252423) !important;
   box-shadow:
     0 8px 24px rgba(0, 0, 0, 0.6),
     0 1px 4px rgba(0, 0, 0, 0.5) !important;

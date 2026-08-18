@@ -15,6 +15,27 @@
  */
 :root {
   --adofix-radius: 10px;
+  /* Near-black canvas with layered surfaces (user request 2026-08-18):
+     page < lane (grouping surfaces, e.g. board columns) < card. */
+  --adofix-bg: #141414;
+  --adofix-lane: #1d1c1b;
+  --adofix-card: #252423;
+}
+
+/*
+ * The app canvas goes almost black on every page: main page containers, the
+ * top banner and the project header. The left rail uses translucent white,
+ * so it adapts by itself. Sticky table header cells on the board/backlog
+ * grids paint their own #201f1e and are synced below.
+ */
+.bolt-page,
+.region-header,
+.project-header {
+  background: var(--adofix-bg) !important;
+}
+table:has(td.taskboard-expanded-cell) th,
+.backlogs-view th {
+  background-color: var(--adofix-bg) !important;
 }
 
 /*
@@ -202,7 +223,7 @@ div.padding-vertical-16:has(> .vss-FilterBar) {
 .repos-pr-details-page,
 .repos-changes-explorer-splitter,
 .repos-pr-details-page-tabbar {
-  background: var(--background-color) !important;
+  background: var(--adofix-bg) !important;
 }
 
 /*
@@ -262,7 +283,7 @@ div.padding-vertical-16:has(> .vss-FilterBar) {
   border-bottom: none !important;
 }
 .project-navigation.project-navigation {
-  background: var(--background-color) !important;
+  background: var(--adofix-bg) !important;
   border-right: none !important;
 }
 .repos-summary-header > .flex-row {
@@ -333,7 +354,7 @@ div.padding-vertical-16:has(> .vss-FilterBar) {
  * tables) carry no bolt-* classes and are deliberately left alone.
  */
 .repos-pr-details-page .shadow-padding .bolt-card {
-  background: var(--background-color) !important;
+  background: var(--adofix-card) !important;
   box-shadow:
     0 8px 24px rgba(0, 0, 0, 0.6),
     0 1px 4px rgba(0, 0, 0, 0.5) !important;

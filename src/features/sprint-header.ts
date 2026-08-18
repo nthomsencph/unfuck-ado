@@ -94,11 +94,36 @@ html[${ATTR}] .sprints-tabbar-header .bolt-tabbar {
   html[${ATTR}="backlog"] .sprints-header-dates {
     margin-top: -38px !important;
     justify-content: flex-end;
-    padding-right: 310px;
+    /* 360px clears the icon group incl. taskboard-columns' button (was 310
+       before that button existed — the pickers overlapped, user 2026-08-18) */
+    padding-right: 360px;
     position: relative;
     top: -48px;
     z-index: 4;
     pointer-events: none;
+  }
+  /*
+   * Filter bar inline with the tabs (user request 2026-08-18). The bar
+   * lives INSIDE .page-content, an overflow:auto scroll container — any
+   * overlay lift (negative margin/relative top) above the container's top
+   * edge gets CLIPPED, which is why the pickers' lift pattern cannot work
+   * here. Instead the space above it collapses: the dates row pulls the
+   * whole content block up 54px, but ONLY while a filter bar exists (:has),
+   * so toggling the filter off never drags the board under the tabs. The
+   * tab header spans the shared row — click-through except tabs/commandbar.
+   */
+  html[${ATTR}="taskboard"] .sprints-header-dates:has(~ * .vss-FilterBar) {
+    margin-bottom: -54px !important;
+  }
+  html[${ATTR}="taskboard"] div.padding-vertical-16:has(> .vss-FilterBar) {
+    padding: 2px 0 2px 330px !important;
+  }
+  html[${ATTR}="taskboard"] .sprints-tabbar-header {
+    pointer-events: none;
+  }
+  html[${ATTR}="taskboard"] .sprints-tabbar-header [role="tab"],
+  html[${ATTR}="taskboard"] .sprints-tabbar-header .bolt-header-commandbar {
+    pointer-events: auto;
   }
   /* Capacity keeps its title row for Add user/Save/Revert — the pickers go
      into the tab row's free middle instead (300px clears the tabs). */

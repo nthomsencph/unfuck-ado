@@ -59,6 +59,15 @@ html[${TWO_UP_ATTR}] .taskboard-expanded-cell .flex-row.flex-wrap > .taskboard-c
   max-width: 100%;
   min-width: 0;
 }
+/* Airier cards (user request 2026-08-18; native padding is 12px all round). */
+.taskboard-card .card-content {
+  padding: 16px 12px !important;
+}
+/* The assignment/parent column is capped (PARENT_MAX in colTargets) — let
+   long names wrap instead of ellipsizing at the cap. */
+.taskboard-parent-cell .identity-view {
+  white-space: normal !important;
+}
 /* Same surface language as the pr-comments menu. */
 .adofix-columns-menu {
   position: fixed;
@@ -132,6 +141,9 @@ export function stateColumns(headerTexts: string[]): Array<{ name: string; nth: 
  */
 export const FILL_MIN = 150;
 export const NATIVE_COL = 204;
+/** The assignment/parent column auto-sizes to the longest name — cap it
+    (user request 2026-08-18); the wrap CSS lets capped names break. */
+export const PARENT_MAX = 180;
 
 export function columnCss(hiddenNth: number[], visibleNth: number[], tableMin: number): string {
   if (hiddenNth.length === 0 || visibleNth.length === 0) return "";
@@ -175,16 +187,18 @@ export function colTargets(
   const widths = new Map<number, number>();
   const n = visibleCount;
   if (n === 0 || containerW <= 0) return { widths, tableMin: 0 };
-  const avail = Math.max(0, containerW - parentPx - 8);
+  const parent = Math.min(parentPx, PARENT_MAX);
+  const avail = Math.max(0, containerW - parent - 8);
   const share = Math.floor(avail / n);
   const fill = share >= FILL_MIN;
   widths.set(1, 4);
+  widths.set(2, parent);
   for (let i = 0; i < n; i++) {
     widths.set(3 + i, fill ? (i === n - 1 ? avail - share * (n - 1) : share) : NATIVE_COL);
   }
   widths.set(3 + n, 4); // the right border cell shifts here
   for (let track = 4 + n; track <= colCount; track++) widths.set(track, 0);
-  return { widths, tableMin: fill ? containerW : parentPx + 8 + NATIVE_COL * n };
+  return { widths, tableMin: fill ? containerW : parent + 8 + NATIVE_COL * n };
 }
 
 /** "/{org}/{project}/_sprints/{tab}/{team}/…" → "org/project/team". */
@@ -234,12 +248,22 @@ function applyColWidths(hiddenNth: number[], visibleNth: number[]): number {
   if (cols.length === 0) return 0;
 
   if (hiddenNth.length === 0) {
-    // Back to native: restore whatever ADO had written before our first fit.
+    // Back to native: restore whatever ADO had written before our first fit —
+    // except the parent column, which stays capped even on an unmodified
+    // board (its auto-size-to-longest-name is the thing being fixed).
     for (const col of cols) {
       const original = originalColStyle.get(col);
       if (original !== undefined && col.getAttribute("style") !== original) {
         col.setAttribute("style", original);
       }
+    }
+    const parentCol = cols[1];
+    if (parentCol) {
+      const cap = Math.min(parentColPx(cols), PARENT_MAX);
+      if (!originalColStyle.has(parentCol)) {
+        originalColStyle.set(parentCol, parentCol.getAttribute("style") ?? "");
+      }
+      if (parentCol.style.width !== `${cap}px`) parentCol.style.width = `${cap}px`;
     }
     return 0;
   }

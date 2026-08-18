@@ -264,6 +264,14 @@ throws). Key live findings baked into the code:
   must be laid out COMPACTLY (shares first, zeros at the end), never zeroed
   at the hidden columns' original positions (hiding middle columns bunched
   the shifted header labels into the zeroed tracks and left dead space).
+  The parent/assignment column (track 2) auto-sizes to the longest name —
+  capped at 180px with names allowed to wrap (`.identity-view` un-nowrapped).
+  Overlay-lift limit: the filter bar lives inside `.page-content`
+  (overflow:auto) — content lifted above a scroll container's top edge gets
+  CLIPPED, so it cannot use the pickers' negative-margin lift; instead the
+  dates row collapses the space above it (margin-bottom -54px, conditional
+  on `:has(~ * .vss-FilterBar)` so the board never rides up under the tabs
+  when the filter is toggled off).
 
 Remaining unverified (inert if wrong): swimlane header rules in `density.css`
 (`grep -rn "TODO(selector)" src/`). Footer-text status fallback assumes an

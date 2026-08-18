@@ -52,42 +52,48 @@ describe("columnCss", () => {
 });
 
 describe("colTargets", () => {
-  it("lays tracks out compactly: border, shares, border, then zeros", () => {
-    // 14 cols, container 1616, parent 220, 4 visible: 4+220+4×347+4 = 1616.
+  it("lays tracks out compactly: border, capped parent, shares, border, zeros", () => {
+    // 14 cols, container 1616, parent capped 220→180, 4 visible:
+    // 4 + 180 + 4×357 + 4 = 1616.
     const { widths, tableMin } = colTargets(4, 14, 1616, 220);
     expect(widths.get(1)).toBe(4);
-    expect(widths.get(3)).toBe(347);
-    expect(widths.get(6)).toBe(347);
+    expect(widths.get(2)).toBe(180); // PARENT_MAX cap
+    expect(widths.get(3)).toBe(357);
+    expect(widths.get(6)).toBe(357);
     expect(widths.get(7)).toBe(4); // right border cell shifts to track 7
     expect(widths.get(8)).toBe(0);
     expect(widths.get(14)).toBe(0);
-    const total = 220 + [...widths.values()].reduce((a, w) => a + w, 0);
+    const total = [...widths.values()].reduce((a, w) => a + w, 0);
     expect(total).toBe(1616);
     expect(tableMin).toBe(1616);
   });
 
+  it("keeps a parent column narrower than the cap", () => {
+    expect(colTargets(4, 14, 1616, 160).widths.get(2)).toBe(160);
+  });
+
   it("gives the rounding remainder to the last visible track", () => {
     const { widths } = colTargets(3, 8, 1030, 220);
-    // avail = 1030 - 228 = 802 → tracks 3,4 = 267, track 5 = 268
-    expect(widths.get(3)).toBe(267);
-    expect(widths.get(5)).toBe(268);
+    // avail = 1030 - 188 = 842 → tracks 3,4 = 280, track 5 = 282
+    expect(widths.get(3)).toBe(280);
+    expect(widths.get(5)).toBe(282);
     expect(widths.get(6)).toBe(4);
   });
 
   it("renders native tracks with reduced scroll when the share would be a sliver", () => {
-    // 9 visible in a 1192px pane → 107px shares read as "the table shrank".
+    // 9 visible in a 1192px pane → sliver shares read as "the table shrank".
     const { widths, tableMin } = colTargets(9, 14, 1192, 220);
     expect(widths.get(3)).toBe(204);
     expect(widths.get(11)).toBe(204);
     expect(widths.get(12)).toBe(4);
-    expect(tableMin).toBe(228 + 9 * 204);
+    expect(tableMin).toBe(188 + 9 * 204);
   });
 
   it("fills the pane with sub-native shares as long as they stay usable", () => {
-    // 8 visible in a 1483px pane → 156px shares fill (tracks 3..10).
+    // 8 visible in a 1483px pane → 161px shares fill (tracks 3..10).
     const { widths, tableMin } = colTargets(8, 14, 1483, 220);
-    expect(widths.get(3)).toBe(156);
-    expect(widths.get(10)).toBe(1255 - 156 * 7); // remainder → 163
+    expect(widths.get(3)).toBe(161);
+    expect(widths.get(10)).toBe(1295 - 161 * 7); // remainder → 168
     expect(widths.get(11)).toBe(4);
     expect(tableMin).toBe(1483);
   });

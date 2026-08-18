@@ -122,8 +122,16 @@ export function stateColumns(headerTexts: string[]): Array<{ name: string; nth: 
  * Chrome resolves both. Widths are written as inline PIXELS by
  * applyColWidths, the mechanism backlog-grid already proved in Firefox.
  */
-/** Columns never shrink below their native track (204px = 9.09% of 2464). */
-export const MIN_COL = 204;
+/**
+ * Two-regime fit (both thresholds set by live user feedback, 2026-08-18):
+ * fill the pane exactly whenever the equal share stays usable (≥ FILL_MIN,
+ * the card's flex basis — 107px columns read as "the table shrank"), and
+ * below that render NATIVE-width columns with a reduced h-scroll instead of
+ * sub-native slivers (156px was expected to fill; 8×204 with scroll while
+ * the pane could fit 8×156 read as "they don't widen").
+ */
+export const FILL_MIN = 150;
+export const NATIVE_COL = 204;
 
 export function columnCss(hiddenNth: number[], visibleNth: number[], tableMin: number): string {
   if (hiddenNth.length === 0 || visibleNth.length === 0) return "";
@@ -146,10 +154,9 @@ export interface ColPlan {
 
 /**
  * Pixel plan for the current container width: borders 4px, hidden 0, visible
- * columns share the rest equally but never below MIN_COL — squeezing 9
- * columns into a 1192px pane at 107px each reads as "the table shrank"
- * (user-reported 2026-08-18); below the floor a reduced h-scroll is the
- * honest outcome, and it disappears as more columns are hidden.
+ * columns share the rest equally when that keeps them usable (≥ FILL_MIN),
+ * otherwise native width plus a reduced h-scroll that disappears as more
+ * columns are hidden.
  */
 export function colTargets(
   hiddenNth: number[],
@@ -165,14 +172,14 @@ export function colTargets(
   for (const k of hiddenNth) widths.set(k, 0);
   const avail = Math.max(0, containerW - parentPx - 8);
   const share = Math.floor(avail / visibleNth.length);
-  if (share >= MIN_COL) {
+  if (share >= FILL_MIN) {
     visibleNth.forEach((k, i) => {
       widths.set(k, i === visibleNth.length - 1 ? avail - share * (visibleNth.length - 1) : share);
     });
     return { widths, tableMin: containerW };
   }
-  for (const k of visibleNth) widths.set(k, MIN_COL);
-  return { widths, tableMin: parentPx + 8 + MIN_COL * visibleNth.length };
+  for (const k of visibleNth) widths.set(k, NATIVE_COL);
+  return { widths, tableMin: parentPx + 8 + NATIVE_COL * visibleNth.length };
 }
 
 /** "/{org}/{project}/_sprints/{tab}/{team}/…" → "org/project/team". */

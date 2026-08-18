@@ -71,9 +71,9 @@ describe("colTargets", () => {
     expect(widths.get(6)).toBe(268);
   });
 
-  it("floors columns at their native width and accepts reduced scroll", () => {
-    // The Firefox report: 9 visible in a 1192px pane would mean 107px
-    // columns — half native. Floor at 204 instead, table = 228 + 9×204.
+  it("renders native columns with reduced scroll when the share would be a sliver", () => {
+    // The first Firefox report: 9 visible in a 1192px pane → 107px shares
+    // read as "the table shrank". Native 204 + scroll instead.
     const { widths, tableMin } = colTargets(
       [9, 10],
       [3, 4, 5, 6, 7, 8, 11, 12, 13],
@@ -84,6 +84,21 @@ describe("colTargets", () => {
     expect(widths.get(3)).toBe(204);
     expect(widths.get(13)).toBe(204);
     expect(tableMin).toBe(228 + 9 * 204);
+  });
+
+  it("fills the pane with sub-native shares as long as they stay usable", () => {
+    // The second Firefox report: 8 visible in a 1483px pane → 156px shares
+    // were EXPECTED to fill (8×204 with scroll read as "they don't widen").
+    const { widths, tableMin } = colTargets(
+      [8, 9, 10],
+      [3, 4, 5, 6, 7, 11, 12, 13],
+      14,
+      1483,
+      220
+    );
+    expect(widths.get(3)).toBe(156);
+    expect(widths.get(13)).toBe(1255 - 156 * 7); // remainder → 163
+    expect(tableMin).toBe(1483);
   });
 
   it("is empty for degenerate input", () => {

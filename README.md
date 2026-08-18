@@ -252,9 +252,12 @@ throws). Key live findings baked into the code:
   to size ADO table columns is inline PIXEL widths written by JS. And when
   writing them, compare against the col's style ATTRIBUTE, never its
   rendered width — ADO's 9.09% tracks can render within 1px of the target,
-  silently leaving the percentages in place (v0.15.2). Fit policy: never
-  squeeze columns below their native 204px track; below that keep a reduced
-  h-scroll (table min-width set to the exact computed sum, not 0).
+  silently leaving the percentages in place (v0.15.2). Fit policy
+  (two-regime, thresholds from live user feedback): fill the pane exactly
+  while the equal share is ≥ 150px (the card flex basis); below that render
+  native 204px columns with a reduced h-scroll (table min-width set to the
+  exact computed sum, not 0) — never sub-150 slivers, never scroll when a
+  usable fill exists.
 
 Remaining unverified (inert if wrong): swimlane header rules in `density.css`
 (`grep -rn "TODO(selector)" src/`). Footer-text status fallback assumes an

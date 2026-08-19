@@ -293,6 +293,7 @@ function collectRows(): DetailRow[] | null {
     }
     // Related Work only earns its place with actual links (user 2026-08-18).
     if (/^Related Work/.test(label)) {
+      group.classList.add("adofix-wi-relwork");
       group.classList.toggle(
         "adofix-wi-group-hide",
         !group.querySelector(".compact-links-list a")
@@ -550,8 +551,15 @@ const CSS = `
   grid-template-rows: auto auto !important;
   max-width: 1250px !important;
   margin: 0 auto !important;
+  /* air above the content (user 2026-08-18), and no row gap — the grid's
+     16px row gap pushed the discussion away from the content above (the
+     rail spans both rows, so only the description/discussion seam is
+     affected; the 16px column gap stays). */
+  padding-top: 20px !important;
   padding-right: 16px !important;
   box-sizing: border-box !important;
+  row-gap: 0 !important;
+  column-gap: 16px !important;
 }
 /* NO overflow-x:hidden here: pairing hidden with visible-y computes
    overflow-y to auto, which turns a height-constrained section into a
@@ -702,6 +710,34 @@ const CSS = `
 }
 .work-item-form-page .html-editor.auto-grow .rooster-editor.view-mode {
   max-height: none !important;
+}
+/* Short descriptions still get a real canvas (user 2026-08-18). */
+.work-item-form-page .html-editor.auto-grow .rooster-editor {
+  min-height: 200px !important;
+}
+/* Related Work's "Add link" becomes a "+" on the group header, right-
+   aligned left of the collapse chevron (user 2026-08-18). */
+.adofix-wi-relwork {
+  position: relative;
+}
+.adofix-wi-relwork .work-item-form-control-wrapper:has(.bolt-expandable-button) {
+  position: absolute;
+  top: -4px;
+  right: 30px;
+  margin: 0 !important;
+}
+.adofix-wi-relwork .bolt-expandable-button .bolt-button-text,
+.adofix-wi-relwork .bolt-expandable-button .fluent-icons-enabled {
+  display: none !important;
+}
+.adofix-wi-relwork .bolt-expandable-button .bolt-button {
+  min-width: 0 !important;
+  padding: 2px 10px !important;
+}
+.adofix-wi-relwork .bolt-expandable-button .bolt-button::before {
+  content: "+";
+  font-size: 18px;
+  line-height: 1.2;
 }
 /* Header noise out (user 2026-08-18): Follow, the redundant comment-count
    link (the discussion is right below), the History and Links tabs (Created

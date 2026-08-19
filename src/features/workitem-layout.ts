@@ -1,7 +1,7 @@
 import type { Feature } from "../core/registry";
 import type { Route } from "../core/router";
 import { getWorkItem, type ProjectRef } from "../core/api";
-import { injectStyleOnce } from "../core/dom";
+import { injectStyleOnce, stubHide } from "../core/dom";
 import { createFetchCache } from "../core/fetch-cache";
 import { log } from "../core/log";
 
@@ -758,21 +758,8 @@ button.work-item-form-toggle[aria-label^="Maximize"] {
    picker become zero-size stubs — NOT display:none: the teleport trick
    needs them renderable (position:fixed escapes a zero-size ancestor's
    clipping; display:none would not). */
-.work-item-form-subheader > :not([class*="wif-tabbar"]),
-.work-item-form-header .work-item-tag-picker {
-  width: 0 !important;
-  height: 0 !important;
-  min-width: 0 !important;
-  overflow: hidden !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  /* visibility, NOT opacity: opacity:0 on the ancestor renders even
-     position:fixed descendants invisible (opacity affects the whole
-     subtree); visibility is overridable per-descendant, which the teleport
-     relies on. */
-  visibility: hidden;
-  pointer-events: none;
-}
+${stubHide(`.work-item-form-subheader > :not([class*="wif-tabbar"]),
+.work-item-form-header .work-item-tag-picker`)}
 /* Every rail property as "key: value", one pair per row (user 2026-08-18;
    natively the label stacks above the control). */
 .work-item-form-right .work-item-form-control-content-wrapper {
@@ -795,15 +782,7 @@ button.work-item-form-toggle[aria-label^="Maximize"] {
 .adofix-wi-group-hide {
   display: none !important;
 }
-.adofix-wi-group-absorb {
-  height: 0 !important;
-  min-height: 0 !important;
-  overflow: hidden !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  visibility: hidden;
-  pointer-events: none;
-}
+${stubHide(".adofix-wi-group-absorb")}
 /* The adofix "Details" group at the top of the rail. */
 #adofix-wi-details {
   padding: 0 0 12px;

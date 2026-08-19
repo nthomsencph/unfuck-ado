@@ -1,6 +1,6 @@
 import type { Feature } from "../core/registry";
 import { parseHubPath, type Route } from "../core/router";
-import { injectStyleOnce, makeCommandProxy } from "../core/dom";
+import { injectStyleOnce, makeCommandProxy, stubHide } from "../core/dom";
 import { log } from "../core/log";
 
 /**
@@ -29,18 +29,9 @@ const FILTER = "__bolt-filter";
 const BTN_CLASS = "adofix-toolbar-btn";
 
 const CSS = `
-html[${ATTR}] #${NWI},
+${stubHide(`html[${ATTR}] #${NWI},
 html[${ATTR}] #${VAB},
-html[${ATTR}] #${OPTS} {
-  width: 0 !important;
-  min-width: 0 !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  border: none !important;
-  opacity: 0;
-  pointer-events: none;
-  overflow: hidden;
-}
+html[${ATTR}] #${OPTS}`)}
 /* Backlog/Analytics tabs removed outright (user request 2026-08-18: Analytics
    is never used). Plain tabs container — display:none is safe here; only
    commandbar ITEMS get evicted from the DOM when display:none'd. */

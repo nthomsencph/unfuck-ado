@@ -1,5 +1,5 @@
 import type { Feature } from "../core/registry";
-import { injectStyleOnce } from "../core/dom";
+import { injectStyleOnce, stubHide } from "../core/dom";
 import { log } from "../core/log";
 
 /**
@@ -22,17 +22,9 @@ const FEATURE_ID = "pr-actions";
 const SPLIT = ".repos-pr-header-complete-button";
 
 const CSS = `
-/* Same stub pattern as the Files-view Filter button: zero-size, invisible,
-   still clickable by proxy. */
-${SPLIT} {
-  width: 0 !important;
-  min-width: 0 !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  opacity: 0;
-  pointer-events: none;
-  overflow: hidden;
-}
+/* Stubbed, not display:none'd: zero-size, invisible, still clickable by
+   proxy (core stubHide). */
+${stubHide(SPLIT)}
 /* Cloned rows are outside bolt's hover/focus state — style hover ourselves. */
 .adofix-menu-item:hover { background: rgba(128, 128, 128, 0.12); cursor: pointer; }
 `;

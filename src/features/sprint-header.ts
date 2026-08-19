@@ -1,6 +1,6 @@
 import type { Feature } from "../core/registry";
 import { parseHubPath, type Route } from "../core/router";
-import { injectStyleOnce, makeCommandProxy } from "../core/dom";
+import { injectStyleOnce, makeCommandProxy, stubHide } from "../core/dom";
 import { log } from "../core/log";
 import { getValue, setValue } from "../core/storage";
 import { formatBacklogStatus, parseBacklogFilters } from "./backlog-status";
@@ -43,20 +43,11 @@ const CSS = `
 /* Stubs, not display:none — see backlog-toolbar (bolt evicts display:none
    commandbar items from the DOM on the _backlogs page; on _sprints it merely
    hides them, but the stub is safe in both worlds). */
-html[${ATTR}] #__bolt-taskboard-new-work-item,
+${stubHide(`html[${ATTR}] #__bolt-taskboard-new-work-item,
 html[${ATTR}] #__bolt-taskboard-column-options,
 html[${ATTR}] #__bolt-new-work-item,
 html[${ATTR}] #__bolt-column-options,
-html[${ATTR}] #__bolt-create-query {
-  width: 0 !important;
-  min-width: 0 !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  border: none !important;
-  opacity: 0;
-  pointer-events: none;
-  overflow: hidden;
-}
+html[${ATTR}] #__bolt-create-query`)}
 html[${ATTR}] #__bolt-tab-analytics,
 html[${ATTR}] #__bolt-tab-capacity {
   display: none !important;

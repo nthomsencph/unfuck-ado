@@ -88,6 +88,29 @@ export function makeCommandProxy(nativeId: string, label: string): HTMLButtonEle
   return btn;
 }
 
+/**
+ * CSS keeping elements mounted but invisible, unclickable and zero-size —
+ * the stub pattern. display:none is unsafe on bolt commandbar items (bolt
+ * evicts them from the DOM and click-proxies lose their targets), and
+ * opacity:0 is unsafe above teleported controls (opacity hides the whole
+ * subtree, position:fixed descendants included). visibility is overridable
+ * per-descendant — deliberately not !important — which the teleports rely on.
+ */
+export function stubHide(selectors: string): string {
+  return `${selectors} {
+  width: 0 !important;
+  height: 0 !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  overflow: hidden !important;
+  visibility: hidden;
+  pointer-events: none;
+}`;
+}
+
 /** True when a non-adofix stylesheet sits after `el` in <head>. */
 function foreignSheetAfter(el: Element): boolean {
   for (let node = el.nextElementSibling; node; node = node.nextElementSibling) {

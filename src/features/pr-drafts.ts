@@ -4,6 +4,7 @@ import { ACCENT, injectStyleOnce, safeQuery, safeQueryAll, showToast } from "../
 import { log } from "../core/log";
 import { createThread, prRefFromRoute, type PrRef } from "./pr/threads-api";
 import { draftKey, loadDrafts, newDraftId, saveDrafts, type Draft } from "./pr/drafts-store";
+import { findDiffEditor, type MonacoEditor, type ViewZone } from "./pr/monaco";
 
 /**
  * ADO renders PR diffs with TWO different engines (both verified live
@@ -220,6 +221,11 @@ const DRAFTS_CSS = `
   border-top: 1px solid var(--border-subtle-color, rgba(0, 0, 0, 0.08));
 }
 .adofix-send { width: 100%; padding: 7px 12px; font-size: 13px; }
+
+/* -- view-zone cards (single-file Monaco view) --------------------------- */
+/* Zones render under .view-lines without a z-index (verified 2026-08-19). */
+.adofix-zone-wrap { z-index: 10; }
+.adofix-zone-card { margin: 3px 12px 3px 4px; }
 
 /* -- drafted-line gutter markers (Monaco view) --------------------------- */
 .line-numbers.adofix-has-draft { color: ${ACCENT} !important; font-weight: 700; }
@@ -556,6 +562,7 @@ function captureDraft(input: HTMLTextAreaElement, cancel: HTMLButtonElement): vo
 
   renderDraftCards();
   markMonacoDraftLines();
+  renderMonacoZoneCards();
   updateToolbar();
   renderPanel();
   showToast(
@@ -722,6 +729,7 @@ function startInlineEdit(host: HTMLElement, draft: Draft): void {
   const rerender = (): void => {
     safeQuery(`[${CARD_ID_ATTR}="${draft.id}"]`)?.remove();
     renderDraftCards();
+    renderMonacoZoneCards();
     renderPanel();
   };
   const save = (): void => {
@@ -830,6 +838,135 @@ function renderDraftCards(): void {
   }
 }
 
+// ---- view-zone cards (single-file Monaco view) ------------------------------
+//
+// Real Monaco view zones (features/pr/monaco.ts holds the instance-access
+// recipe): the card renders inline below its drafted line, displaces later
+// lines like ADO's own comment threads, and the diff editor auto-spaces the
+// original pane so side-by-side alignment survives.
+
+interface ZoneEntry {
+  zone: ViewZone;
+  zoneId: string;
+  content: string;
+  afterLine: number;
+}
+
+let zoneHost: MonacoEditor | null = null;
+const zoneEntries = new Map<string, ZoneEntry>();
+let zoneResizeObserver: ResizeObserver | null = null;
+
+function zoneAnchor(draft: Draft): number {
+  return draft.fileLevel ? 0 : (draft.endLine ?? draft.line);
+}
+
+function relayoutZones(): void {
+  if (!zoneHost) return;
+  const host = zoneHost;
+  host.changeViewZones((acc) => {
+    for (const entry of zoneEntries.values()) acc.layoutZone(entry.zoneId);
+  });
+  host.layout();
+}
+
+/** Inline edits swap the card body for a textarea; the zone follows along. */
+function watchZoneCard(card: HTMLElement): void {
+  if (typeof ResizeObserver === "undefined") return;
+  zoneResizeObserver ??= new ResizeObserver((resizes) => {
+    let changed = false;
+    for (const resize of resizes) {
+      const entry = [...zoneEntries.values()].find((e) => e.zone.domNode.contains(resize.target));
+      if (!entry) continue;
+      const height = Math.max((resize.target as HTMLElement).offsetHeight + 8, 34);
+      if (Math.abs(height - entry.zone.heightInPx) < 2) continue;
+      entry.zone.heightInPx = height;
+      changed = true;
+    }
+    if (changed) relayoutZones();
+  });
+  zoneResizeObserver.observe(card);
+}
+
+function buildZoneNode(draft: Draft): HTMLElement {
+  const wrap = document.createElement("div");
+  wrap.className = "adofix-zone-wrap";
+  const card = buildCard(draft);
+  card.classList.add("adofix-zone-card");
+  wrap.appendChild(card);
+  watchZoneCard(card);
+  return wrap;
+}
+
+/** Off-DOM measurement at the editor's content width; Monaco needs a fixed
+ * heightInPx per zone. */
+function measureZoneHeight(node: HTMLElement, width: number): number {
+  node.style.position = "absolute";
+  node.style.visibility = "hidden";
+  node.style.width = `${width}px`;
+  document.body.appendChild(node);
+  const card = node.firstElementChild as HTMLElement | null;
+  const height = Math.max((card?.offsetHeight ?? node.offsetHeight) + 8, 34);
+  node.remove();
+  node.style.position = "";
+  node.style.visibility = "";
+  node.style.width = "";
+  return height;
+}
+
+function renderMonacoZoneCards(): void {
+  if (!safeQuery(DRAFT_SELECTORS.monacoRoot)) return;
+  const diffEditor = findDiffEditor();
+  if (!diffEditor) return;
+  const ed = diffEditor.getModifiedEditor();
+  if (ed !== zoneHost) {
+    // A file switch replaced the editor instance; old zones died with it.
+    zoneEntries.clear();
+    zoneHost = ed;
+  }
+  const path = currentFilePath();
+  const drafts =
+    currentKey && path
+      ? loadDrafts(currentKey).filter((d) => d.filePath === path && d.side === "right")
+      : [];
+  const wanted = new Map(drafts.map((d) => [d.id, d] as const));
+  let changed = false;
+  ed.changeViewZones((acc) => {
+    for (const [id, entry] of [...zoneEntries]) {
+      const draft = wanted.get(id);
+      const intact =
+        entry.zone.domNode.isConnected && entry.zone.domNode.querySelector(`[${CARD_ID_ATTR}]`);
+      if (draft && draft.content === entry.content && zoneAnchor(draft) === entry.afterLine && intact)
+        continue;
+      acc.removeZone(entry.zoneId);
+      const card = entry.zone.domNode.firstElementChild;
+      if (card) zoneResizeObserver?.unobserve(card);
+      zoneEntries.delete(id);
+      changed = true;
+    }
+    for (const draft of drafts) {
+      if (zoneEntries.has(draft.id)) continue;
+      const domNode = buildZoneNode(draft);
+      const width = Math.max(200, (ed.getDomNode()?.clientWidth ?? 700) - 80);
+      const zone: ViewZone = {
+        afterLineNumber: zoneAnchor(draft),
+        heightInPx: measureZoneHeight(domNode, width),
+        domNode,
+        suppressMouseDown: false,
+      };
+      const zoneId = acc.addZone(zone);
+      zoneEntries.set(draft.id, {
+        zone,
+        zoneId,
+        content: draft.content,
+        afterLine: zone.afterLineNumber,
+      });
+      changed = true;
+    }
+  });
+  // addZone alone leaves nodes display:none — the layout pass makes them real.
+  if (changed) relayoutZones();
+}
+
 /**
  * Purple bold gutter numbers (+ dot) on drafted lines. Runs on every settle:
  * Monaco recreates overlays on scroll, and the marks ride along.
@@ -861,6 +998,7 @@ function deleteDraft(id: string): void {
   );
   safeQuery(`[${CARD_ID_ATTR}="${id}"]`)?.remove();
   markMonacoDraftLines();
+  renderMonacoZoneCards();
   updateToolbar();
   renderPanel();
 }
@@ -1016,6 +1154,7 @@ async function submitAll(): Promise<void> {
 
   renderDraftCards();
   markMonacoDraftLines();
+  renderMonacoZoneCards();
   updateToolbar();
   renderPanel();
 
@@ -1048,6 +1187,7 @@ export const prDrafts: Feature = {
     const fileButtons = adornFileHeaders();
     renderDraftCards();
     markMonacoDraftLines();
+    renderMonacoZoneCards();
     updateToolbar();
     log(
       FEATURE_ID,

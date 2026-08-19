@@ -121,8 +121,11 @@ const CSS = `
 }
 .${CHIP_CLASS} {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  /* aligned with the ID line: .wit-card .card-content pads 20px 14px
+     (chrome.css), +2px optically centers the 16px chip on the ~19px id
+     text (user screenshot 2026-08-18: top:10px floated above the line) */
+  top: 22px;
+  right: 14px;
   display: inline-flex;
   align-items: center;
   gap: 3px;

@@ -4,7 +4,7 @@ import { injectStyleOnce, safeQuery, safeQueryAll, showToast } from "../core/dom
 import { log } from "../core/log";
 import { DRAFT_SELECTORS, sectionFilePath } from "./pr-drafts";
 import { prRefFromRoute, refKey, type PrRef } from "./pr/threads-api";
-import { fetchViewedPaths } from "./pr/reviewed-data";
+import { patchViewed, viewedState } from "./pr/reviewed-data";
 import {
   buildTreePaths,
   mapTreeFiles,
@@ -52,32 +52,10 @@ const CSS = `
 .adofix-reviewed.adofix-busy { cursor: progress; opacity: 0.6; }
 `;
 
-// ---- server-side viewed state (display source of truth) ---------------------
-// Deliberately NOT core/fetch-cache: this slot is optimistically patched on
-// toggle, un-latched by user action, and refetched while the stale value
-// keeps rendering — a live-synced value, not a fetch-once cache.
+// Display state comes from the shared live slot in pr/reviewed-data.
 
 let currentRef: PrRef | null = null;
-let viewedKey: string | null = null;
-let viewedPaths: Set<string> | null = null;
-let viewedFetchInFlight = false;
-let viewedFetchFailed = false;
-
-function refreshViewedPaths(ref: PrRef, onDone?: () => void): void {
-  if (viewedFetchInFlight || viewedFetchFailed) return;
-  viewedFetchInFlight = true;
-  void fetchViewedPaths(ref).then((res) => {
-    viewedFetchInFlight = false;
-    if (!res.ok) {
-      // Stand down for this page load; rendered tree rows still sync headers.
-      viewedFetchFailed = true;
-      log(FEATURE_ID, "viewed-state fetch failed — headers sync from rendered rows only", res.error);
-      return;
-    }
-    viewedPaths = res.value;
-    onDone?.();
-  });
-}
+let treeKey: string | null = null;
 
 // ---- virtualized-tree sweep (toggle support for unrendered rows) ------------
 
@@ -235,14 +213,9 @@ async function toggleReviewed(section: HTMLElement, box: HTMLElement): Promise<v
       return;
     }
     syncBox(box, !wasReviewed); // optimistic; the settle re-apply confirms
-    // Patch the local set so settle re-applies don't flicker the box back
+    // Patch the shared set so settle re-applies don't flicker the box back
     // while the refetch is in flight, then resync with the server.
-    if (viewedPaths) {
-      if (wasReviewed) viewedPaths.delete(path);
-      else viewedPaths.add(path);
-    }
-    viewedFetchFailed = false;
-    if (currentRef) refreshViewedPaths(currentRef);
+    if (currentRef) patchViewed(currentRef, path, !wasReviewed);
   } finally {
     box.classList.remove("adofix-busy");
     toggleBusy = false;
@@ -257,18 +230,14 @@ export const prReviewed: Feature = {
     const ref = prRefFromRoute(route);
     if (!ref) return;
     const key = refKey(ref);
-    if (key !== viewedKey) {
-      viewedKey = key;
-      viewedPaths = null;
-      viewedFetchFailed = false;
+    if (key !== treeKey) {
+      treeKey = key;
       treeIndexCache = null;
     }
     currentRef = ref;
     const sections = safeQueryAll<HTMLElement>(DRAFT_SELECTORS.fileSection);
     if (sections.length === 0) return;
-    if (viewedPaths === null && currentRef) {
-      refreshViewedPaths(currentRef, () => this.apply(route));
-    }
+    const viewed = viewedState(ref, () => this.apply(route));
     const rendered = mapTreeFiles();
     let adorned = 0;
     for (const section of sections) {
@@ -293,7 +262,7 @@ export const prReviewed: Feature = {
       }
       // Rendered tree rows are live truth; the fetched set covers the rest.
       const live = rendered.get(path);
-      syncBox(box, live ? live.reviewed : (viewedPaths?.has(path) ?? false));
+      syncBox(box, live ? live.reviewed : (viewed?.has(path) ?? false));
     }
     if (adorned > 0) log(FEATURE_ID, `header checkboxes adorned: ${adorned}`);
   },

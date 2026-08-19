@@ -1,5 +1,6 @@
 import { apiFetch, orgBase, projectBase, type ApiResult } from "../../core/api";
-import type { PrRef } from "./threads-api";
+import { log } from "../../core/log";
+import { refKey, type PrRef } from "./threads-api";
 
 /**
  * ADO persists "Mark as reviewed" per user through the
@@ -84,4 +85,62 @@ export async function fetchViewedPaths(ref: PrRef): Promise<ApiResult<Set<string
     ok: true,
     value: parseViewedState(res.value.dataProviders?.[VISIT_PROVIDER]?.visit?.viewedState),
   };
+}
+
+// ---- shared live slot -------------------------------------------------------
+// One viewed-paths set per PR, shared by pr-reviewed (checkbox mirrors) and
+// pr-review-flow (progress + navigation). Deliberately NOT core/fetch-cache:
+// the set is optimistically patched on toggle and refetched while the stale
+// value keeps rendering — a live-synced value, not a fetch-once cache.
+
+let slotKey: string | null = null;
+let slotPaths: Set<string> | null = null;
+let slotInFlight = false;
+let slotFailed = false;
+
+function ensureKey(ref: PrRef): void {
+  const key = refKey(ref);
+  if (key === slotKey) return;
+  slotKey = key;
+  slotPaths = null;
+  slotInFlight = false;
+  slotFailed = false;
+}
+
+function startFetch(ref: PrRef, onFresh?: () => void): void {
+  slotInFlight = true;
+  const startedFor = slotKey;
+  void fetchViewedPaths(ref).then((res) => {
+    slotInFlight = false;
+    if (startedFor !== slotKey) return; // PR changed mid-flight
+    if (!res.ok) {
+      // Stand down for this page load; rendered tree rows still sync UIs.
+      slotFailed = true;
+      log("pr/reviewed-data", "viewed-state fetch failed", res.error);
+      return;
+    }
+    slotPaths = res.value;
+    onFresh?.();
+  });
+}
+
+/**
+ * The current PR's viewed-paths set, or null while unknown. Starts the fetch
+ * when needed; onFresh fires when a fetch lands (callers re-apply then).
+ */
+export function viewedState(ref: PrRef, onFresh?: () => void): Set<string> | null {
+  ensureKey(ref);
+  if (slotPaths === null && !slotInFlight && !slotFailed) startFetch(ref, onFresh);
+  return slotPaths;
+}
+
+/** Optimistic local patch after a toggle click, plus a background resync. */
+export function patchViewed(ref: PrRef, path: string, viewed: boolean): void {
+  ensureKey(ref);
+  if (slotPaths) {
+    if (viewed) slotPaths.add(path);
+    else slotPaths.delete(path);
+  }
+  slotFailed = false;
+  if (!slotInFlight) startFetch(ref);
 }

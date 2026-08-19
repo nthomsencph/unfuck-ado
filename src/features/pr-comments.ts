@@ -1,5 +1,13 @@
 import type { Feature } from "../core/registry";
 import { ACCENT, injectStyleOnce, safeQuery } from "../core/dom";
+import {
+  closePopover,
+  isPopoverOpen,
+  menuDivider,
+  menuItem,
+  menuStatus,
+  openPopover,
+} from "../core/popover";
 import { findToolbar, TOOLBAR_BUTTON_CLASSES } from "./pr/toolbar";
 import { hideResolvedEnabled, setHideResolved } from "./pr-thread-filter";
 import { draftsCount, toggleDraftsPanel } from "./pr-drafts";
@@ -31,41 +39,8 @@ const CSS = `
 .adofix-toggle[aria-pressed="true"] { background: #6b40ba !important; }
 .repos-compare-toolbar > .adofix-toggle:last-child { margin-right: 12px; }
 
-/* Surface material comes from .adofix-surface (core BASE_CSS). */
-.adofix-comments-menu {
-  position: fixed; width: 260px; z-index: 99999; overflow: hidden;
-  font-size: 13px;
-  padding: 4px 0;
-}
-.adofix-comments-status {
-  padding: 8px 14px 6px; font-size: 12px;
-  color: var(--text-secondary-color, rgba(0, 0, 0, 0.6));
-}
-.adofix-comments-item {
-  display: flex; align-items: center; gap: 10px; width: 100%;
-  padding: 8px 14px; border: none; background: transparent; cursor: pointer;
-  font: inherit; color: inherit; text-align: left;
-}
-.adofix-comments-item:hover { background: var(--palette-black-alpha-4, rgba(0, 0, 0, 0.05)); }
-.adofix-comments-item[disabled] {
-  cursor: default; color: var(--text-secondary-color, rgba(0, 0, 0, 0.5));
-}
-.adofix-comments-item[disabled]:hover { background: transparent; }
-.adofix-comments-check {
-  width: 14px; text-align: center; flex-shrink: 0;
-  color: var(--adofix-ink);
-  font-weight: 700;
-}
-.adofix-comments-count {
-  margin-left: auto; font-size: 11px; font-weight: 700;
-  background: rgba(130, 80, 223, 0.22);
-  color: var(--adofix-ink);
-  padding: 1px 8px; border-radius: 10px;
-}
-.adofix-comments-divider {
-  height: 1px; margin: 4px 0;
-  background: var(--border-subtle-color, rgba(0, 0, 0, 0.08));
-}
+/* Menu material + items come from core's .adofix-surface / .adofix-menu-*. */
+.adofix-comments-menu { width: 260px; overflow: hidden; }
 `;
 
 /** "0/2 comments resolved" → { resolved: 0, total: 2 }; anything else → null. */
@@ -86,101 +61,51 @@ function buttonLabel(): string {
   return counts ? `💬 ${counts.resolved}/${counts.total}` : "💬";
 }
 
-function closeMenu(): void {
-  safeQuery(`[data-adofix="${FEATURE_ID}-menu"]`)?.remove();
-  document.removeEventListener("mousedown", onOutsideMouseDown, true);
-  document.removeEventListener("keydown", onMenuKeyDown, true);
-}
-
-function onOutsideMouseDown(e: MouseEvent): void {
-  if (!(e.target instanceof Element)) return;
-  if (e.target.closest(`[data-adofix="${FEATURE_ID}-menu"], [data-adofix="${FEATURE_ID}-toggle"]`))
-    return;
-  closeMenu();
-}
-
-function onMenuKeyDown(e: KeyboardEvent): void {
-  if (e.key === "Escape") closeMenu();
-}
-
-function menuItem(
-  label: string,
-  opts: { checked?: boolean; count?: number; disabled?: boolean },
-  onClick?: () => void
-): HTMLButtonElement {
-  const item = document.createElement("button");
-  item.type = "button";
-  item.className = "adofix-comments-item";
-  const check = document.createElement("span");
-  check.className = "adofix-comments-check";
-  check.textContent = opts.checked ? "✓" : "";
-  item.append(check, label);
-  if (opts.count !== undefined) {
-    const pill = document.createElement("span");
-    pill.className = "adofix-comments-count";
-    pill.textContent = String(opts.count);
-    item.appendChild(pill);
-  }
-  if (opts.disabled) item.disabled = true;
-  if (onClick && !opts.disabled) {
-    item.addEventListener("click", (e) => {
-      e.stopPropagation();
-      onClick();
-    });
-  }
-  return item;
-}
-
 function openMenu(anchor: HTMLElement): void {
-  closeMenu();
-  const menu = document.createElement("div");
-  menu.setAttribute("data-adofix", `${FEATURE_ID}-menu`);
-  menu.className = "adofix-comments-menu adofix-surface";
+  openPopover({
+    id: `${FEATURE_ID}-menu`,
+    anchor,
+    className: "adofix-comments-menu",
+    keepOpenWithin: `[data-adofix="${FEATURE_ID}-toggle"]`,
+    render(menu, ctx): void {
+      const counts = resolvedCounts();
+      menu.appendChild(
+        menuStatus(
+          counts
+            ? `${counts.resolved} of ${counts.total} comment${counts.total === 1 ? "" : "s"} resolved`
+            : "No comments yet"
+        )
+      );
 
-  const counts = resolvedCounts();
-  const status = document.createElement("div");
-  status.className = "adofix-comments-status";
-  status.textContent = counts
-    ? `${counts.resolved} of ${counts.total} comment${counts.total === 1 ? "" : "s"} resolved`
-    : "No comments yet";
-  menu.appendChild(status);
-
-  menu.appendChild(
-    menuItem("Hide resolved threads", { checked: hideResolvedEnabled() }, () => {
-      setHideResolved(!hideResolvedEnabled());
-      openMenu(anchor); // re-render in place, keeping the menu open
-    })
-  );
-
-  const drafts = draftsCount();
-  menu.appendChild(
-    drafts > 0
-      ? menuItem("Drafts", { count: drafts }, () => {
-          closeMenu();
-          toggleDraftsPanel();
+      menu.appendChild(
+        menuItem("Hide resolved threads", { checked: hideResolvedEnabled() }, () => {
+          setHideResolved(!hideResolvedEnabled());
+          ctx.rerender();
         })
-      : menuItem("No local drafts", { disabled: true })
-  );
+      );
 
-  const divider = document.createElement("div");
-  divider.className = "adofix-comments-divider";
-  menu.appendChild(divider);
+      const drafts = draftsCount();
+      menu.appendChild(
+        drafts > 0
+          ? menuItem("Drafts", { count: drafts }, () => {
+              ctx.close();
+              toggleDraftsPanel();
+            })
+          : menuItem("No local drafts", { disabled: true })
+      );
 
-  menu.appendChild(
-    menuItem("Advanced filters…", {}, () => {
-      closeMenu();
-      const stub = safeQuery<HTMLElement>(NATIVE_FILTER_SELECTOR);
-      const trigger = stub?.querySelector<HTMLElement>('button, [role="button"]') ?? stub;
-      trigger?.click();
-    })
-  );
+      menu.appendChild(menuDivider());
 
-  document.body.appendChild(menu);
-  const rect = anchor.getBoundingClientRect();
-  menu.style.top = `${rect.bottom + 6}px`;
-  menu.style.left = `${Math.max(8, rect.right - menu.offsetWidth)}px`;
-  document.addEventListener("mousedown", onOutsideMouseDown, true);
-  document.addEventListener("keydown", onMenuKeyDown, true);
+      menu.appendChild(
+        menuItem("Advanced filters…", {}, () => {
+          ctx.close();
+          const stub = safeQuery<HTMLElement>(NATIVE_FILTER_SELECTOR);
+          const trigger = stub?.querySelector<HTMLElement>('button, [role="button"]') ?? stub;
+          trigger?.click();
+        })
+      );
+    },
+  });
 }
 
 export const prComments: Feature = {
@@ -200,7 +125,7 @@ export const prComments: Feature = {
       const ownBtn = btn;
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
-        if (safeQuery(`[data-adofix="${FEATURE_ID}-menu"]`)) closeMenu();
+        if (isPopoverOpen(`${FEATURE_ID}-menu`)) closePopover();
         else openMenu(ownBtn);
       });
       toolbar.appendChild(btn);

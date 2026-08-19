@@ -1,6 +1,14 @@
 import type { Feature } from "../core/registry";
 import { parseHubPath, type Route } from "../core/router";
-import { ACCENT, ADOFIX_ATTR, injectStyleOnce, setStyle } from "../core/dom";
+import { ACCENT, injectStyleOnce, setStyle } from "../core/dom";
+import {
+  closePopover,
+  isPopoverOpen,
+  menuDivider,
+  menuItem,
+  menuStatus,
+  openPopover,
+} from "../core/popover";
 import { log } from "../core/log";
 import { debounce } from "../core/observe";
 import { getValue, setValue } from "../core/storage";
@@ -128,44 +136,8 @@ th:has(> .adofix-col-count) {
 .taskboard-parent-cell .identity-display-name {
   white-space: normal !important;
 }
-/* Surface material comes from .adofix-surface (core BASE_CSS). */
-.adofix-columns-menu {
-  position: fixed;
-  z-index: 100000;
-  min-width: 240px;
-  padding: 6px;
-  font-size: 13px;
-}
-.adofix-columns-status {
-  padding: 6px 10px;
-  color: var(--text-secondary-color, #a19f9d);
-}
-.adofix-columns-item {
-  display: flex;
-  align-items: center;
-  width: 100%;
-  padding: 6px 10px;
-  background: transparent;
-  border: none;
-  border-radius: 6px;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-.adofix-columns-item:hover { background: rgba(128, 128, 128, 0.12); }
-.adofix-columns-item[disabled] { opacity: 0.5; cursor: default; }
-.adofix-columns-item[disabled]:hover { background: transparent; }
-.adofix-columns-check {
-  width: 18px;
-  flex-shrink: 0;
-  color: ${ACCENT};
-}
-.adofix-columns-divider {
-  height: 1px;
-  margin: 6px 4px;
-  background: var(--border-subtle-color, rgba(128, 128, 128, 0.25));
-}
+/* Menu material + items come from core's .adofix-surface / .adofix-menu-*. */
+.adofix-columns-menu { min-width: 240px; }
 `;
 
 /** Header texts → the state columns as {name, nth} (nth-child is 1-based). */
@@ -386,102 +358,59 @@ function applyColumnCss(key: string): void {
   btn?.setAttribute("data-filtering", String(hiddenNth.length > 0));
 }
 
-function closeMenu(): void {
-  document.querySelector(`[${ADOFIX_ATTR}="${MENU_ATTR}"]`)?.remove();
-  document.removeEventListener("mousedown", onOutsideMouseDown, true);
-  document.removeEventListener("keydown", onMenuKeyDown, true);
-}
-
-function onOutsideMouseDown(e: MouseEvent): void {
-  if (!(e.target instanceof Element)) return;
-  if (e.target.closest(`[${ADOFIX_ATTR}="${MENU_ATTR}"], .${BTN_CLASS}`)) return;
-  closeMenu();
-}
-
-function onMenuKeyDown(e: KeyboardEvent): void {
-  if (e.key === "Escape") closeMenu();
-}
-
-function menuItem(
-  label: string,
-  opts: { checked?: boolean; disabled?: boolean },
-  onClick?: () => void
-): HTMLButtonElement {
-  const item = document.createElement("button");
-  item.type = "button";
-  item.className = "adofix-columns-item";
-  const check = document.createElement("span");
-  check.className = "adofix-columns-check";
-  check.textContent = opts.checked ? "✓" : "";
-  item.append(check, label);
-  if (opts.disabled) item.disabled = true;
-  if (onClick && !opts.disabled) {
-    item.addEventListener("click", (e) => {
-      e.stopPropagation();
-      onClick();
-    });
-  }
-  return item;
-}
-
 function openMenu(anchor: HTMLElement, key: string): void {
-  closeMenu();
-  const menu = document.createElement("div");
-  menu.setAttribute(ADOFIX_ATTR, MENU_ATTR);
-  menu.className = "adofix-columns-menu adofix-surface";
+  openPopover({
+    id: MENU_ATTR,
+    anchor,
+    className: "adofix-columns-menu",
+    keepOpenWithin: `.${BTN_CLASS}`,
+    render(menu, ctx): void {
+      const current = prefs(key);
+      const cols = stateColumns(boardHeaders());
+      const hidden = new Set(current.hidden);
+      const visibleCount = cols.filter((c) => !hidden.has(c.name)).length;
 
-  const current = prefs(key);
-  const cols = stateColumns(boardHeaders());
-  const hidden = new Set(current.hidden);
-  const visibleCount = cols.filter((c) => !hidden.has(c.name)).length;
+      menu.appendChild(menuStatus("Board columns"));
 
-  const status = document.createElement("div");
-  status.className = "adofix-columns-status";
-  status.textContent = "Board columns";
-  menu.appendChild(status);
+      for (const col of cols) {
+        const isVisible = !hidden.has(col.name);
+        menu.appendChild(
+          // The last visible column cannot be hidden — an all-hidden board
+          // would leave nothing to click our button back from.
+          menuItem(
+            col.name,
+            { checked: isVisible, disabled: isVisible && visibleCount === 1 },
+            () => {
+              const next = new Set(current.hidden);
+              if (isVisible) next.add(col.name);
+              else next.delete(col.name);
+              setValue<Prefs>(FEATURE_ID, key, { ...current, hidden: [...next] });
+              applyColumnCss(key);
+              ctx.rerender();
+            }
+          )
+        );
+      }
 
-  for (const col of cols) {
-    const isVisible = !hidden.has(col.name);
-    menu.appendChild(
-      // The last visible column cannot be hidden — an all-hidden board would
-      // leave nothing to click our button back from.
-      menuItem(col.name, { checked: isVisible, disabled: isVisible && visibleCount === 1 }, () => {
-        const next = new Set(current.hidden);
-        if (isVisible) next.add(col.name);
-        else next.delete(col.name);
-        setValue<Prefs>(FEATURE_ID, key, { ...current, hidden: [...next] });
-        applyColumnCss(key);
-        openMenu(anchor, key); // re-render in place
-      })
-    );
-  }
+      menu.appendChild(menuDivider());
 
-  const divider = document.createElement("div");
-  divider.className = "adofix-columns-divider";
-  menu.appendChild(divider);
-
-  menu.appendChild(
-    menuItem("2-up cards where they fit", { checked: current.twoUp }, () => {
-      const next = { ...current, twoUp: !current.twoUp };
-      setValue<Prefs>(FEATURE_ID, key, next);
-      document.documentElement.toggleAttribute(TWO_UP_ATTR, next.twoUp);
-      openMenu(anchor, key);
-    })
-  );
-  menu.appendChild(
-    menuItem("Show all columns", { disabled: hidden.size === 0 }, () => {
-      setValue<Prefs>(FEATURE_ID, key, { ...current, hidden: [] });
-      applyColumnCss(key);
-      openMenu(anchor, key);
-    })
-  );
-
-  document.body.appendChild(menu);
-  const rect = anchor.getBoundingClientRect();
-  menu.style.top = `${rect.bottom + 6}px`;
-  menu.style.left = `${Math.max(8, rect.right - menu.offsetWidth)}px`;
-  document.addEventListener("mousedown", onOutsideMouseDown, true);
-  document.addEventListener("keydown", onMenuKeyDown, true);
+      menu.appendChild(
+        menuItem("2-up cards where they fit", { checked: current.twoUp }, () => {
+          const next = { ...current, twoUp: !current.twoUp };
+          setValue<Prefs>(FEATURE_ID, key, next);
+          document.documentElement.toggleAttribute(TWO_UP_ATTR, next.twoUp);
+          ctx.rerender();
+        })
+      );
+      menu.appendChild(
+        menuItem("Show all columns", { disabled: hidden.size === 0 }, () => {
+          setValue<Prefs>(FEATURE_ID, key, { ...current, hidden: [] });
+          applyColumnCss(key);
+          ctx.rerender();
+        })
+      );
+    },
+  });
 }
 
 /** Columns glyph, currentColor so it follows bolt's subtle-button styling. */
@@ -523,7 +452,7 @@ function ensureButton(key: string): void {
   btn.addEventListener("click", (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (document.querySelector(`[${ADOFIX_ATTR}="${MENU_ATTR}"]`)) closeMenu();
+    if (isPopoverOpen(MENU_ATTR)) closePopover();
     else openMenu(btn, key);
   });
   filter.insertAdjacentElement("afterend", btn);
@@ -539,7 +468,7 @@ export const taskboardColumns: Feature = {
     const key = onTaskboard ? taskboardTeamKey(route.path) : null;
     if (!key) {
       document.documentElement.removeAttribute(TWO_UP_ATTR);
-      closeMenu();
+      if (isPopoverOpen(MENU_ATTR)) closePopover();
       return;
     }
     document.documentElement.toggleAttribute(TWO_UP_ATTR, prefs(key).twoUp);
@@ -549,6 +478,6 @@ export const taskboardColumns: Feature = {
     applyCounts();
   },
   dispose(): void {
-    closeMenu();
+    if (isPopoverOpen(MENU_ATTR)) closePopover();
   },
 };

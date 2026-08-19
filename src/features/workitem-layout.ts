@@ -141,17 +141,19 @@ function teleport(native: HTMLElement, row: HTMLElement): void {
   // min-height/auto let tall controls cover the row below.
   const rowRect = row.getBoundingClientRect();
   const valRect = (row.querySelector(".adofix-wi-kv-value") ?? row).getBoundingClientRect();
-  // Block rows (tags) anchor on the value block itself; inline rows take
-  // the value column's x/width with the row's y/height.
+  // Every teleport spans the FULL row width — one consistent length that
+  // respects the rail's padding (the value column alone was too tight for
+  // path fields, whose inner controls then spilled past the viewport).
+  // Block rows (tags) anchor on the value block's y instead of the row's.
   const block = row.classList.contains("adofix-wi-kv--block");
   const top = block ? valRect.top : rowRect.top;
   const height = Math.max(block ? valRect.height : rowRect.height, 28);
   native.classList.add("adofix-wi-teleport");
   const s = native.style;
   s.setProperty("position", "fixed", "important");
-  s.setProperty("left", `${valRect.left}px`, "important");
+  s.setProperty("left", `${rowRect.left}px`, "important");
   s.setProperty("top", `${top}px`, "important");
-  s.setProperty("width", `${valRect.width}px`, "important");
+  s.setProperty("width", `${rowRect.width}px`, "important");
   s.setProperty("height", `${height}px`, "important");
   s.setProperty("min-height", "0", "important");
   /* VISIBLE while editing: the live control replaces the row in place —
@@ -614,11 +616,20 @@ button.work-item-form-toggle[aria-label^="Maximize"] {
   color: var(--communication-foreground, #4fa3ff) !important;
 }
 /* While teleported, the control's own label hides — the adofix row's key
-   stays visible and the control lands on the value column alone. */
+   is replaced by the live control across the full row. */
 .adofix-wi-teleport .work-item-control-label,
 .adofix-wi-teleport .workitemcontrol-label,
 .adofix-wi-teleport .work-item-form-control-content-wrapper > :first-child {
   display: none !important;
+}
+/* Nothing inside a teleported control may exceed the teleport box: ADO's
+   inner controls carry their own fixed widths (the Area/Iteration
+   tree-path input is the worst) and, combined with overflow:visible,
+   spilled past the rail and the viewport (user screenshot 2026-08-18). */
+.adofix-wi-teleport * {
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
 }
 .adofix-wi-kv {
   display: flex;
@@ -639,10 +650,12 @@ button.work-item-form-toggle[aria-label^="Maximize"] {
   min-width: 0;
   display: inline-flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  /* Long values (Updated: "name, when") wrap onto extra lines — clipping
+     them hid the tail at every window width (user 2026-08-18). */
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 .adofix-wi-kv-editable {
   cursor: pointer;

@@ -18,33 +18,37 @@ const POPOVER_CSS = `
   font-size: 13px;
   outline: none;
 }
-.adofix-menu-status {
+/* Item rules are scoped under .adofix-menu: pr-actions tags FOREIGN (cloned
+   bolt table-row) menu items "adofix-menu-item" for its own hover rule, and
+   bare class selectors here would restyle those rows the moment any popover
+   injects this sheet. */
+.adofix-menu .adofix-menu-status {
   padding: 8px 14px 6px;
   font-size: 12px;
   color: var(--text-secondary-color, #a19f9d);
 }
-.adofix-menu-item {
+.adofix-menu .adofix-menu-item {
   display: flex; align-items: center; gap: 10px; width: 100%;
   padding: 8px 14px; border: none; background: transparent; cursor: pointer;
   font: inherit; color: inherit; text-align: left;
 }
-.adofix-menu-item:hover,
-.adofix-menu-item:focus-visible {
+.adofix-menu .adofix-menu-item:hover,
+.adofix-menu .adofix-menu-item:focus-visible {
   background: rgba(128, 128, 128, 0.12);
   outline: none;
 }
-.adofix-menu-item[disabled] { cursor: default; opacity: 0.55; }
-.adofix-menu-item[disabled]:hover { background: transparent; }
-.adofix-menu-check {
+.adofix-menu .adofix-menu-item[disabled] { cursor: default; opacity: 0.55; }
+.adofix-menu .adofix-menu-item[disabled]:hover { background: transparent; }
+.adofix-menu .adofix-menu-check {
   width: 14px; text-align: center; flex-shrink: 0;
   color: var(--adofix-ink); font-weight: 700;
 }
-.adofix-menu-count {
+.adofix-menu .adofix-menu-count {
   margin-left: auto; font-size: 11px; font-weight: 700;
   background: rgba(130, 80, 223, 0.22); color: var(--adofix-ink);
   padding: 1px 8px; border-radius: 10px;
 }
-.adofix-menu-divider {
+.adofix-menu .adofix-menu-divider {
   height: 1px; margin: 4px 0;
   background: var(--border-subtle-color, rgba(128, 128, 128, 0.25));
 }

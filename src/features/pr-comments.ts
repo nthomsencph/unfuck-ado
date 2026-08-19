@@ -56,9 +56,12 @@ function resolvedCounts(): { resolved: number; total: number } | null {
   return parseResolvedText(safeQuery<HTMLElement>(RESOLVED_TEXT_SELECTOR)?.textContent);
 }
 
+/** "💬 n/m" for native comments, "✎ k" appended while local drafts exist. */
 function buttonLabel(): string {
   const counts = resolvedCounts();
-  return counts ? `💬 ${counts.resolved}/${counts.total}` : "💬";
+  const base = counts ? `💬 ${counts.resolved}/${counts.total}` : "💬";
+  const drafts = draftsCount();
+  return drafts > 0 ? `${base} ✎ ${drafts}` : base;
 }
 
 function openMenu(anchor: HTMLElement): void {

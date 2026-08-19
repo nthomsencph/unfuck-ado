@@ -4,6 +4,7 @@ import {
   findFooterCancel,
   lineFromOverlayText,
   lineLabel,
+  monacoAnchorLine,
   nearestLineAbove,
   pickFilePath,
   rowInfo,
@@ -204,6 +205,34 @@ describe("nearestLineAbove", () => {
 
   it("returns null for no lines", () => {
     expect(nearestLineAbove([], 438)).toBeNull();
+  });
+});
+
+describe("monacoAnchorLine", () => {
+  const lines = [
+    { line: 1, bottom: 286 },
+    { line: 9, bottom: 430 },
+  ];
+
+  it("anchors to the nearest line above the composer", () => {
+    // Live-measured 2026-08-19: settled composer top 382.5, line 9 bottom 356.5.
+    expect(monacoAnchorLine(438, lines)).toEqual({ line: 9 });
+  });
+
+  it("treats a composer just above line 1 as the file-level composer", () => {
+    // ADO renders the file-level composer directly above line 1.
+    expect(monacoAnchorLine(100, lines)).toEqual({ fileLevel: true });
+  });
+
+  it("rejects a composer far above every line (unpositioned view zone)", () => {
+    // Live-measured 2026-08-19: a fresh composer transiently reports top
+    // ~-705 while line 1's bottom is 286 — anchoring it would silently
+    // store a mis-anchored file-level draft.
+    expect(monacoAnchorLine(-705, lines)).toBeNull();
+  });
+
+  it("returns null for no lines", () => {
+    expect(monacoAnchorLine(438, [])).toBeNull();
   });
 });
 

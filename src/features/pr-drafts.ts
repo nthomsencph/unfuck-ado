@@ -449,6 +449,28 @@ export function nearestLineAbove(
   return best?.line ?? null;
 }
 
+/**
+ * A lineless composer within this gap of line 1 is the legit file-level
+ * composer (ADO renders it directly above line 1, verified live 2026-08-01).
+ * Farther than this and it's a NOT-YET-POSITIONED view zone: fresh composers
+ * transiently measure ~700px above the viewport before Monaco lays the zone
+ * out (seen live 2026-08-19) — anchoring one would silently store a
+ * mis-anchored file-level draft.
+ */
+export const FILE_LEVEL_MAX_GAP = 300;
+
+/** Where a Monaco composer at `top` anchors; null → geometry unusable. */
+export function monacoAnchorLine(
+  top: number,
+  overlays: Array<{ line: number; bottom: number }>
+): { line: number } | { fileLevel: true } | null {
+  if (overlays.length === 0) return null;
+  const line = nearestLineAbove(overlays, top);
+  if (line !== null) return { line };
+  const minBottom = Math.min(...overlays.map((o) => o.bottom));
+  return minBottom - top <= FILE_LEVEL_MAX_GAP ? { fileLevel: true } : null;
+}
+
 function monacoComposerAnchor(input: HTMLElement): DraftAnchor | null {
   const filePath = currentFilePath();
   if (!filePath) return null;
@@ -459,14 +481,12 @@ function monacoComposerAnchor(input: HTMLElement): DraftAnchor | null {
       bottom: o.getBoundingClientRect().bottom,
     }))
     .filter((o): o is { line: number; bottom: number } => o.line !== null);
-  if (overlays.length === 0) return null;
-  const line = nearestLineAbove(overlays, top);
-  // A visible composer with every gutter number below it is the file-level
-  // composer — ADO renders it above line 1 (verified live 2026-08-01).
-  if (line === null) return { line: 0, side: "right", filePath, fileLevel: true };
+  const anchor = monacoAnchorLine(top, overlays);
+  if (anchor === null) return null;
+  if ("fileLevel" in anchor) return { line: 0, side: "right", filePath, fileLevel: true };
   // Monaco gutter numbers are the modified (right) side; removed-line
   // anchoring in this view is not supported yet.
-  return { line, side: "right", filePath };
+  return { line: anchor.line, side: "right", filePath };
 }
 
 function captureDraft(input: HTMLTextAreaElement, cancel: HTMLButtonElement): void {

@@ -638,9 +638,10 @@ const CSS = `
 .work-item-form-header {
   position: relative !important;
   /* the type icon + number sat pressed against the page top (user
-     2026-08-18); JS placements measure AFTER this applies, so the
-     overlaid controls follow the shifted rows automatically */
-  padding-top: 12px !important;
+     2026-08-18; 12px was "substantially" too little); JS placements
+     measure AFTER this applies, so the overlaid controls follow the
+     shifted rows automatically */
+  padding-top: 32px !important;
 }
 /* TWO nested elements carry this class — position only the outer (the
    row's direct child); absoluting both collapses the outer to 4px. */

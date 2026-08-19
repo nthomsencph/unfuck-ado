@@ -297,7 +297,13 @@ throws). Key live findings baked into the code:
   virtualized: `.discussion-new-comment` composer first, then
   `.comment-item.displayed-comment` per comment, newest first. The
   Description caps via `.rooster-wrapper` max-height 500px +
-  `.rooster-editor` 460px (inner scrollbar).
+  `.rooster-editor` 460px (inner scrollbar). TRAPS: `.work-item-form-right`
+  carries flex-row classes but COMPUTES `display: grid` from ADO's CSS —
+  flex-direction is silently ignored and its sections sit in fixed grid
+  tracks (~870px even when empty); `.work-item-grid` also fixes its row
+  heights, boxing the description into a scrolling track; and setting
+  `overflow-x: hidden` with visible-y COMPUTES overflow-y to auto,
+  creating scrollboxes wherever height is constrained.
 
 - Work item cards (verified live 2026-08-18, kanban + sprint taskboard):
   every card is `.wit-card` (`.taskboard-card` on sprints, `.boards-card` on

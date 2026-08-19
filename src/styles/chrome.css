@@ -550,20 +550,18 @@ div.padding-vertical-16:has(> .vss-FilterBar) {
 .work-item-form-page .html-command-bar-button:not(:hover):not(.is-checked) {
   background: transparent !important;
 }
-/* Content cards: the discussion composer (native #323130 + depth-8) with
-   its editor inset on canvas, and the Deployment/Development zero-data
-   hint boxes (#292827). */
+/* Discussion composer: flat on the canvas — the card color moved onto the
+   text field itself (user 2026-08-18; was the inverse). The zero-data
+   hint boxes keep card material. */
 .discussion-new-comment {
-  background: var(--adofix-card) !important;
-  border-radius: var(--adofix-radius) !important;
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.45),
-    0 2px 10px rgba(0, 0, 0, 0.25) !important;
+  background: transparent !important;
+  box-shadow: none !important;
 }
 .discussion-new-comment .markdown-editor,
 .discussion-new-comment .bolt-textfield,
 .discussion-new-comment .bolt-textfield-input {
-  background: var(--adofix-bg) !important;
+  background: var(--adofix-card) !important;
+  border-radius: var(--adofix-radius) !important;
 }
 .deployments-zero-data,
 .links-control-zero-state {

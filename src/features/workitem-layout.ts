@@ -51,6 +51,13 @@ import { log } from "../core/log";
 export const workitemLayout: Feature = {
   id: "workitem-layout",
   areas: "*",
+  init(): void {
+    // Resize reflows the header without DOM mutations — the promoted
+    // State field's measured position must follow.
+    window.addEventListener("resize", () => {
+      window.requestAnimationFrame(() => placeStateField());
+    });
+  },
   apply(): void {
     injectStyleOnce("workitem-layout", CSS);
     enhance();
@@ -253,15 +260,13 @@ function collectRows(): DetailRow[] | null {
     "";
   const leaf = (path: string): string => path.split("\\").pop() ?? path;
 
-  const state = fieldOf(colA, 0);
+  // State is NOT a row: it lives in the header, left of the assignee
+  // (absolutely repositioned from its stub column — see the CSS).
   const reason = fieldOf(colA, 1);
   const area = fieldOf(colB, 0);
   const iteration = fieldOf(colB, 1);
-  const dot = state?.querySelector<HTMLElement>('[class*="state" i][class*="c" i]');
-  const dotColor = dot ? getComputedStyle(dot).backgroundColor : undefined;
 
   const rows: DetailRow[] = [
-    { key: "state", label: "State", value: valueOf(state), dotColor, native: state ?? undefined },
     { key: "reason", label: "Reason", value: valueOf(reason), native: reason ?? undefined },
     { key: "area", label: "Area", value: leaf(valueOf(area)), native: area ?? undefined },
     { key: "iteration", label: "Iteration", value: leaf(valueOf(iteration)), native: iteration ?? undefined },
@@ -283,7 +288,15 @@ function collectRows(): DetailRow[] | null {
       group.classList.add("adofix-wi-group-hide");
       continue;
     }
-    if (!/^(Planning|Classification)/.test(label)) continue;
+    // Related Work only earns its place with actual links (user 2026-08-18).
+    if (/^Related Work/.test(label)) {
+      group.classList.toggle(
+        "adofix-wi-group-hide",
+        !group.querySelector(".compact-links-list a")
+      );
+      continue;
+    }
+    if (!/^(Planning|Classification|Effort)/.test(label)) continue;
     group.classList.add("adofix-wi-group-absorb");
     for (const wrapper of group.querySelectorAll<HTMLElement>(
       ".work-item-form-control-wrapper"
@@ -383,11 +396,43 @@ function ensureAttachmentsProxy(): void {
   btn.classList.toggle("adofix-wi-attach-active", attachTab.classList.contains("selected"));
 }
 
+/**
+ * State lives in the header, left of the assignee (user 2026-08-18) —
+ * absolutely positioned from its stub column against .work-item-form-page,
+ * with top/left measured from the assignee row's live rect (fixed offsets
+ * drift: removing content from a header row changes the row heights).
+ */
+function placeStateField(): void {
+  const header = document.querySelector<HTMLElement>(".work-item-form-header");
+  const page = document.querySelector<HTMLElement>(".work-item-form-page");
+  const state = document.querySelector<HTMLElement>(
+    ".work-item-form-subheader > :first-child > :first-child"
+  );
+  const row3 = header?.children[2] as HTMLElement | undefined;
+  if (!header || !page || !state || !row3) return;
+  state.classList.add("adofix-wi-state-promoted");
+  const r3 = row3.getBoundingClientRect();
+  const pr = page.getBoundingClientRect();
+  state.style.setProperty("top", `${Math.round(r3.top - pr.top + (r3.height - 32) / 2)}px`);
+  state.style.setProperty("left", `${Math.round(r3.left - pr.left + 8)}px`);
+}
+
 /** MUST stay idempotent — runs on every route change and DOM settle. */
 function enhance(): void {
   // Before the rail check: on the Attachments view the rail is unmounted,
   // but the proxy's count/active state still needs refreshing.
   ensureAttachmentsProxy();
+  placeStateField();
+  // Description loses its section header (and with it the 1px border and
+  // the collapse affordance). Text-matched: the bug form's Repro Steps /
+  // System Info headers in the same section keep theirs.
+  for (const h of document.querySelectorAll(
+    ".work-item-form-first-section .work-item-form-collapsible-header"
+  )) {
+    if (/^Description/.test(h.textContent?.trim() ?? "")) {
+      h.classList.add("adofix-wi-header-hide");
+    }
+  }
   const rail = document.querySelector<HTMLElement>(".work-item-form-right");
   if (!rail) {
     return;
@@ -513,12 +558,66 @@ const CSS = `
   flex-direction: column-reverse;
   gap: 12px;
 }
+/* Comments sit flat on the canvas (user 2026-08-18); the composer's text
+   field carries the card color instead — see chrome.css. */
 .comment-item.displayed-comment {
-  background: var(--adofix-card, #252423) !important;
-  border-radius: var(--adofix-radius, 6px) !important;
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.45),
-    0 2px 10px rgba(0, 0, 0, 0.25) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+/* Section headers out: Discussion always (Description via text-matched
+   class — Repro Steps etc. keep theirs). The 1px divider lives ON the
+   header, so it goes too, as does the collapse affordance. */
+.work-item-form-discussion .work-item-form-collapsible-header,
+.adofix-wi-header-hide {
+  display: none !important;
+}
+/* Header: the Save/refresh/undo/⋮/📎 command bar joins the FIRST row,
+   right-aligned next to the dialog's in-flow Fullscreen/Close buttons
+   (fixed offsets against later rows proved unstable — absoluting content
+   out of a row changes the row heights themselves). The title row keeps
+   its full width. */
+.work-item-form-header {
+  position: relative !important;
+}
+/* TWO nested elements carry this class — position only the outer (the
+   row's direct child); absoluting both collapses the outer to 4px. */
+.work-item-form-header > :nth-child(3) > .work-item-header-command-bar {
+  position: absolute !important;
+  top: 5px;
+  right: 8px;
+  z-index: 6;
+}
+.work-item-form-dialog
+  .work-item-form-header
+  > :nth-child(3)
+  > .work-item-header-command-bar {
+  right: 84px;
+}
+/* Assignee row makes room at its left for the promoted State field.
+   NOT position:relative — that would become the absolute command bar's
+   containing block and drag it down to this row's line. */
+.work-item-form-header > :nth-child(3) {
+  padding-left: 210px !important;
+}
+/* State promoted out of its stub column into the header, left of the
+   assignee. Absolute against .work-item-form-page; it escapes the
+   zero-size column's clip because the column is unpositioned (the same
+   principle the teleport rides on). top/left are MEASURED per pass in
+   enhance() — the assignee row's own position moves as rows reflow. */
+.work-item-form-page {
+  position: relative !important;
+}
+.adofix-wi-state-promoted {
+  position: absolute !important;
+  width: 190px !important;
+  height: 32px !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  overflow: visible !important;
+  z-index: 5;
+}
+.work-item-form-subheader .work-item-control-label {
+  display: none !important;
 }
 /* Description expands to its content in view mode (native cap 460/500px
    with an inner scrollbar); editing keeps ADO's cap. */

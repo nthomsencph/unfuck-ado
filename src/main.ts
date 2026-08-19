@@ -18,6 +18,7 @@ import { prDrafts } from "./features/pr-drafts";
 import { prKeynav } from "./features/pr-keynav";
 import { prOverview } from "./features/pr-overview";
 import { prReviewed } from "./features/pr-reviewed";
+import { prReviewFlow } from "./features/pr-review-flow";
 import { prThreadFilter } from "./features/pr-thread-filter";
 import { sprintHeader } from "./features/sprint-header";
 import { taskboardColumns } from "./features/taskboard-columns";
@@ -61,6 +62,7 @@ declare global {
   registry.register(prDiffTotals);
   registry.register(prComments);
   registry.register(prChecks);
+  registry.register(prReviewFlow);
   registry.register(prActions);
   registry.register(workitemState);
 

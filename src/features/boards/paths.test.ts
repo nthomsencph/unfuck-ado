@@ -4,8 +4,8 @@ import { backlogScopeKey, sprintScopeKey, sprintTab, taskboardTeamKey } from "./
 describe("backlogScopeKey", () => {
   it("builds org/project/team/level from a backlog path", () => {
     expect(
-      backlogScopeKey("/Akademikernes/AI%20og%20DT/_backlogs/backlog/AI%20og%20DT%20Team/Epics")
-    ).toBe("Akademikernes/AI og DT/AI og DT Team/Epics");
+      backlogScopeKey("/Fabrikam/Web%20Platform/_backlogs/backlog/Web%20Team/Epics")
+    ).toBe("Fabrikam/Web Platform/Web Team/Epics");
   });
 
   it("keeps the key stable across deeper backlog sub-paths", () => {
@@ -39,9 +39,9 @@ describe("sprintScopeKey", () => {
   it("decodes the full path so each tab+team+iteration remembers its own total", () => {
     expect(
       sprintScopeKey(
-        "/Akademikernes/AI%20og%20DT/_sprints/taskboard/AI%20og%20DT%20Team/AI%20og%20DT/Sprint%2008-26"
+        "/Fabrikam/Web%20Platform/_sprints/taskboard/Web%20Team/Web%20Platform/Sprint%2008-26"
       )
-    ).toBe("Akademikernes/AI og DT/_sprints/taskboard/AI og DT Team/AI og DT/Sprint 08-26");
+    ).toBe("Fabrikam/Web Platform/_sprints/taskboard/Web Team/Web Platform/Sprint 08-26");
   });
 
   it("returns null off the sprints hub", () => {
@@ -53,9 +53,9 @@ describe("taskboardTeamKey", () => {
   it("builds org/project/team from a sprints path", () => {
     expect(
       taskboardTeamKey(
-        "/Akademikernes/AI%20og%20DT/_sprints/taskboard/AI%20og%20DT%20Team/AI%20og%20DT/Sprint%2008-26"
+        "/Fabrikam/Web%20Platform/_sprints/taskboard/Web%20Team/Web%20Platform/Sprint%2008-26"
       )
-    ).toBe("Akademikernes/AI og DT/AI og DT Team");
+    ).toBe("Fabrikam/Web Platform/Web Team");
   });
 
   it("is iteration-independent", () => {

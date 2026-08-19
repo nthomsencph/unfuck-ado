@@ -1,6 +1,6 @@
 {
   "name": "ado-unfuck",
-  "version": "0.44.0",
+  "version": "0.45.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -19,5 +19,12 @@
     "jsdom": "^26.0.0",
     "typescript": "^5.8.0",
     "vitest": "^3.0.0"
-  }
+  },
+  "license": "MIT",
+  "description": "Violentmonkey userscript that unfucks the Azure DevOps web UI",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nthomsencph/unfuck-ado.git"
+  },
+  "homepage": "https://github.com/nthomsencph/unfuck-ado"
 }

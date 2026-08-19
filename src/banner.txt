@@ -1,8 +1,13 @@
 // ==UserScript==
 // @name        ado-unfuck
-// @namespace   ado-unfuck
+// @namespace   https://github.com/nthomsencph/unfuck-ado
 // @version     __VERSION__
-// @description Unfuck the Azure DevOps web UI: denser boards, PR keyboard nav, resolved-thread filtering, fast work item state changes.
+// @description Unfuck the Azure DevOps web UI: batched draft review comments, a GitHub-style review flow, denser boards and PR views, keyboard nav, and fast work item state changes.
+// @license     MIT
+// @homepageURL https://github.com/nthomsencph/unfuck-ado
+// @supportURL  https://github.com/nthomsencph/unfuck-ado/issues
+// @downloadURL https://github.com/nthomsencph/unfuck-ado/releases/latest/download/ado-unfuck.user.js
+// @updateURL   https://github.com/nthomsencph/unfuck-ado/releases/latest/download/ado-unfuck.user.js
 // @match       https://dev.azure.com/*
 // @match       https://*.visualstudio.com/*
 // @grant       GM_getValue

@@ -1,9 +1,23 @@
 # ado-unfuck
 
 A Violentmonkey userscript that unfucks the Azure DevOps web UI. Client-side
-only, same-origin, no PAT, no background script.
+only, same-origin, no PAT, no background script. MIT-licensed.
 
-## Install (one-time)
+## Install
+
+With [Violentmonkey](https://violentmonkey.github.io/) (or another userscript
+manager) installed, open the latest release build and confirm the install:
+
+> https://github.com/nthomsencph/unfuck-ado/releases/latest/download/ado-unfuck.user.js
+
+Updates ship through the same URL — Violentmonkey picks them up via the
+script's `@updateURL`.
+
+Works on `dev.azure.com` and legacy `*.visualstudio.com` organizations, in
+Firefox (primary target) with English-language ADO UI. Both ADO themes are
+supported; development happens against dark.
+
+## Install from source (development)
 
 1. Install [Violentmonkey](https://addons.mozilla.org/en-US/firefox/addon/violentmonkey/)
    in Firefox if you don't have it yet.
@@ -41,7 +55,10 @@ only, same-origin, no PAT, no background script.
 ## Verify it works
 
 1. Open any PR in ADO and go to the **Files** tab. You should see:
-   - a **Hide resolved** button in the diff toolbar (next to Inline/Filter);
+   - a purple comment button in the diff toolbar (fluent comment glyph +
+     resolved counts; its menu holds **Hide resolved threads**, **Drafts**
+     and **Advanced filters…**) and a purple **Review** button in the PR
+     header next to Approve;
    - `j` / `k` jumping between changed files (click the page background
      first — hotkeys are intentionally dead while an input or the diff's
      comment editor has focus);
@@ -79,7 +96,7 @@ the dashboard (gear icon) removes it. There is no server side and no stored
 credentials — uninstalling removes everything except `GM_setValue` prefs,
 which Violentmonkey deletes with the script.
 
-## Features (Phase 1)
+## Features — boards, work items & chrome
 
 | Feature | What it does |
 |---|---|
@@ -92,7 +109,7 @@ which Violentmonkey deletes with the script.
 | `card-comments` | Comment counts on board cards (sprint taskboard + kanban, every `.wit-card` with a numeric id in `.font-weight-semibold.selectable-text`): a "💬 n" chip right-aligned on the id line, only when n > 0. Counts via REST `_apis/wit/workitems?ids=…&fields=System.CommentCount` (200-id batches), cached per session; failed chunks retry on a later settle, chips re-render after React re-mounts. |
 | `workitem-state` | Hotkey opens a state picker for the current work item; PATCHes via REST. |
 
-## Features (Phase 2, in progress)
+## Features — pull requests
 
 | Feature | What it does |
 |---|---|
@@ -394,3 +411,21 @@ wiring flags — that lasts the page lifetime by design.)
   memory, boards-hub path/scope helpers) and `src/features/workitem/`
   (English-UI label matches + string transforms in `fields.ts`, the
   teleport-edit machinery in `teleport.ts`) — all with colocated tests.
+
+## Releasing
+
+Every version is a git tag; a public release is that tag plus the built
+script attached:
+
+```sh
+pnpm build
+gh release create vX.Y.Z dist/ado-unfuck.user.js --title vX.Y.Z --notes "see commit messages"
+```
+
+The banner's `@updateURL`/`@downloadURL` point at
+`releases/latest/download/ado-unfuck.user.js`, so installed scripts follow
+the newest release automatically.
+
+## License
+
+MIT — see [LICENSE](LICENSE).

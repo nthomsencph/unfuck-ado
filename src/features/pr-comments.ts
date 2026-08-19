@@ -41,6 +41,10 @@ const CSS = `
 
 /* Menu material + items come from core's .adofix-surface / .adofix-menu-*. */
 .adofix-comments-menu { width: 260px; overflow: hidden; }
+
+/* ADO's own fluent icon font (glyph classes verified live 2026-08-19). */
+.adofix-comments-icon { font-size: 14px; }
+.adofix-comments-icon:not(:only-child) { margin-right: 6px; }
 `;
 
 /** "0/2 comments resolved" → { resolved: 0, total: 2 }; anything else → null. */
@@ -56,12 +60,25 @@ function resolvedCounts(): { resolved: number; total: number } | null {
   return parseResolvedText(safeQuery<HTMLElement>(RESOLVED_TEXT_SELECTOR)?.textContent);
 }
 
-/** "💬 n/m" for native comments, "✎ k" appended while local drafts exist. */
-function buttonLabel(): string {
+/** Fluent comment glyph + "n/m" for native comments, "· k" local drafts. */
+function renderButtonLabel(btn: HTMLButtonElement): void {
   const counts = resolvedCounts();
-  const base = counts ? `💬 ${counts.resolved}/${counts.total}` : "💬";
   const drafts = draftsCount();
-  return drafts > 0 ? `${base} ✎ ${drafts}` : base;
+  const text = [
+    counts ? `${counts.resolved}/${counts.total}` : "",
+    drafts > 0 ? `· ${drafts}` : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const icon = document.createElement("span");
+  icon.className = "fabric-icon ms-Icon--Comment adofix-comments-icon";
+  icon.setAttribute("aria-hidden", "true");
+  btn.replaceChildren(icon);
+  if (text) btn.append(text);
+  btn.title =
+    "Comments — resolved count, filters and drafts" +
+    (drafts > 0 ? `; ${drafts} local draft${drafts === 1 ? "" : "s"}` : "") +
+    " (ado-unfuck)";
 }
 
 function openMenu(anchor: HTMLElement): void {
@@ -124,7 +141,6 @@ export const prComments: Feature = {
       btn.type = "button";
       btn.setAttribute("data-adofix", `${FEATURE_ID}-toggle`);
       btn.className = `${TOOLBAR_BUTTON_CLASSES} adofix-toggle`;
-      btn.title = "Comments — resolved count, filters and drafts (ado-unfuck)";
       const ownBtn = btn;
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
@@ -133,6 +149,6 @@ export const prComments: Feature = {
       });
       toolbar.appendChild(btn);
     }
-    btn.textContent = buttonLabel();
+    renderButtonLabel(btn);
   },
 };

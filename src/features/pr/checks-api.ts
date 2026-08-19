@@ -1,4 +1,4 @@
-import { apiFetch, orgBase, type ApiResult } from "../../core/api";
+import { apiFetch, orgBase, projectBase, type ApiResult } from "../../core/api";
 import type { PrRef } from "./threads-api";
 
 /**
@@ -121,7 +121,7 @@ export async function fetchPolicyEvaluations(
     `vstfs:///CodeReview/CodeReviewId/${project.value}/${ref.prId}`
   );
   const res = await apiFetch<{ value?: RawPolicyEvaluation[] }>(
-    `${orgBase(ref.org)}/${encodeURIComponent(ref.project)}/_apis/policy/evaluations` +
+    `${projectBase(ref)}/_apis/policy/evaluations` +
       `?artifactId=${artifactId}&api-version=7.1-preview.1`
   );
   if (!res.ok) return res;

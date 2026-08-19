@@ -1,4 +1,4 @@
-import { apiFetch, orgBase, type ApiResult } from "../../core/api";
+import { apiFetch, projectBase, type ApiResult } from "../../core/api";
 import type { PrRef } from "./threads-api";
 
 /**
@@ -148,10 +148,7 @@ const FILEDIFFS_BATCH_SIZE = 10;
 const FILEDIFFS_CONCURRENCY = 4;
 
 function repoApiBase(ref: PrRef): string {
-  return (
-    `${orgBase(ref.org)}/${encodeURIComponent(ref.project)}` +
-    `/_apis/git/repositories/${encodeURIComponent(ref.repo)}`
-  );
+  return `${projectBase(ref)}/_apis/git/repositories/${encodeURIComponent(ref.repo)}`;
 }
 
 export async function fetchDiffTotals(ref: PrRef): Promise<ApiResult<DiffTotals>> {

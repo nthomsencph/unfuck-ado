@@ -100,12 +100,32 @@ export function buildStatePatch(state: string): JsonPatchOp[] {
   return [{ op: "add", path: "/fields/System.State", value: state }];
 }
 
-function projectBase(ref: ProjectRef): string {
+/** Same-origin base for project-scoped REST paths. */
+export function projectBase(ref: ProjectRef): string {
   return `${orgBase(ref.org)}/${encodeURIComponent(ref.project)}`;
 }
 
-export function getWorkItem(ref: ProjectRef, id: string): Promise<ApiResult<WorkItem>> {
-  return apiFetch<WorkItem>(`${projectBase(ref)}/_apis/wit/workitems/${encodeURIComponent(id)}`);
+export function getWorkItem(
+  ref: ProjectRef,
+  id: string | number,
+  fields?: readonly string[]
+): Promise<ApiResult<WorkItem>> {
+  const query = fields?.length ? `?fields=${fields.map(encodeURIComponent).join(",")}` : "";
+  return apiFetch<WorkItem>(
+    `${projectBase(ref)}/_apis/wit/workitems/${encodeURIComponent(String(id))}${query}`
+  );
+}
+
+/** Batch read. ADO caps ids at 200 per call — callers chunk. */
+export function getWorkItems(
+  ref: ProjectRef,
+  ids: readonly number[],
+  fields: readonly string[]
+): Promise<ApiResult<{ count: number; value: WorkItem[] }>> {
+  return apiFetch(
+    `${projectBase(ref)}/_apis/wit/workitems?ids=${ids.join(",")}` +
+      `&fields=${fields.map(encodeURIComponent).join(",")}`
+  );
 }
 
 export function getWorkItemTypeStates(

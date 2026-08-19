@@ -1,4 +1,6 @@
 import type { Feature } from "../core/registry";
+import type { Route } from "../core/router";
+import { getWorkItem, type ProjectRef } from "../core/api";
 import { injectStyleOnce } from "../core/dom";
 import { log } from "../core/log";
 
@@ -61,20 +63,14 @@ export const workitemLayout: Feature = {
       });
     });
   },
-  apply(): void {
+  apply(route: Route): void {
     injectStyleOnce("workitem-layout", CSS);
-    enhance();
+    enhance(route.org && route.project ? { org: route.org, project: route.project } : null);
   },
 };
 
 const FEATURE_ID = "workitem-layout";
 const HOST_ID = "adofix-wi-details";
-
-/** "/{org}/{project}/…" → REST base, from the encoded pathname. */
-function restBase(): string | null {
-  const seg = location.pathname.split("/").filter(Boolean);
-  return seg.length >= 2 ? `${location.origin}/${seg[0]}/${seg[1]}` : null;
-}
 
 /** Work item id: full page /_workitems/edit/{id} or dialog ?workitem={id}. */
 function workItemId(): number | null {
@@ -90,34 +86,30 @@ interface CreatedInfo {
 }
 const createdCache = new Map<number, CreatedInfo | "pending" | "failed">();
 
-function ensureCreated(id: number): void {
+function ensureCreated(id: number, ref: ProjectRef): void {
   if (createdCache.has(id)) return;
-  const base = restBase();
-  if (!base) return;
   createdCache.set(id, "pending");
-  fetch(
-    `${base}/_apis/wit/workitems/${id}?fields=System.CreatedBy,System.CreatedDate&api-version=7.1`,
-    { headers: { Accept: "application/json" }, credentials: "include" }
-  )
-    .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-    .then((j) => {
-      const by = j.fields?.["System.CreatedBy"]?.displayName ?? "?";
-      const raw = j.fields?.["System.CreatedDate"];
-      const date = raw
-        ? new Date(raw).toLocaleDateString(undefined, {
-            day: "numeric",
-            month: "short",
-            year: "numeric",
-          })
-        : "?";
-      createdCache.set(id, { by, date });
-      // The fetch resolves between settles — patch the mounted rows now.
-      renderCreated(id);
-    })
-    .catch((err) => {
+  void getWorkItem(ref, id, ["System.CreatedBy", "System.CreatedDate"]).then((res) => {
+    if (!res.ok) {
       createdCache.set(id, "failed");
-      log(FEATURE_ID, "created-by fetch failed", err);
-    });
+      log(FEATURE_ID, "created-by fetch failed", res.error.message);
+      return;
+    }
+    const fields = res.value.fields;
+    const by =
+      (fields["System.CreatedBy"] as { displayName?: string } | undefined)?.displayName ?? "?";
+    const raw = fields["System.CreatedDate"] as string | undefined;
+    const date = raw
+      ? new Date(raw).toLocaleDateString(undefined, {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        })
+      : "?";
+    createdCache.set(id, { by, date });
+    // The fetch resolves between settles — patch the mounted rows now.
+    renderCreated(id);
+  });
 }
 
 function renderCreated(id: number): void {
@@ -450,7 +442,7 @@ function placeHeaderControls(): void {
 }
 
 /** MUST stay idempotent — runs on every route change and DOM settle. */
-function enhance(): void {
+function enhance(ref: ProjectRef | null): void {
   // Before the rail check: on the Attachments view the rail is unmounted,
   // but the proxy's count/active state still needs refreshing.
   ensureAttachmentsProxy();
@@ -480,7 +472,7 @@ function enhance(): void {
   const rows = collectRows();
   if (!rows) return;
   const id = workItemId();
-  if (id !== null) ensureCreated(id);
+  if (id !== null && ref) ensureCreated(id, ref);
 
   const snapshot = JSON.stringify(rows.map((r) => [r.key, r.value, r.dotColor]));
   let host = document.getElementById(HOST_ID);

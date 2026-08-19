@@ -1,4 +1,4 @@
-import { apiFetch, orgBase, type ApiResult } from "../../core/api";
+import { apiFetch, orgBase, projectBase, type ApiResult } from "../../core/api";
 import type { PrRef } from "./threads-api";
 
 /**
@@ -54,8 +54,7 @@ async function resolveRepoId(ref: PrRef): Promise<ApiResult<string>> {
   const cached = repoIdCache.get(cacheKey);
   if (cached) return { ok: true, value: cached };
   const res = await apiFetch<{ id: string }>(
-    `${orgBase(ref.org)}/${encodeURIComponent(ref.project)}` +
-      `/_apis/git/repositories/${encodeURIComponent(ref.repo)}`
+    `${projectBase(ref)}/_apis/git/repositories/${encodeURIComponent(ref.repo)}`
   );
   if (!res.ok) return res;
   repoIdCache.set(cacheKey, res.value.id);

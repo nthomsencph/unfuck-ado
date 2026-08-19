@@ -1,4 +1,4 @@
-import { apiFetch, orgBase, type ApiResult, type ProjectRef } from "../../core/api";
+import { apiFetch, projectBase, type ApiResult, type ProjectRef } from "../../core/api";
 
 /** Everything needed to address one PR through the REST API. */
 export interface PrRef extends ProjectRef {
@@ -74,7 +74,7 @@ export function createThread(
   input: NewThreadInput
 ): Promise<ApiResult<{ id: number }>> {
   return apiFetch(
-    `${orgBase(ref.org)}/${encodeURIComponent(ref.project)}/_apis/git/repositories/${encodeURIComponent(ref.repo)}/pullRequests/${encodeURIComponent(ref.prId)}/threads`,
+    `${projectBase(ref)}/_apis/git/repositories/${encodeURIComponent(ref.repo)}/pullRequests/${encodeURIComponent(ref.prId)}/threads`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },

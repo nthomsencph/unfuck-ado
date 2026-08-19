@@ -1,5 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { apiFetch, buildStatePatch, orgBase, setWorkItemState } from "./api";
+import {
+  apiFetch,
+  buildStatePatch,
+  getWorkItem,
+  getWorkItems,
+  orgBase,
+  projectBase,
+  setWorkItemState,
+} from "./api";
 
 interface MockResponseInit {
   status?: number;
@@ -61,6 +69,41 @@ describe("apiFetch", () => {
     vi.stubGlobal("fetch", vi.fn(async () => Promise.reject(new Error("offline"))));
     const result = await apiFetch("/o/p/_apis/x");
     expect(result).toEqual({ ok: false, error: { status: 0, message: "offline" } });
+  });
+});
+
+describe("projectBase", () => {
+  it("encodes the project and joins it to the org base", () => {
+    expect(projectBase({ org: "myorg", project: "My Project" })).toBe("/myorg/My%20Project");
+  });
+});
+
+describe("getWorkItem", () => {
+  it("appends a fields query when fields are given", async () => {
+    const fetchMock = stubFetch(mockResponse({ body: { id: 7, fields: {} } }));
+    await getWorkItem({ org: "o", project: "p" }, 7, ["System.CreatedBy", "System.CreatedDate"]);
+    const [url] = fetchMock.mock.calls[0]! as unknown as [string];
+    expect(url).toBe(
+      "/o/p/_apis/wit/workitems/7?fields=System.CreatedBy,System.CreatedDate&api-version=7.1"
+    );
+  });
+
+  it("omits the query without fields", async () => {
+    const fetchMock = stubFetch(mockResponse({ body: { id: 7, fields: {} } }));
+    await getWorkItem({ org: "o", project: "p" }, "7");
+    const [url] = fetchMock.mock.calls[0]! as unknown as [string];
+    expect(url).toBe("/o/p/_apis/wit/workitems/7?api-version=7.1");
+  });
+});
+
+describe("getWorkItems", () => {
+  it("builds the batch url from ids and fields", async () => {
+    const fetchMock = stubFetch(mockResponse({ body: { count: 0, value: [] } }));
+    await getWorkItems({ org: "o", project: "p" }, [1, 2, 3], ["System.CommentCount"]);
+    const [url] = fetchMock.mock.calls[0]! as unknown as [string];
+    expect(url).toBe(
+      "/o/p/_apis/wit/workitems?ids=1,2,3&fields=System.CommentCount&api-version=7.1"
+    );
   });
 });
 

@@ -1,4 +1,6 @@
 import type { Feature } from "../core/registry";
+import type { Route } from "../core/router";
+import { getWorkItems, type ProjectRef } from "../core/api";
 import { injectStyleOnce } from "../core/dom";
 import { log } from "../core/log";
 
@@ -21,9 +23,9 @@ import { log } from "../core/log";
 export const cardComments: Feature = {
   id: "card-comments",
   areas: "*",
-  apply(): void {
+  apply(route: Route): void {
     injectStyleOnce("card-comments", CSS);
-    enhance();
+    enhance(route.org && route.project ? { org: route.org, project: route.project } : null);
   },
 };
 
@@ -34,43 +36,33 @@ const BATCH = 200;
 /** id -> comment count; "pending" while a batch containing it is in flight. */
 const counts = new Map<number, number | "pending">();
 
-function restBase(): string | null {
-  const seg = location.pathname.split("/").filter(Boolean);
-  return seg.length >= 2 ? `${location.origin}/${seg[0]}/${seg[1]}` : null;
-}
-
 function cardId(card: Element): number | null {
   const el = card.querySelector(".font-weight-semibold.selectable-text");
   const n = Number(el?.textContent?.trim());
   return Number.isInteger(n) && n > 0 ? n : null;
 }
 
-function fetchCounts(ids: number[]): void {
-  const base = restBase();
-  if (!base) return;
+function fetchCounts(ids: number[], ref: ProjectRef): void {
   for (const id of ids) counts.set(id, "pending");
   for (let i = 0; i < ids.length; i += BATCH) {
     const chunk = ids.slice(i, i + BATCH);
-    fetch(
-      `${base}/_apis/wit/workitems?ids=${chunk.join(",")}&fields=System.CommentCount&api-version=7.1`,
-      { headers: { Accept: "application/json" }, credentials: "include" }
-    )
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-      .then((j: { value?: Array<{ id: number; fields?: Record<string, number> }> }) => {
-        for (const item of j.value ?? []) {
-          counts.set(item.id, item.fields?.["System.CommentCount"] ?? 0);
-        }
-        // Deleted/permission-filtered ids never come back — stop retrying.
-        for (const id of chunk) {
-          if (counts.get(id) === "pending") counts.set(id, 0);
-        }
-        render();
-      })
-      .catch((err) => {
+    void getWorkItems(ref, chunk, ["System.CommentCount"]).then((res) => {
+      if (!res.ok) {
         // Forget the chunk so a later settle can retry.
         for (const id of chunk) counts.delete(id);
-        log(FEATURE_ID, "comment-count fetch failed", err);
-      });
+        log(FEATURE_ID, "comment-count fetch failed", res.error.message);
+        return;
+      }
+      for (const item of res.value.value ?? []) {
+        const n = item.fields["System.CommentCount"];
+        counts.set(item.id, typeof n === "number" ? n : 0);
+      }
+      // Deleted/permission-filtered ids never come back — stop retrying.
+      for (const id of chunk) {
+        if (counts.get(id) === "pending") counts.set(id, 0);
+      }
+      render();
+    });
   }
 }
 
@@ -103,7 +95,7 @@ function render(): void {
 }
 
 /** MUST stay idempotent — runs on every route change and DOM settle. */
-function enhance(): void {
+function enhance(ref: ProjectRef | null): void {
   const cards = document.querySelectorAll(".wit-card");
   if (cards.length === 0) return;
   const unknown: number[] = [];
@@ -111,7 +103,7 @@ function enhance(): void {
     const id = cardId(card);
     if (id !== null && !counts.has(id)) unknown.push(id);
   }
-  if (unknown.length > 0) fetchCounts(unknown);
+  if (unknown.length > 0 && ref) fetchCounts(unknown, ref);
   render();
 }
 

@@ -141,13 +141,18 @@ function teleport(native: HTMLElement, row: HTMLElement): void {
   // min-height/auto let tall controls cover the row below.
   const rowRect = row.getBoundingClientRect();
   const valRect = (row.querySelector(".adofix-wi-kv-value") ?? row).getBoundingClientRect();
+  // Block rows (tags) anchor on the value block itself; inline rows take
+  // the value column's x/width with the row's y/height.
+  const block = row.classList.contains("adofix-wi-kv--block");
+  const top = block ? valRect.top : rowRect.top;
+  const height = Math.max(block ? valRect.height : rowRect.height, 28);
   native.classList.add("adofix-wi-teleport");
   const s = native.style;
   s.setProperty("position", "fixed", "important");
   s.setProperty("left", `${valRect.left}px`, "important");
-  s.setProperty("top", `${rowRect.top}px`, "important");
+  s.setProperty("top", `${top}px`, "important");
   s.setProperty("width", `${valRect.width}px`, "important");
-  s.setProperty("height", `${rowRect.height}px`, "important");
+  s.setProperty("height", `${height}px`, "important");
   s.setProperty("min-height", "0", "important");
   /* VISIBLE while editing: the live control replaces the row in place —
      fields without a callout (e.g. Story Points) are typed into directly. */
@@ -220,6 +225,8 @@ interface DetailRow {
   value: string;
   dotColor?: string;
   native?: HTMLElement;
+  /** Tag names — rendered as a block row (label line, pills below). */
+  tags?: string[];
 }
 
 /** The subheader's two field columns (everything but the tabbar). */
@@ -296,17 +303,6 @@ function collectRows(): DetailRow[] | null {
     }
   }
 
-  const tagPicker = document.querySelector<HTMLElement>(
-    ".work-item-form-header .work-item-tag-picker"
-  );
-  if (tagPicker) {
-    const tags = [...tagPicker.querySelectorAll(".bolt-pill-content, .tag-item")]
-      .map((t) => t.textContent?.trim() ?? "")
-      .filter(Boolean)
-      .join(", ");
-    rows.push({ key: "tags", label: "Tags", value: tags || "—", native: tagPicker });
-  }
-
   const id = workItemId();
   const info = id !== null ? createdCache.get(id) : undefined;
   const created = info && info !== "pending" && info !== "failed" ? info : null;
@@ -323,6 +319,24 @@ function collectRows(): DetailRow[] | null {
       key: "updated",
       label: "Updated",
       value: updText.replace(/^Updated by /, "").replace(/:\s*/, ", "),
+    });
+  }
+
+  // Tags LAST, as a block (label line, pills below) — inherently a list,
+  // not a key: value pair (user 2026-08-18).
+  const tagPicker = document.querySelector<HTMLElement>(
+    ".work-item-form-header .work-item-tag-picker"
+  );
+  if (tagPicker) {
+    const tags = [...tagPicker.querySelectorAll(".bolt-pill-content, .tag-item")]
+      .map((t) => t.textContent?.trim() ?? "")
+      .filter(Boolean);
+    rows.push({
+      key: "tags",
+      label: "Tags",
+      value: tags.join(", ") || "—",
+      tags,
+      native: tagPicker,
     });
   }
   return rows;
@@ -397,7 +411,7 @@ function enhance(): void {
 
   for (const row of rows) {
     const el = document.createElement("div");
-    el.className = "adofix-wi-kv";
+    el.className = row.tags ? "adofix-wi-kv adofix-wi-kv--block" : "adofix-wi-kv";
     el.dataset.adofixKv = row.key;
     const label = document.createElement("span");
     label.className = "adofix-wi-kv-label";
@@ -410,7 +424,17 @@ function enhance(): void {
       dot.style.backgroundColor = row.dotColor;
       value.append(dot);
     }
-    value.append(document.createTextNode(row.value));
+    if (row.tags) {
+      if (row.tags.length === 0) value.append(document.createTextNode("—"));
+      for (const tag of row.tags) {
+        const pill = document.createElement("span");
+        pill.className = "adofix-wi-tag";
+        pill.textContent = tag;
+        value.append(pill);
+      }
+    } else {
+      value.append(document.createTextNode(row.value));
+    }
     el.append(label, value);
     if (row.native) {
       const native = row.native;
@@ -434,22 +458,40 @@ const CSS = `
   max-width: 1250px !important;
   margin: 0 auto !important;
 }
-/* One main column + a 320px rail, capped and centered like a GH issue. */
+/* One main column + a 320px rail, capped and centered like a GH issue.
+   The rail width is INVARIANT: on resize the description/discussion
+   column gives way (minmax(0,1fr) shrinks below content size), never the
+   metadata rail (user 2026-08-18). Wide description content (code blocks)
+   scrolls inside its own box instead of widening the column, and the grid
+   keeps 16px of air on the right. */
 .work-item-grid {
   grid-template-columns: minmax(0, 1fr) 320px !important;
   max-width: 1250px !important;
   margin: 0 auto !important;
+  padding-right: 16px !important;
+  box-sizing: border-box !important;
 }
 .work-item-form-first-section {
   grid-area: 1 / 1 / 2 / 2 !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow-x: hidden;
 }
 .work-item-form-discussion {
   grid-area: 2 / 1 / 3 / 2 !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow-x: hidden;
+}
+.work-item-form-page .html-editor .rooster-editor {
+  overflow-x: auto !important;
 }
 .work-item-form-right {
   grid-area: 1 / 2 / 3 / 3 !important;
   flex-direction: column !important;
   flex-wrap: nowrap !important;
+  width: 320px !important;
+  min-width: 320px !important;
 }
 .work-item-form-right .work-item-form-section {
   width: 100% !important;
@@ -614,5 +656,28 @@ button.work-item-form-toggle[aria-label^="Maximize"] {
   height: 10px;
   border-radius: 50%;
   flex-shrink: 0;
+}
+/* Tags: a block at the list's end — label line, pills wrapping below. */
+.adofix-wi-kv--block {
+  display: block;
+  min-height: 0;
+  padding: 6px 0 2px;
+}
+.adofix-wi-kv--block .adofix-wi-kv-label {
+  display: block;
+  margin-bottom: 6px;
+}
+.adofix-wi-kv--block .adofix-wi-kv-value {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  white-space: normal;
+  overflow: visible;
+}
+.adofix-wi-tag {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 2px 10px;
+  font-size: 12px;
 }
 `;

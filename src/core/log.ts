@@ -7,10 +7,6 @@ try {
   // storage unavailable — stay silent
 }
 
-export function setLogEnabled(value: boolean): void {
-  enabled = value;
-}
-
 export function log(ns: string, ...args: unknown[]): void {
   if (enabled) console.log(`${PREFIX}[${ns}]`, ...args);
 }

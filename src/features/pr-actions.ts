@@ -121,9 +121,4 @@ export const prActions: Feature = {
     // Capture phase: runs even though bolt stops propagation of menu clicks.
     document.addEventListener("click", onDocumentClick, true);
   },
-  dispose(): void {
-    if (!wired) return;
-    wired = false;
-    document.removeEventListener("click", onDocumentClick, true);
-  },
 };

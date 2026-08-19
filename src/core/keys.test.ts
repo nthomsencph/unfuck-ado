@@ -91,18 +91,6 @@ describe("hotkey dispatch", () => {
     expect(handler).toHaveBeenCalledTimes(1);
   });
 
-  it("user overrides beat the default key", () => {
-    const handler = vi.fn();
-    const h = freshHotkeys();
-    h.register(reg(handler));
-    h.setBindings({ "test.fire": "y" });
-
-    document.body.dispatchEvent(key({ key: "x" }));
-    expect(handler).not.toHaveBeenCalled();
-    document.body.dispatchEvent(key({ key: "y" }));
-    expect(handler).toHaveBeenCalledTimes(1);
-  });
-
   it("respects the registration's areas against the current route", () => {
     const handler = vi.fn();
     freshHotkeys("boards").register(reg(handler, ["repos-pr"]));
@@ -134,11 +122,5 @@ describe("hotkey dispatch", () => {
     document.body.appendChild(modal);
     child.dispatchEvent(key({ key: "x" }));
     expect(handler).not.toHaveBeenCalled();
-  });
-
-  it("lists registrations for the config panel", () => {
-    const h = freshHotkeys();
-    h.register(reg(() => {}));
-    expect(h.list().map((r) => r.action)).toEqual(["test.fire"]);
   });
 });

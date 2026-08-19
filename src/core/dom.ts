@@ -25,39 +25,6 @@ export function safeQueryAll<T extends Element = HTMLElement>(
   }
 }
 
-function cssEscape(value: string): string {
-  return value.replace(/["\\]/g, "\\$&");
-}
-
-export function findByAriaLabel(
-  label: string,
-  root: ParentNode = document,
-  exact = true
-): HTMLElement | null {
-  const op = exact ? "=" : "*=";
-  return safeQuery<HTMLElement>(`[aria-label${op}"${cssEscape(label)}"]`, root);
-}
-
-export function findByText(
-  text: string,
-  selector = "button, a, span, div",
-  root: ParentNode = document
-): HTMLElement | null {
-  const wanted = text.trim();
-  for (const el of safeQueryAll<HTMLElement>(selector, root)) {
-    if (el.textContent?.trim() === wanted) return el;
-  }
-  return null;
-}
-
-export function isApplied(el: Element, featureId: string): boolean {
-  return el.getAttribute(ADOFIX_ATTR) === featureId;
-}
-
-export function markApplied(el: Element, featureId: string): void {
-  el.setAttribute(ADOFIX_ATTR, featureId);
-}
-
 /**
  * Bolt-styled subtle icon-only toolbar button: a fresh button carrying
  * bolt's classes (fixed list, not a clone, so no transient state — active

@@ -92,20 +92,3 @@ export function getThreadStatus(el: HTMLElement): ThreadStatus {
   return "unknown"; // collapsed sites carry no status in the DOM
 }
 
-export function isThreadResolved(el: HTMLElement): boolean {
-  return getThreadStatus(el) === "resolved";
-}
-
-/**
- * REST thread id for an expanded thread, or null when collapsed/absent.
- * Phase 2's bridge from DOM to the threads API.
- */
-export function getThreadId(el: HTMLElement): number | null {
-  const carrier = safeQuery<HTMLElement>(THREAD_SELECTORS.threadIdCarrier, el);
-  if (!carrier) return null;
-  for (const cls of carrier.classList) {
-    const m = /^threadId-(\d+)$/.exec(cls);
-    if (m) return Number(m[1]);
-  }
-  return null;
-}

@@ -321,17 +321,19 @@ Remaining unverified (inert if wrong): swimlane header rules in `density.css`
 English ADO UI.
 
 After an ADO UI update breaks something: re-verify the constants in
-`THREAD_SELECTORS` / `KEYNAV_SELECTORS` / `FILTER_SELECTORS` / `density.css`,
+`THREAD_SELECTORS` / `KEYNAV_SELECTORS` / `density.css`,
 preferring `aria-label` / `role` / `data-*` / semantic class names — never
 generated class hashes — and update the date in the comment.
 
 ## Architecture
 
-Core modules are factories composed once in `main.ts` — no module-level
-mutable state; tests construct fresh instances.
+Core modules are factories composed once in `main.ts`; tests construct fresh
+instances. (Feature files DO hold module-level session state — fetch caches,
+wiring flags — that lasts the page lifetime by design.)
 
-- `src/main.ts` — bootstrap: `createRouter()` + `createHotkeys()` +
-  `createRegistry()`, registers features, wires the observer.
+- `src/main.ts` — bootstrap: injects the base token/surface sheet, then
+  `createRouter()` + `createHotkeys()` + `createRegistry()`, registers
+  features, wires the observer.
 - `src/core/router.ts` — `createRouter()`: patches
   `pushState`/`replaceState` + `popstate` behind a single update path that
   owns change-detection and notification. The observer calls `recheck()` on
@@ -341,13 +343,31 @@ mutable state; tests construct fresh instances.
 - `src/core/registry.ts` — the `Feature` contract: optional `init(ctx)` runs
   exactly once at registration (one-time setup, hotkeys via `ctx.hotkey` with
   auto-prefixed action ids and inherited areas); `apply(route)` is idempotent
-  per-settle work (injected nodes marked `data-adofix="<feature-id>"`).
+  per-settle work — each feature guards re-entry by querying for its own
+  injected nodes (`data-adofix` marks adofix stylesheets and singletons).
   `applyAll()` guards every feature — one broken feature never kills the rest.
+- `src/core/dom.ts` — `injectStyleOnce`/`setStyle` (self-healing re-append
+  when ADO's lazy-loaded sheets land after ours), the base token +
+  `.adofix-surface` sheet (`injectBaseStyle`), `stubHide` (the zero-size
+  visibility-hidden stub recipe), `makeToolbarButton`/`makeCommandProxy`,
+  `ensureText`, `safeQuery`, `showToast`.
 - `src/core/api.ts` — typed same-origin REST wrappers, `api-version=7.1`,
   errors returned as values (Phase 2 needs partial-failure handling);
-  `(org, project)` travels as a `ProjectRef`.
+  `(org, project)` travels as a `ProjectRef`; `projectBase` is the one
+  builder of project-scoped paths (legacy visualstudio.com-safe).
+- `src/core/fetch-cache.ts` — the fetch-once/latch-failure state machine
+  every REST feature caches through (the v0.6.0 request-flood guard);
+  failure policy per cache: latch (default) or retry.
+- `src/core/popover.ts` — the shared light-dismiss menu (outside-mousedown,
+  Escape, arrow roving, `data-adofix-modal` hotkey suspension) with
+  `menuItem`/`menuStatus`/`menuDivider` building blocks.
 - `src/core/storage.ts` — the only caller of `GM_getValue`/`GM_setValue`;
   namespaced keys (`adofix.<feature>.<key>`) with a schema version envelope.
 - `src/core/keys.ts` — `createHotkeys()`: single capture-phase keydown
   listener; ignores inputs/contenteditable and adofix modals; default keys
-  live on registrations, user overrides overlay them.
+  live on the registrations.
+- Shared feature modules mirror `src/features/pr/`:
+  `src/features/boards/` (filter parsing, status formatting, unfiltered-total
+  memory, boards-hub path/scope helpers) and `src/features/workitem/`
+  (English-UI label matches + string transforms in `fields.ts`, the
+  teleport-edit machinery in `teleport.ts`) — all with colocated tests.

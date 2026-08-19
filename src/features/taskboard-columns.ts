@@ -452,7 +452,4 @@ export const taskboardColumns: Feature = {
     ensureButton(key);
     applyCounts();
   },
-  dispose(): void {
-    if (isPopoverOpen(MENU_ATTR)) closePopover();
-  },
 };

@@ -552,11 +552,8 @@ div.padding-vertical-16:has(> .vss-FilterBar) {
   background: var(--adofix-card) !important;
   border-radius: var(--adofix-radius) !important;
 }
-.deployments-zero-data,
-.links-control-zero-state {
-  background: var(--adofix-card) !important;
-  border-radius: var(--adofix-radius) !important;
-}
+/* (.deployments-zero-data / .links-control-zero-state card styling removed:
+   workitem-layout hides both containers outright, so the rules were dead.) */
 
 /*
  * Kanban board joins the layered theme (verified live 2026-08-18): canvas

@@ -13,13 +13,6 @@ export interface HotkeyRegistration {
 
 export interface Hotkeys {
   register(reg: HotkeyRegistration): void;
-  /**
-   * User overrides, action -> combo. The single hook Phase 3's config panel
-   * needs; defaults always come from the registrations themselves.
-   */
-  setBindings(overrides: Record<string, string>): void;
-  /** All registrations — Phase 3's config panel enumerates hotkeys from here. */
-  list(): ReadonlyArray<HotkeyRegistration>;
   install(): void;
   uninstall(): void;
 }
@@ -50,11 +43,10 @@ export function isEditableTarget(target: EventTarget | null): boolean {
 
 export function createHotkeys(getRoute: () => Route): Hotkeys {
   const registrations = new Map<string, HotkeyRegistration>();
-  let overrides: Record<string, string> = {};
   let installed = false;
 
   const bindingFor = (action: string): string | undefined =>
-    overrides[action] ?? registrations.get(action)?.defaultKey;
+    registrations.get(action)?.defaultKey;
 
   const onKeydown = (e: KeyboardEvent): void => {
     if (e.defaultPrevented) return;
@@ -78,12 +70,6 @@ export function createHotkeys(getRoute: () => Route): Hotkeys {
   return {
     register(reg) {
       registrations.set(reg.action, reg);
-    },
-    setBindings(o) {
-      overrides = { ...o };
-    },
-    list() {
-      return [...registrations.values()];
     },
     install() {
       if (installed) return;

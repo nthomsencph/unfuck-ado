@@ -15,8 +15,6 @@ const route = (area: Route["area"]): Route => ({
 function stubHotkeys(): Hotkeys {
   return {
     register: vi.fn(),
-    setBindings: vi.fn(),
-    list: () => [],
     install: vi.fn(),
     uninstall: vi.fn(),
   };

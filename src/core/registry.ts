@@ -23,14 +23,12 @@ export interface Feature {
   init?(ctx: FeatureContext): void;
   /** MUST be idempotent, MUST NOT throw upward (registry guards anyway). */
   apply(route: Route): void;
-  dispose?(): void;
 }
 
 export interface Registry {
   register(feature: Feature): void;
   /** Runs on every route change and every debounced DOM settle. */
   applyAll(route: Route): void;
-  disposeAll(): void;
 }
 
 export function createRegistry(hotkeys: Hotkeys, getRoute: () => Route): Registry {
@@ -66,15 +64,6 @@ export function createRegistry(hotkeys: Hotkeys, getRoute: () => Route): Registr
           feature.apply(route);
         } catch (err) {
           warn(`feature "${feature.id}" failed to apply`, err);
-        }
-      }
-    },
-    disposeAll() {
-      for (const feature of features) {
-        try {
-          feature.dispose?.();
-        } catch (err) {
-          warn(`feature "${feature.id}" failed to dispose`, err);
         }
       }
     },

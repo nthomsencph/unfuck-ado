@@ -2,10 +2,8 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   classifyStatusText,
   getThreadElements,
-  getThreadId,
   getThreadStatus,
   isThreadExpanded,
-  isThreadResolved,
 } from "./threads";
 
 describe("classifyStatusText", () => {
@@ -132,18 +130,4 @@ describe("thread element lookup", () => {
     expect(getThreadStatus(makeCollapsedSite())).toBe("unknown");
   });
 
-  it("isThreadResolved only for confirmed resolved", () => {
-    expect(isThreadResolved(makeExpandedThread({ stateAria: "State button Resolved mode" }))).toBe(
-      true
-    );
-    expect(isThreadResolved(makeExpandedThread({ stateAria: "State button Active mode" }))).toBe(
-      false
-    );
-    expect(isThreadResolved(makeCollapsedSite())).toBe(false);
-  });
-
-  it("extracts the REST thread id from the reply input class", () => {
-    expect(getThreadId(makeExpandedThread({ threadId: 50661, inHost: true }))).toBe(50661);
-    expect(getThreadId(makeCollapsedSite())).toBeNull();
-  });
 });

@@ -128,16 +128,11 @@ th:has(> .adofix-col-count) {
 .taskboard-parent-cell .identity-display-name {
   white-space: normal !important;
 }
-/* Same surface language as the pr-comments menu. */
+/* Surface material comes from .adofix-surface (core BASE_CSS). */
 .adofix-columns-menu {
   position: fixed;
   z-index: 100000;
   min-width: 240px;
-  background: var(--callout-background-color, #201f1e);
-  color: var(--text-primary-color, #fff);
-  border: 1px solid var(--border-subtle-color, rgba(128, 128, 128, 0.25));
-  border-radius: var(--adofix-radius, 10px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
   padding: 6px;
   font-size: 13px;
 }
@@ -433,7 +428,7 @@ function openMenu(anchor: HTMLElement, key: string): void {
   closeMenu();
   const menu = document.createElement("div");
   menu.setAttribute(ADOFIX_ATTR, MENU_ATTR);
-  menu.className = "adofix-columns-menu";
+  menu.className = "adofix-columns-menu adofix-surface";
 
   const current = prefs(key);
   const cols = stateColumns(boardHeaders());

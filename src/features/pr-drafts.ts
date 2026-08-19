@@ -87,7 +87,9 @@ const CARD_ID_ATTR = "data-adofix-draft-id";
  * TEXT stays readable on both dark and light surfaces.
  */
 const DRAFTS_CSS = `
-.adofix-draft-card, .adofix-drafts-panel, .adofix-draft-capture, .adofix-file-comment {
+/* The panel gets --adofix-ink from .adofix-surface; these are inline (non-
+   surface) hosts that need it too. */
+.adofix-draft-card, .adofix-draft-capture, .adofix-file-comment {
   --adofix-ink: color-mix(in srgb, ${ACCENT} 62%, var(--text-primary-color, #201f1e));
 }
 
@@ -167,15 +169,11 @@ const DRAFTS_CSS = `
 .adofix-draft-inline-ta:focus { outline: none; border-color: ${ACCENT}; }
 
 /* -- drafts panel --------------------------------------------------------- */
+/* Surface material comes from .adofix-surface (core BASE_CSS). */
 .adofix-drafts-panel {
   position: fixed; top: 120px; right: 24px; width: 380px; max-height: 70vh;
   display: flex; flex-direction: column; overflow: hidden; z-index: 99999;
-  background: var(--callout-background-color, #fff);
-  color: var(--text-primary-color, #201f1e);
-  border: 1px solid var(--border-subtle-color, rgba(0, 0, 0, 0.08));
-  border-radius: var(--adofix-radius, 10px);
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.35), 0 16px 40px rgba(0, 0, 0, 0.45);
-  font-family: "Segoe UI", system-ui, sans-serif; font-size: 13px;
+  font-size: 13px;
 }
 .adofix-drafts-panel-head {
   display: flex; align-items: center; gap: 8px; padding: 10px 10px 10px 14px;
@@ -869,7 +867,7 @@ function renderPanel(): void {
   }
 
   const panel = document.createElement("div");
-  panel.className = "adofix-drafts-panel";
+  panel.className = "adofix-drafts-panel adofix-surface";
   panel.setAttribute("data-adofix", `${FEATURE_ID}-panel`);
   panel.setAttribute("data-adofix-modal", "");
 

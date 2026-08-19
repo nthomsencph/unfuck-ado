@@ -157,23 +157,59 @@ export function setStyle(featureId: string, css: string): void {
   if (sheet.textContent !== css) sheet.textContent = css;
 }
 
-/* Same surface language as the drafts UI: native ADO material, accent spine. */
+/*
+ * Shared design tokens + the elevated-surface recipe, injected once at boot
+ * (main.ts) — owned by core, not by a toggleable feature, because every
+ * feature's surfaces read these.
+ */
+const BASE_CSS = `
+/*
+ * --adofix-radius is THE corner radius for every adofix-styled container
+ * surface (cards, panels, menus, toasts) — change it here, not per-rule.
+ * Small controls (checkboxes, pills, badges) keep their own radii; those
+ * track control height, not surface language.
+ */
+:root {
+  --adofix-radius: 10px;
+  /* Near-black canvas with layered surfaces (user request 2026-08-18):
+     page < lane (grouping surfaces, e.g. board columns) < card. */
+  --adofix-bg: #141414;
+  --adofix-lane: #1d1c1b;
+  --adofix-card: #252423;
+}
+/*
+ * One recipe for every floating adofix panel (toast, menus, pickers, the
+ * drafts panel): ADO theme variables with dark fallbacks, resolved at the
+ * element — where ADO's theme vars are actually inherited; :root sits above
+ * them. --adofix-ink mixes the accent toward the theme's text color so
+ * accent text stays readable on both themes.
+ */
+.adofix-surface {
+  --adofix-ink: color-mix(in srgb, ${ACCENT} 62%, var(--text-primary-color, #fff));
+  background: var(--callout-background-color, #201f1e);
+  color: var(--text-primary-color, #fff);
+  border: 1px solid var(--border-subtle-color, rgba(128, 128, 128, 0.25));
+  border-radius: var(--adofix-radius);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  font-family: "Segoe UI", system-ui, sans-serif;
+}
+`;
+
+export function injectBaseStyle(): void {
+  injectStyleOnce("adofix-base", BASE_CSS);
+}
+
+/* Surface material comes from .adofix-surface; the accent spine is ours. */
 const TOAST_CSS = `
 .adofix-toast {
   position: fixed;
   bottom: 24px;
   left: 50%;
   transform: translateX(-50%);
-  background: var(--callout-background-color, #201f1e);
-  color: var(--text-primary-color, #fff);
-  border: 1px solid var(--border-subtle-color, rgba(0, 0, 0, 0.1));
   border-left: 3px solid ${ACCENT};
   padding: 9px 16px;
-  border-radius: var(--adofix-radius, 10px);
   z-index: 100000;
   font-size: 13px;
-  font-family: "Segoe UI", system-ui, sans-serif;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
 }
 `;
 
@@ -182,7 +218,7 @@ export function showToast(message: string, ms = 2500): void {
   safeQuery(`[${ADOFIX_ATTR}="toast-item"]`)?.remove();
   const el = document.createElement("div");
   el.setAttribute(ADOFIX_ATTR, "toast-item");
-  el.className = "adofix-toast";
+  el.className = "adofix-toast adofix-surface";
   el.textContent = message;
   document.body.appendChild(el);
   setTimeout(() => el.remove(), ms);

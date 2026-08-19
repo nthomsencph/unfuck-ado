@@ -31,15 +31,10 @@ const CSS = `
 .adofix-toggle[aria-pressed="true"] { background: #6b40ba !important; }
 .repos-compare-toolbar > .adofix-toggle:last-child { margin-right: 12px; }
 
-/* Same surface language as the drafts panel: native material, subtle rows. */
+/* Surface material comes from .adofix-surface (core BASE_CSS). */
 .adofix-comments-menu {
   position: fixed; width: 260px; z-index: 99999; overflow: hidden;
-  background: var(--callout-background-color, #fff);
-  color: var(--text-primary-color, #201f1e);
-  border: 1px solid var(--border-subtle-color, rgba(0, 0, 0, 0.08));
-  border-radius: var(--adofix-radius, 10px);
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.35), 0 16px 40px rgba(0, 0, 0, 0.45);
-  font-family: "Segoe UI", system-ui, sans-serif; font-size: 13px;
+  font-size: 13px;
   padding: 4px 0;
 }
 .adofix-comments-status {
@@ -58,13 +53,13 @@ const CSS = `
 .adofix-comments-item[disabled]:hover { background: transparent; }
 .adofix-comments-check {
   width: 14px; text-align: center; flex-shrink: 0;
-  color: color-mix(in srgb, ${ACCENT} 62%, var(--text-primary-color, #201f1e));
+  color: var(--adofix-ink);
   font-weight: 700;
 }
 .adofix-comments-count {
   margin-left: auto; font-size: 11px; font-weight: 700;
   background: rgba(130, 80, 223, 0.22);
-  color: color-mix(in srgb, ${ACCENT} 62%, var(--text-primary-color, #201f1e));
+  color: var(--adofix-ink);
   padding: 1px 8px; border-radius: 10px;
 }
 .adofix-comments-divider {
@@ -140,7 +135,7 @@ function openMenu(anchor: HTMLElement): void {
   closeMenu();
   const menu = document.createElement("div");
   menu.setAttribute("data-adofix", `${FEATURE_ID}-menu`);
-  menu.className = "adofix-comments-menu";
+  menu.className = "adofix-comments-menu adofix-surface";
 
   const counts = resolvedCounts();
   const status = document.createElement("div");

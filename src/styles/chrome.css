@@ -7,20 +7,9 @@
  * Kanban board title row 63px -> 41px; PR header 86px -> 72px.
  */
 
-/*
- * Shared design tokens. --adofix-radius is THE corner radius for every
- * adofix-styled container surface (cards, panels, menus, toasts) — change it
- * here, not per-rule. Small controls (checkboxes, pills, badges) keep their
- * own radii; those track control height, not surface language.
- */
-:root {
-  --adofix-radius: 10px;
-  /* Near-black canvas with layered surfaces (user request 2026-08-18):
-     page < lane (grouping surfaces, e.g. board columns) < card. */
-  --adofix-bg: #141414;
-  --adofix-lane: #1d1c1b;
-  --adofix-card: #252423;
-}
+/* Design tokens (--adofix-radius/bg/lane/card) live in core/dom's BASE_CSS,
+   injected at boot — NOT here: this sheet is a toggleable feature and every
+   other feature's surfaces read the tokens. */
 
 /*
  * The app canvas goes almost black on every page: main page containers, the

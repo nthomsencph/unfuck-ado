@@ -1,3 +1,4 @@
+import { injectBaseStyle } from "./core/dom";
 import { createRouter } from "./core/router";
 import { createHotkeys } from "./core/keys";
 import { createRegistry } from "./core/registry";
@@ -31,6 +32,10 @@ declare global {
 (function bootstrap(): void {
   if (window.__adofix) return;
   window.__adofix = true;
+
+  // Tokens + .adofix-surface before any feature sheet, so feature rules win
+  // equal-specificity ties against the recipe.
+  injectBaseStyle();
 
   const router = createRouter();
   const hotkeys = createHotkeys(() => router.current());

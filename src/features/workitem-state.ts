@@ -18,19 +18,18 @@ const PICKER_CSS = `
   justify-content: center;
   padding-top: 18vh;
 }
+/* Surface material comes from .adofix-surface (core BASE_CSS) — this block
+   was the one light-hardcoded surface in the repo and rendered as a white
+   box on ADO dark. */
 .adofix-picker {
-  background: #fff;
-  color: #201f1e;
   min-width: 280px;
-  border-radius: 6px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
   overflow: hidden;
 }
 .adofix-picker-title {
   padding: 10px 14px;
   font-weight: 600;
   font-size: 13px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border-subtle-color, rgba(128, 128, 128, 0.25));
 }
 .adofix-picker button {
   display: block;
@@ -39,11 +38,12 @@ const PICKER_CSS = `
   padding: 8px 14px;
   border: 0;
   background: transparent;
+  color: inherit;
+  font: inherit;
   cursor: pointer;
-  font-size: 13px;
 }
-.adofix-picker button:hover { background: #f3f2f1; }
-.adofix-picker button.adofix-selected { background: #deecf9; }
+.adofix-picker button:hover { background: rgba(128, 128, 128, 0.12); }
+.adofix-picker button.adofix-selected { background: rgba(130, 80, 223, 0.22); }
 `;
 
 function renderPicker(
@@ -62,7 +62,7 @@ function renderPicker(
   overlay.tabIndex = -1;
 
   const box = document.createElement("div");
-  box.className = "adofix-picker";
+  box.className = "adofix-picker adofix-surface";
   const title = document.createElement("div");
   title.className = "adofix-picker-title";
   title.textContent = "Set state";

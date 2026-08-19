@@ -5,12 +5,7 @@ import { log } from "../core/log";
 import { DRAFT_SELECTORS, sectionFilePath } from "./pr-drafts";
 import { prRefFromRoute, refKey, type PrRef } from "./pr/threads-api";
 import { patchViewed, viewedState } from "./pr/reviewed-data";
-import {
-  buildTreePaths,
-  mapTreeFiles,
-  readRenderedRows,
-  TREE_SELECTORS,
-} from "./pr/reviewed-tree";
+import { clickTreeCheckbox, mapTreeFiles } from "./pr/reviewed-tree";
 
 /**
  * Mirrors the file tree's "Mark as reviewed" checkbox into every stacked
@@ -55,140 +50,7 @@ const CSS = `
 // Display state comes from the shared live slot in pr/reviewed-data.
 
 let currentRef: PrRef | null = null;
-let treeKey: string | null = null;
-
-// ---- virtualized-tree sweep (toggle support for unrendered rows) ------------
-
-interface TreeIndexCache {
-  rowCount: number;
-  byPath: Map<string, number>;
-}
-
-let treeIndexCache: TreeIndexCache | null = null;
 let toggleBusy = false;
-
-function treeScroller(): HTMLElement | null {
-  return safeQuery<HTMLElement>(TREE_SELECTORS.scroller);
-}
-
-function treeRowCount(): number {
-  return Number(safeQuery(TREE_SELECTORS.table)?.getAttribute("aria-rowcount") ?? "0");
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-/** Estimated scroller offset of a flat-list row, derived from a rendered row. */
-function offsetForIndex(scroller: HTMLElement, index: number): number {
-  const rendered = readRenderedRows();
-  const sample = rendered[0];
-  if (!sample || sample.index < 0) return index * 35;
-  const sampleTop =
-    sample.row.getBoundingClientRect().top -
-    scroller.getBoundingClientRect().top +
-    scroller.scrollTop;
-  const second = rendered.find((r) => r.index > sample.index);
-  const rowHeight = second
-    ? Math.abs(
-        (second.row.getBoundingClientRect().top - sample.row.getBoundingClientRect().top) /
-          (second.index - sample.index)
-      )
-    : 35;
-  return sampleTop + (index - sample.index) * rowHeight;
-}
-
-/**
- * Scroll the tree top-to-bottom once, collecting (index, level, name, isFile)
- * for every row, and build the full path→index map. ~500 rows in ~31-row
- * windows is under twenty steps; the scroll position is restored afterwards.
- */
-async function sweepTreeIndex(): Promise<TreeIndexCache | null> {
-  const scroller = treeScroller();
-  const rowCount = treeRowCount();
-  if (!scroller || rowCount === 0) return null;
-  const savedTop = scroller.scrollTop;
-  const collected = new Map<number, { level: number; name: string; isFile: boolean }>();
-  try {
-    for (let guard = 0; guard < 100; guard++) {
-      for (const r of readRenderedRows()) {
-        if (r.index >= 0) collected.set(r.index, { level: r.level, name: r.name, isFile: r.isFile });
-      }
-      let firstMissing = -1;
-      for (let i = 0; i < rowCount; i++) {
-        if (!collected.has(i)) {
-          firstMissing = i;
-          break;
-        }
-      }
-      if (firstMissing < 0) break;
-      scroller.scrollTop = Math.max(0, offsetForIndex(scroller, firstMissing) - 40);
-      await delay(90);
-      if (!collected.has(firstMissing) && guard > 4) {
-        // No progress near the end (rowcount may include a trailing spacer);
-        // accept what we have if the tail is all that is missing.
-        const missingCount = rowCount - collected.size;
-        if (scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 5 && missingCount < 5) {
-          break;
-        }
-      }
-    }
-  } finally {
-    scroller.scrollTop = savedTop;
-  }
-  // Only the contiguous prefix from row 0 is provably parented; a mid-list
-  // gap (sweep aborted by the guard) would mis-parent everything after it.
-  const ordered = [...collected.entries()].sort((a, b) => a[0] - b[0]);
-  let contiguous = 0;
-  while (contiguous < ordered.length && ordered[contiguous]![0] === contiguous) contiguous++;
-  const prefix = ordered.slice(0, contiguous);
-  const paths = buildTreePaths(prefix.map(([, r]) => r));
-  const byPath = new Map<string, number>();
-  prefix.forEach(([index, r], i) => {
-    if (r.isFile) byPath.set(paths[i]!, index);
-  });
-  log(FEATURE_ID, `tree sweep: ${prefix.length}/${rowCount} rows mapped, ${byPath.size} files`);
-  return { rowCount, byPath };
-}
-
-async function getTreeIndex(): Promise<TreeIndexCache | null> {
-  // Expanding/collapsing folders renumbers the flat list — rowCount is the
-  // cheap staleness signal.
-  if (treeIndexCache && treeIndexCache.rowCount === treeRowCount()) return treeIndexCache;
-  treeIndexCache = await sweepTreeIndex();
-  return treeIndexCache;
-}
-
-/** Scroll the virtualized tree until the target row exists, then click its checkbox. */
-async function clickTreeCheckbox(path: string): Promise<boolean> {
-  const direct = mapTreeFiles().get(path);
-  if (direct?.checkbox) {
-    direct.checkbox.click();
-    return true;
-  }
-  const scroller = treeScroller();
-  const index = (await getTreeIndex())?.byPath.get(path);
-  if (!scroller || index === undefined) return false;
-  const savedTop = scroller.scrollTop;
-  try {
-    scroller.scrollTop = Math.max(0, offsetForIndex(scroller, index) - scroller.clientHeight / 2);
-    for (let tries = 0; tries < 20; tries++) {
-      await delay(80);
-      const row = safeQueryAll<HTMLElement>(TREE_SELECTORS.row).find(
-        (r) => r.getAttribute("data-row-index") === String(index)
-      );
-      const checkbox = row ? safeQuery<HTMLElement>(TREE_SELECTORS.checkbox, row) : null;
-      if (checkbox) {
-        checkbox.click();
-        await delay(120); // let ADO fire its persistence call before we scroll away
-        return true;
-      }
-    }
-    return false;
-  } finally {
-    scroller.scrollTop = savedTop;
-  }
-}
 
 // ---- header checkboxes ------------------------------------------------------
 
@@ -207,7 +69,7 @@ async function toggleReviewed(section: HTMLElement, box: HTMLElement): Promise<v
   box.classList.add("adofix-busy");
   try {
     const wasReviewed = box.getAttribute("aria-checked") === "true";
-    const clicked = await clickTreeCheckbox(path);
+    const clicked = currentRef ? await clickTreeCheckbox(refKey(currentRef), path) : false;
     if (!clicked) {
       showToast("Couldn't reach this file's tree row to mark it reviewed");
       return;
@@ -229,11 +91,6 @@ export const prReviewed: Feature = {
     injectStyleOnce(FEATURE_ID, CSS);
     const ref = prRefFromRoute(route);
     if (!ref) return;
-    const key = refKey(ref);
-    if (key !== treeKey) {
-      treeKey = key;
-      treeIndexCache = null;
-    }
     currentRef = ref;
     const sections = safeQueryAll<HTMLElement>(DRAFT_SELECTORS.fileSection);
     if (sections.length === 0) return;

@@ -6,7 +6,7 @@ import { log } from "../core/log";
 import { createThread, prRefFromRoute, type PrRef } from "./pr/threads-api";
 import { draftKey, loadDrafts, newDraftId, saveDrafts, type Draft } from "./pr/drafts-store";
 import { findDiffEditor, type MonacoEditor, type ViewZone } from "./pr/monaco";
-import { mapTreeFiles, TREE_SELECTORS } from "./pr/reviewed-tree";
+import { clickTreeFileRow, mapTreeFiles, TREE_SELECTORS } from "./pr/reviewed-tree";
 
 /**
  * ADO renders PR diffs with TWO different engines (both verified live
@@ -279,7 +279,7 @@ export function sectionFilePath(section: HTMLElement): string | null {
 }
 
 /** Single-file (Monaco) view: the open file's path from the breadcrumb. */
-function currentFilePath(): string | null {
+export function currentFilePath(): string | null {
   return pickFilePath(
     safeQueryAll<HTMLElement>(DRAFT_SELECTORS.pathText).map((e) => e.textContent)
   );
@@ -1107,43 +1107,16 @@ function revealDraftLine(draft: Draft): void {
   if (card) flashOutline(card);
 }
 
-/**
- * Click the file's tree row (SPA-switches to its single-file view — verified
- * live 2026-08-19; pushState+popstate does NOT drive ADO's router). The tree
- * is virtualized, so sweep-scroll from the top until the path maps to a
- * rendered row; the scroll position only needs restoring on failure — success
- * navigates and ADO re-scrolls the tree to the selected row itself.
- */
-async function clickTreeFile(path: string): Promise<boolean> {
-  const clickRow = (): boolean => {
-    const entry = mapTreeFiles().get(path);
-    if (!entry) return false;
-    entry.row.click();
-    return true;
-  };
-  if (clickRow()) return true;
-  const scroller = safeQuery<HTMLElement>(TREE_SELECTORS.scroller);
-  if (!scroller) return false;
-  const savedTop = scroller.scrollTop;
-  scroller.scrollTop = 0;
-  for (let step = 0; step < 40; step++) {
-    await new Promise((resolve) => setTimeout(resolve, 150));
-    if (clickRow()) return true;
-    if (scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 5) break;
-    scroller.scrollTop += Math.max(100, scroller.clientHeight * 0.8);
-  }
-  scroller.scrollTop = savedTop;
-  return false;
-}
-
 async function showDraft(draft: Draft): Promise<void> {
+  const key = currentKey;
+  if (!key) return;
   closePanel();
   if (safeQuery(DRAFT_SELECTORS.monacoRoot)) {
     if (currentFilePath() === draft.filePath) {
       revealDraftLine(draft);
       return;
     }
-    if (!(await clickTreeFile(draft.filePath))) {
+    if (!(await clickTreeFileRow(key, draft.filePath))) {
       showToast(`Couldn't find ${splitPath(draft.filePath).base} in the file tree`);
       return;
     }
@@ -1171,7 +1144,7 @@ async function showDraft(draft: Draft): Promise<void> {
     }
   }
   // Section virtualized away — the single-file view can always host it.
-  if (await clickTreeFile(draft.filePath)) {
+  if (await clickTreeFileRow(key, draft.filePath)) {
     await waitFor(() =>
       currentFilePath() === draft.filePath && findDiffEditor() ? true : null
     );

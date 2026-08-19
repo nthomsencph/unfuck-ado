@@ -456,6 +456,13 @@ function enhance(): void {
   ensureAttachmentsProxy();
   placeHeaderControls();
   placeStateField();
+  // "1 Comment" -> "1": icon + bare integer. Idempotent — React may
+  // restore the long text on re-render; the next settle trims it again.
+  const commentText = document.querySelector(".wif-comment-count-link-text");
+  if (commentText) {
+    const n = commentText.textContent?.match(/\d+/)?.[0];
+    if (n && commentText.textContent !== n) commentText.textContent = n;
+  }
   // Description loses its section header (and with it the 1px border and
   // the collapse affordance). Text-matched: the bug form's Repro Steps /
   // System Info headers in the same section keep theirs.
@@ -747,12 +754,12 @@ const CSS = `
   font-size: 18px;
   line-height: 1.2;
 }
-/* Header noise out (user 2026-08-18): Follow, the redundant comment-count
-   link (the discussion is right below), the History and Links tabs (Created
-   by/Created live in the rail; Related Work keeps Add link), and every
-   per-section Maximize toggle. */
+/* Header noise out (user 2026-08-18): Follow, the History and Links tabs
+   (Created by/Created live in the rail; Related Work keeps Add link), and
+   every per-section Maximize toggle. The comment-count link STAYS —
+   compacted to icon + integer (its text is trimmed in enhance();
+   2026-08-18 second thoughts). */
 .work-item-form-header .bolt-split-button:has(> #__bolt-follow),
-.wif-comment-count-link,
 .wif-tabbar [id$="-System_History"],
 .wif-tabbar [id$="-System_Links"],
 button.work-item-form-toggle[aria-label^="Maximize"] {

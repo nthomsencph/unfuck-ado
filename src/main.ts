@@ -7,6 +7,7 @@ import { backlogGrid } from "./features/backlog-grid";
 import { backlogStatus } from "./features/backlog-status";
 import { backlogToolbar } from "./features/backlog-toolbar";
 import { boardDensity } from "./features/board-density";
+import { cardComments } from "./features/card-comments";
 import { chromeDensity } from "./features/chrome-density";
 import { prActions } from "./features/pr-actions";
 import { prChecks } from "./features/pr-checks";
@@ -38,6 +39,7 @@ declare global {
   registry.register(boardDensity);
   registry.register(chromeDensity);
   registry.register(workitemLayout);
+  registry.register(cardComments);
   registry.register(backlogToolbar);
   registry.register(backlogGrid);
   registry.register(backlogStatus);
@@ -73,6 +75,6 @@ declare global {
   // debugging). Detail logging: localStorage.setItem("adofix.debug", "1").
   info(
     `ado-unfuck v${__ADOFIX_VERSION__} active`,
-    "— features: board-density, chrome-density, workitem-layout, backlog-toolbar, backlog-grid, backlog-status, sprint-header, taskboard-columns, pr-keynav, pr-thread-filter, pr-drafts, pr-reviewed, pr-diff-totals, pr-comments, pr-checks, pr-actions, workitem-state"
+    "— features: board-density, chrome-density, workitem-layout, card-comments, backlog-toolbar, backlog-grid, backlog-status, sprint-header, taskboard-columns, pr-keynav, pr-thread-filter, pr-drafts, pr-reviewed, pr-diff-totals, pr-comments, pr-checks, pr-actions, workitem-state"
   );
 })();

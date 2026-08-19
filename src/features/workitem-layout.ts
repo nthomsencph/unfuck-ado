@@ -4,6 +4,15 @@ import { getWorkItem, type ProjectRef } from "../core/api";
 import { injectStyleOnce, stubHide } from "../core/dom";
 import { createFetchCache } from "../core/fetch-cache";
 import { log } from "../core/log";
+import {
+  DESCRIPTION_HEADER_RE,
+  formatCreatedDate,
+  groupAction,
+  leaf,
+  planningKey,
+  updatedText,
+} from "./workitem/fields";
+import { teleport } from "./workitem/teleport";
 
 /**
  * Work item form restructured GitHub-issue-style (user request 2026-08-18):
@@ -78,6 +87,17 @@ export const workitemLayout: Feature = {
 const FEATURE_ID = "workitem-layout";
 const HOST_ID = "adofix-wi-details";
 
+/* Coupled geometry, named once and interpolated into the CSS below. */
+/** Invariant metadata-rail width — the main column gives way, never this. */
+const RAIL_WIDTH = 320;
+/** GH-issue-like cap for the whole form (header + grid). */
+const FORM_MAX_WIDTH = 1250;
+/** Bolt control height the JS placement math centers against (see the
+    .adofix-wi-state-promoted rule — the CSS and the math must agree). */
+const CONTROL_HEIGHT = 32;
+/** The promoted State field's box; the title row reserves its width + 20. */
+const STATE_WIDTH = 190;
+
 /** Work item in view, set per apply() — async fetch guards read it live. */
 let currentId: number | null = null;
 
@@ -98,14 +118,7 @@ function ensureCreated(id: number, ref: ProjectRef): void {
     const fields = res.value.fields;
     const by =
       (fields["System.CreatedBy"] as { displayName?: string } | undefined)?.displayName ?? "?";
-    const raw = fields["System.CreatedDate"] as string | undefined;
-    const date = raw
-      ? new Date(raw).toLocaleDateString(undefined, {
-          day: "numeric",
-          month: "short",
-          year: "numeric",
-        })
-      : "?";
+    const date = formatCreatedDate(fields["System.CreatedDate"] as string | undefined);
     createdCache.settle(id, { by, date });
     // The fetch resolves between settles — patch the mounted rows now.
     renderCreated(id);
@@ -122,105 +135,6 @@ function renderCreated(id: number): void {
   const at = host.querySelector('[data-adofix-kv="created-at"] .adofix-wi-kv-value');
   if (by) by.textContent = info.by;
   if (at) at.textContent = info.date;
-}
-
-/**
- * Teleport-edit: place the stub-hidden native control over the clicked row
- * (invisible), click its input so ADO's callout opens anchored there, and
- * restore the stub on the next mousedown anywhere (the callout itself
- * handles that click before the anchor snaps back).
- */
-const OVERLAY_SELECTOR = '[class*="callout"], [class*="portal"], [class*="flyout"], [class*="dropdown-items"]';
-
-/** At most one teleport is live; whatever ends it runs this. */
-let endTeleport: (() => void) | null = null;
-
-function teleport(native: HTMLElement, row: HTMLElement): void {
-  endTeleport?.();
-  // Anchor on the VALUE column, not the whole row: the control then lands
-  // exactly where the value text sits (its own label is hidden via the
-  // teleport class), so nothing shifts. Height is the row's EXACT height —
-  // min-height/auto let tall controls cover the row below.
-  const rowRect = row.getBoundingClientRect();
-  const valRect = (row.querySelector(".adofix-wi-kv-value") ?? row).getBoundingClientRect();
-  // Every teleport spans the FULL row width — one consistent length that
-  // respects the rail's padding (the value column alone was too tight for
-  // path fields, whose inner controls then spilled past the viewport).
-  // Block rows (tags) anchor on the value block's y instead of the row's.
-  const block = row.classList.contains("adofix-wi-kv--block");
-  const top = block ? valRect.top : rowRect.top;
-  const height = Math.max(block ? valRect.height : rowRect.height, 28);
-  native.classList.add("adofix-wi-teleport");
-  const s = native.style;
-  s.setProperty("position", "fixed", "important");
-  s.setProperty("left", `${rowRect.left}px`, "important");
-  s.setProperty("top", `${top}px`, "important");
-  s.setProperty("width", `${rowRect.width}px`, "important");
-  s.setProperty("height", `${height}px`, "important");
-  s.setProperty("min-height", "0", "important");
-  /* VISIBLE while editing: the live control replaces the row in place —
-     fields without a callout (e.g. Story Points) are typed into directly. */
-  s.setProperty("opacity", "1", "important");
-  s.setProperty("visibility", "visible", "important");
-  s.setProperty("overflow", "visible", "important");
-  s.setProperty("background", "var(--adofix-bg, #141414)", "important");
-  s.setProperty("z-index", "2000", "important");
-  s.setProperty("pointer-events", "auto", "important");
-
-  const cleanup = (): void => {
-    endTeleport = null;
-    document.removeEventListener("mousedown", onDown, true);
-    document.removeEventListener("scroll", onScroll, true);
-    document.removeEventListener("keydown", onKey, true);
-    native.removeEventListener("focusout", onFocusOut);
-    native.removeAttribute("style");
-    native.classList.remove("adofix-wi-teleport");
-  };
-  const isInside = (t: EventTarget | null): boolean => {
-    if (!(t instanceof HTMLElement)) return false;
-    if (native.contains(t)) return true;
-    // An overlay counts as the edit's own callout only when it does NOT
-    // contain the control: a dropdown's portal is a SIBLING tree, while
-    // the work item DIALOG's root (class bolt-dialog-callout-content —
-    // "callout"!) is an ANCESTOR of everything, which made every click,
-    // scroll and focus look "inside" and no restore ever fire (the
-    // stuck-fixed-controls bug, dialog rendering only).
-    const overlay = t.closest(OVERLAY_SELECTOR);
-    return overlay !== null && !overlay.contains(native);
-  };
-  const onDown = (e: MouseEvent): void => {
-    // Clicks inside the control or its callout keep the edit alive.
-    if (!isInside(e.target)) cleanup();
-  };
-  const onScroll = (e: Event): void => {
-    // Page scroll while fixed = the control sticks to the viewport — end
-    // the edit. Scrolling INSIDE the callout list stays alive.
-    if (!isInside(e.target)) cleanup();
-  };
-  const onKey = (e: KeyboardEvent): void => {
-    if (e.key === "Escape") cleanup();
-  };
-  const onFocusOut = (): void => {
-    // A dropdown pick closes the callout and drops focus — restore then,
-    // not on some later unrelated click. Deferred: focus may be moving
-    // WITHIN the control or into its callout.
-    window.setTimeout(() => {
-      if (endTeleport !== cleanup) return;
-      if (isInside(document.activeElement)) return;
-      cleanup();
-    }, 100);
-  };
-  endTeleport = cleanup;
-
-  const input = native.querySelector<HTMLElement>("input") ?? native;
-  input.click();
-  input.focus();
-  window.setTimeout(() => {
-    document.addEventListener("mousedown", onDown, true);
-    document.addEventListener("scroll", onScroll, true);
-    document.addEventListener("keydown", onKey, true);
-    native.addEventListener("focusout", onFocusOut);
-  }, 0);
 }
 
 interface DetailRow {
@@ -243,17 +157,50 @@ function subheaderColumns(): HTMLElement[] {
     : [];
 }
 
-function collectRows(): DetailRow[] | null {
-  const cols = subheaderColumns();
-  const [colA, colB] = cols;
-  if (!colA || !colB) return null;
+/**
+ * Command half: restyle the rail groups by header text (English-UI matches
+ * live in workitem/fields) and return the absorbed ones whose fields
+ * collectRows will read. Kept apart from collectRows so collecting never
+ * hides rendering side effects.
+ */
+function classifyRailGroups(): HTMLElement[] {
+  const absorbed: HTMLElement[] = [];
+  for (const group of document.querySelectorAll<HTMLElement>(
+    ".work-item-form-right .work-item-form-group"
+  )) {
+    const label =
+      group.querySelector(".work-item-form-collapsible-header")?.textContent?.trim() ?? "";
+    switch (groupAction(label)) {
+      case "hide":
+        group.classList.add("adofix-wi-group-hide");
+        break;
+      case "relwork":
+        // Related Work only earns its place with actual links (user 2026-08-18).
+        group.classList.add("adofix-wi-relwork");
+        group.classList.toggle(
+          "adofix-wi-group-hide",
+          !group.querySelector(".compact-links-list a")
+        );
+        break;
+      case "absorb":
+        group.classList.add("adofix-wi-group-absorb");
+        absorbed.push(group);
+        break;
+      case null:
+        break;
+    }
+  }
+  return absorbed;
+}
+
+/** Query half: read the Details rows from the (already classified) form. */
+function collectRows(colA: HTMLElement, colB: HTMLElement, absorbed: HTMLElement[]): DetailRow[] {
   const fieldOf = (col: HTMLElement, i: number): HTMLElement | null =>
     (col.children[i] as HTMLElement | undefined) ?? null;
   const valueOf = (field: HTMLElement | null): string =>
     field?.querySelector("input")?.value ??
     field?.textContent?.trim() ??
     "";
-  const leaf = (path: string): string => path.split("\\").pop() ?? path;
 
   // State is NOT a row: it lives in the header, left of the assignee
   // (absolutely repositioned from its stub column — see the CSS).
@@ -267,33 +214,9 @@ function collectRows(): DetailRow[] | null {
     { key: "iteration", label: "Iteration", value: leaf(valueOf(iteration)), native: iteration ?? undefined },
   ];
 
-  // Rail groups are matched by their header text (English-UI assumption,
-  // like the ledger's other label matches): Development and Implementation
-  // (bugs name it "System Info") disappear outright; Planning is absorbed —
-  // its fields join this list row-by-row (teleport-editable) and the native
-  // group becomes a zero-size stub.
-  for (const group of document.querySelectorAll<HTMLElement>(
-    ".work-item-form-right .work-item-form-group"
-  )) {
-    const label =
-      group
-        .querySelector(".work-item-form-collapsible-header")
-        ?.textContent?.trim() ?? "";
-    if (/^(Development|Implementation|System Info)/.test(label)) {
-      group.classList.add("adofix-wi-group-hide");
-      continue;
-    }
-    // Related Work only earns its place with actual links (user 2026-08-18).
-    if (/^Related Work/.test(label)) {
-      group.classList.add("adofix-wi-relwork");
-      group.classList.toggle(
-        "adofix-wi-group-hide",
-        !group.querySelector(".compact-links-list a")
-      );
-      continue;
-    }
-    if (!/^(Planning|Classification|Effort)/.test(label)) continue;
-    group.classList.add("adofix-wi-group-absorb");
+  // Absorbed groups' fields join the list row-by-row (teleport-editable);
+  // their native groups are zero-size stubs.
+  for (const group of absorbed) {
     for (const wrapper of group.querySelectorAll<HTMLElement>(
       ".work-item-form-control-wrapper"
     )) {
@@ -306,7 +229,7 @@ function collectRows(): DetailRow[] | null {
         (content?.children[1] as HTMLElement | undefined)?.textContent?.trim() ??
         "";
       rows.push({
-        key: `planning-${fieldLabel.toLowerCase().replace(/\W+/g, "-")}`,
+        key: planningKey(fieldLabel),
         label: fieldLabel,
         value: value || "—",
         native: wrapper,
@@ -324,11 +247,7 @@ function collectRows(): DetailRow[] | null {
     .querySelector(".wif-tabbar-container .secondary-text")
     ?.textContent?.trim();
   if (updText) {
-    rows.push({
-      key: "updated",
-      label: "Updated",
-      value: updText.replace(/^Updated by /, "").replace(/:\s*/, ", "),
-    });
+    rows.push({ key: "updated", label: "Updated", value: updatedText(updText) });
   }
 
   // Tags LAST, as a block (label line, pills below) — inherently a list,
@@ -414,7 +333,10 @@ function placeStateField(): void {
   const ar = assignee.getBoundingClientRect();
   const r3 = row3.getBoundingClientRect();
   const pr = page.getBoundingClientRect();
-  state.style.setProperty("top", `${Math.round(ar.top - pr.top + (ar.height - 32) / 2)}px`);
+  state.style.setProperty(
+    "top",
+    `${Math.round(ar.top - pr.top + (ar.height - CONTROL_HEIGHT) / 2)}px`
+  );
   state.style.setProperty("left", `${Math.round(r3.left - pr.left + 8)}px`);
 }
 
@@ -429,13 +351,35 @@ function placeHeaderControls(): void {
   if (!header || !title) return;
   const hr = header.getBoundingClientRect();
   const tr = title.getBoundingClientRect();
-  const top = `${Math.round(tr.top - hr.top + (tr.height - 32) / 2)}px`;
+  const top = `${Math.round(tr.top - hr.top + (tr.height - CONTROL_HEIGHT) / 2)}px`;
   const cb = header.querySelector<HTMLElement>(
     ":scope > :nth-child(3) > .work-item-header-command-bar"
   );
   cb?.style.setProperty("top", top);
   for (const sel of ['button[aria-label="Fullscreen"]', 'button[aria-label="Close"]']) {
     header.querySelector<HTMLElement>(sel)?.style.setProperty("top", top);
+  }
+}
+
+/** "1 Comment" -> "1": icon + bare integer. Idempotent — React may restore
+    the long text on re-render; the next settle trims it again. */
+function trimCommentCount(): void {
+  const commentText = document.querySelector(".wif-comment-count-link-text");
+  if (!commentText) return;
+  const n = commentText.textContent?.match(/\d+/)?.[0];
+  if (n && commentText.textContent !== n) commentText.textContent = n;
+}
+
+/** Description loses its section header (and with it the 1px border and the
+    collapse affordance). Text-matched: the bug form's Repro Steps / System
+    Info headers in the same section keep theirs. */
+function hideDescriptionHeader(): void {
+  for (const h of document.querySelectorAll(
+    ".work-item-form-first-section .work-item-form-collapsible-header"
+  )) {
+    if (DESCRIPTION_HEADER_RE.test(h.textContent?.trim() ?? "")) {
+      h.classList.add("adofix-wi-header-hide");
+    }
   }
 }
 
@@ -446,29 +390,15 @@ function enhance(ref: ProjectRef | null): void {
   ensureAttachmentsProxy();
   placeHeaderControls();
   placeStateField();
-  // "1 Comment" -> "1": icon + bare integer. Idempotent — React may
-  // restore the long text on re-render; the next settle trims it again.
-  const commentText = document.querySelector(".wif-comment-count-link-text");
-  if (commentText) {
-    const n = commentText.textContent?.match(/\d+/)?.[0];
-    if (n && commentText.textContent !== n) commentText.textContent = n;
-  }
-  // Description loses its section header (and with it the 1px border and
-  // the collapse affordance). Text-matched: the bug form's Repro Steps /
-  // System Info headers in the same section keep theirs.
-  for (const h of document.querySelectorAll(
-    ".work-item-form-first-section .work-item-form-collapsible-header"
-  )) {
-    if (/^Description/.test(h.textContent?.trim() ?? "")) {
-      h.classList.add("adofix-wi-header-hide");
-    }
-  }
+  trimCommentCount();
+  hideDescriptionHeader();
   const rail = document.querySelector<HTMLElement>(".work-item-form-right");
   if (!rail) {
     return;
   }
-  const rows = collectRows();
-  if (!rows) return;
+  const [colA, colB] = subheaderColumns();
+  if (!colA || !colB) return;
+  const rows = collectRows(colA, colB, classifyRailGroups());
   if (currentId !== null && ref) ensureCreated(currentId, ref);
 
   const snapshot = JSON.stringify(rows.map((r) => [r.key, r.value, r.dotColor]));
@@ -531,7 +461,7 @@ const CSS = `
 }
 .work-item-form-header,
 .work-item-form-subheader {
-  max-width: 1250px !important;
+  max-width: ${FORM_MAX_WIDTH}px !important;
   margin: 0 auto !important;
 }
 /* One main column + a 320px rail, capped and centered like a GH issue.
@@ -541,11 +471,11 @@ const CSS = `
    scrolls inside its own box instead of widening the column, and the grid
    keeps 16px of air on the right. */
 .work-item-grid {
-  grid-template-columns: minmax(0, 1fr) 320px !important;
+  grid-template-columns: minmax(0, 1fr) ${RAIL_WIDTH}px !important;
   /* auto rows: ADO's fixed row heights boxed the description into a
      scrolling 207px track (user 2026-08-18). */
   grid-template-rows: auto auto !important;
-  max-width: 1250px !important;
+  max-width: ${FORM_MAX_WIDTH}px !important;
   margin: 0 auto !important;
   /* air above the content (user 2026-08-18), and no row gap — the grid's
      16px row gap pushed the discussion away from the content above (the
@@ -586,8 +516,8 @@ const CSS = `
   display: flex !important;
   flex-direction: column !important;
   flex-wrap: nowrap !important;
-  width: 320px !important;
-  min-width: 320px !important;
+  width: ${RAIL_WIDTH}px !important;
+  min-width: ${RAIL_WIDTH}px !important;
 }
 .work-item-form-right .work-item-form-section {
   width: 100% !important;
@@ -675,7 +605,7 @@ const CSS = `
    NOT position:relative — that would become the absolute command bar's
    containing block and drag it down to this row's line. */
 .work-item-form-header > :nth-child(3) {
-  padding-left: 210px !important;
+  padding-left: ${STATE_WIDTH + 20}px !important;
 }
 /* State promoted out of its stub column into the header, left of the
    assignee. Absolute against .work-item-form-page; it escapes the
@@ -687,8 +617,8 @@ const CSS = `
 }
 .adofix-wi-state-promoted {
   position: absolute !important;
-  width: 190px !important;
-  height: 32px !important;
+  width: ${STATE_WIDTH}px !important;
+  height: ${CONTROL_HEIGHT}px !important;
   visibility: visible !important;
   pointer-events: auto !important;
   overflow: visible !important;

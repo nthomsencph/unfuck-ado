@@ -91,12 +91,11 @@ function render(): void {
       const icon = document.createElement("span");
       icon.className = "fabric-icon ms-Icon--Comment";
       chip.append(icon, document.createElement("span"));
-      // Right-aligned on the id line (user 2026-08-18, after trying
-      // inline-after-id): margin-left auto pushes to the line's end,
-      // before the ⋮ context menu.
-      const menu = line.querySelector(".card-context-menu");
-      if (menu) line.insertBefore(chip, menu);
-      else line.append(chip);
+      // Upper right CORNER of the card (user 2026-08-18, third take):
+      // absolutely anchored — flex-end placement stopped short of the
+      // corner because the hover-only ⋮ menu reserves it. The chip
+      // fades on card hover so the ⋮ takes over.
+      line.append(chip);
     }
     const num = chip.lastElementChild;
     if (num && num.textContent !== String(n)) num.textContent = String(n);
@@ -117,17 +116,24 @@ function enhance(): void {
 }
 
 const CSS = `
+.wit-card {
+  position: relative;
+}
 .${CHIP_CLASS} {
+  position: absolute;
+  top: 10px;
+  right: 10px;
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  margin-left: auto;
-  padding-right: 2px;
   color: var(--text-secondary-color, #a19f9d);
   font-size: 12px;
-  flex-shrink: 0;
 }
 .${CHIP_CLASS} .fabric-icon {
   font-size: 12px;
+}
+/* The hover-only ⋮ menu owns the corner while the pointer is on the card. */
+.wit-card:hover .${CHIP_CLASS} {
+  opacity: 0;
 }
 `;

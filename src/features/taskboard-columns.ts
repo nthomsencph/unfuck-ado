@@ -1,6 +1,6 @@
 import type { Feature } from "../core/registry";
 import { parseHubPath, type Route } from "../core/router";
-import { ACCENT, ADOFIX_ATTR, injectStyleOnce } from "../core/dom";
+import { ACCENT, ADOFIX_ATTR, injectStyleOnce, setStyle } from "../core/dom";
 import { log } from "../core/log";
 import { debounce } from "../core/observe";
 import { getValue, setValue } from "../core/storage";
@@ -386,15 +386,7 @@ function applyColumnCss(key: string): void {
   const visibleNth = cols.filter((c) => !hidden.has(c.name)).map((c) => c.nth);
   const tableMin = applyColWidths(hiddenNth, visibleNth);
   const css = tableMin > 0 ? columnCss(hiddenNth, visibleNth, tableMin) : "";
-  let style = document.querySelector<HTMLStyleElement>(
-    `style[${ADOFIX_ATTR}="${FEATURE_ID}-dynamic"]`
-  );
-  if (!style) {
-    style = document.createElement("style");
-    style.setAttribute(ADOFIX_ATTR, `${FEATURE_ID}-dynamic`);
-    document.head.appendChild(style);
-  }
-  if (style.textContent !== css) style.textContent = css;
+  setStyle(`${FEATURE_ID}-dynamic`, css);
   const btn = document.querySelector<HTMLElement>(`.${BTN_CLASS}`);
   btn?.setAttribute("data-filtering", String(hiddenNth.length > 0));
 }

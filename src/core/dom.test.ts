@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { injectStyleOnce } from "./dom";
+import { injectStyleOnce, setStyle } from "./dom";
 
 describe("injectStyleOnce", () => {
   afterEach(() => {
@@ -33,5 +33,28 @@ describe("injectStyleOnce", () => {
     injectStyleOnce("a", ".a {}");
     injectStyleOnce("b", ".b {}");
     expect([...document.head.children]).toEqual(order);
+  });
+});
+
+describe("setStyle", () => {
+  afterEach(() => {
+    document.head.innerHTML = "";
+  });
+
+  it("rewrites the sheet when the css changes, keeping one element", () => {
+    setStyle("dyn", ".a { width: 1px; }");
+    setStyle("dyn", ".a { width: 2px; }");
+    const sheets = document.head.querySelectorAll('style[data-adofix="dyn"]');
+    expect(sheets).toHaveLength(1);
+    expect(sheets[0]!.textContent).toBe(".a { width: 2px; }");
+  });
+
+  it("self-heals like injectStyleOnce when ADO sheets load after it", () => {
+    setStyle("dyn", ".a {}");
+    const adoSheet = document.createElement("style");
+    document.head.appendChild(adoSheet);
+
+    setStyle("dyn", ".a {}");
+    expect(document.head.lastElementChild?.getAttribute("data-adofix")).toBe("dyn");
   });
 });

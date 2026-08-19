@@ -98,7 +98,7 @@ function foreignSheetAfter(el: Element): boolean {
   return false;
 }
 
-export function injectStyleOnce(featureId: string, css: string): void {
+function ensureSheet(featureId: string): HTMLStyleElement {
   const existing = safeQuery<HTMLStyleElement>(
     `style[${ADOFIX_ATTR}="${featureId}"]`,
     document.head
@@ -110,12 +110,28 @@ export function injectStyleOnce(featureId: string, css: string): void {
     // DOM settle, which makes this self-healing; the guard keeps it from
     // reshuffling on every settle.
     if (foreignSheetAfter(existing)) document.head.appendChild(existing);
-    return;
+    return existing;
   }
   const style = document.createElement("style");
   style.setAttribute(ADOFIX_ATTR, featureId);
-  style.textContent = css;
   document.head.appendChild(style);
+  return style;
+}
+
+export function injectStyleOnce(featureId: string, css: string): void {
+  const sheet = ensureSheet(featureId);
+  if (!sheet.textContent) sheet.textContent = css;
+}
+
+/**
+ * injectStyleOnce for CSS that changes at runtime (per-selection rules):
+ * rewrites the sheet when the text differs, with the same self-healing
+ * re-append — a sheet appended once and never re-checked silently loses to
+ * whichever ADO chunk loads after it.
+ */
+export function setStyle(featureId: string, css: string): void {
+  const sheet = ensureSheet(featureId);
+  if (sheet.textContent !== css) sheet.textContent = css;
 }
 
 /* Same surface language as the drafts UI: native ADO material, accent spine. */

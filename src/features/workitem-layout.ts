@@ -167,8 +167,18 @@ function teleport(native: HTMLElement, row: HTMLElement): void {
     native.removeAttribute("style");
     native.classList.remove("adofix-wi-teleport");
   };
-  const isInside = (t: EventTarget | null): boolean =>
-    t instanceof HTMLElement && (native.contains(t) || !!t.closest(OVERLAY_SELECTOR));
+  const isInside = (t: EventTarget | null): boolean => {
+    if (!(t instanceof HTMLElement)) return false;
+    if (native.contains(t)) return true;
+    // An overlay counts as the edit's own callout only when it does NOT
+    // contain the control: a dropdown's portal is a SIBLING tree, while
+    // the work item DIALOG's root (class bolt-dialog-callout-content —
+    // "callout"!) is an ANCESTOR of everything, which made every click,
+    // scroll and focus look "inside" and no restore ever fire (the
+    // stuck-fixed-controls bug, dialog rendering only).
+    const overlay = t.closest(OVERLAY_SELECTOR);
+    return overlay !== null && !overlay.contains(native);
+  };
   const onDown = (e: MouseEvent): void => {
     // Clicks inside the control or its callout keep the edit alive.
     if (!isInside(e.target)) cleanup();
@@ -187,8 +197,7 @@ function teleport(native: HTMLElement, row: HTMLElement): void {
     // WITHIN the control or into its callout.
     window.setTimeout(() => {
       if (endTeleport !== cleanup) return;
-      const a = document.activeElement;
-      if (a && (native.contains(a) || a.closest?.(OVERLAY_SELECTOR))) return;
+      if (isInside(document.activeElement)) return;
       cleanup();
     }, 100);
   };

@@ -129,7 +129,11 @@ function renderCreated(id: number): void {
  * handles that click before the anchor snaps back).
  */
 function teleport(native: HTMLElement, row: HTMLElement): void {
-  const r = row.getBoundingClientRect();
+  // Anchor on the VALUE column, not the whole row: the control then lands
+  // exactly where the value text sits (its own label is hidden via the
+  // teleport class), so nothing shifts or covers the neighbouring rows.
+  const r = (row.querySelector(".adofix-wi-kv-value") ?? row).getBoundingClientRect();
+  native.classList.add("adofix-wi-teleport");
   const s = native.style;
   s.setProperty("position", "fixed", "important");
   s.setProperty("left", `${r.left}px`, "important");
@@ -154,6 +158,7 @@ function teleport(native: HTMLElement, row: HTMLElement): void {
     if (t && (native.contains(t) || t.closest('[class*="callout"], [class*="portal"], [class*="flyout"]'))) return;
     document.removeEventListener("mousedown", onDown, true);
     native.removeAttribute("style");
+    native.classList.remove("adofix-wi-teleport");
   };
   window.setTimeout(() => document.addEventListener("mousedown", onDown, true), 0);
 }
@@ -218,7 +223,7 @@ function collectRows(): DetailRow[] | null {
       group.classList.add("adofix-wi-group-hide");
       continue;
     }
-    if (!/^Planning/.test(label)) continue;
+    if (!/^(Planning|Classification)/.test(label)) continue;
     group.classList.add("adofix-wi-group-absorb");
     for (const wrapper of group.querySelectorAll<HTMLElement>(
       ".work-item-form-control-wrapper"
@@ -256,11 +261,66 @@ function collectRows(): DetailRow[] | null {
   const created = info && info !== "pending" && info !== "failed" ? info : null;
   rows.push({ key: "created-by", label: "Created by", value: created?.by ?? "…" });
   rows.push({ key: "created-at", label: "Created", value: created?.date ?? "…" });
+
+  // The "Updated by X: 8h ago" line above the (hidden) tab strip becomes an
+  // Updated row — read live from the DOM each pass, so it never goes stale.
+  const updText = document
+    .querySelector(".wif-tabbar-container .secondary-text")
+    ?.textContent?.trim();
+  if (updText) {
+    rows.push({
+      key: "updated",
+      label: "Updated",
+      value: updText.replace(/^Updated by /, "").replace(/:\s*/, ", "),
+    });
+  }
   return rows;
+}
+
+/**
+ * The tab strip is hidden (Details is the only content tab left), so the
+ * Attachments tab gets an icon proxy in the header command bar. Clicking
+ * toggles Attachments <-> Details via the native (hidden, still clickable)
+ * tabs. Rebuilt whenever a re-mount drops it; the count label refreshes on
+ * every pass.
+ */
+function ensureAttachmentsProxy(): void {
+  const bar = document.querySelector<HTMLElement>(".work-item-header-command-bar");
+  const attachTab = document.querySelector<HTMLElement>('[id$="-System_Attachments"]');
+  if (!bar || !attachTab) return;
+  let btn = bar.querySelector<HTMLButtonElement>(".adofix-wi-attach-proxy");
+  if (!btn) {
+    btn = document.createElement("button");
+    btn.type = "button";
+    btn.className =
+      "adofix-wi-attach-proxy bolt-button bolt-icon-button enabled subtle";
+    btn.addEventListener("click", () => {
+      const attach = document.querySelector<HTMLElement>('[id$="-System_Attachments"]');
+      if (!attach) return;
+      if (attach.classList.contains("selected")) {
+        document
+          .querySelector<HTMLElement>('.wif-tabbar [aria-label="Details"]')
+          ?.click();
+      } else {
+        attach.click();
+      }
+    });
+    bar.append(btn);
+    log(FEATURE_ID, "attachments proxy injected");
+  }
+  const count = attachTab.textContent?.trim() ?? "";
+  const label = `Attachments${count ? ` (${count})` : ""}`;
+  btn.title = label;
+  btn.setAttribute("aria-label", label);
+  btn.textContent = `📎 ${count}`.trim();
+  btn.classList.toggle("adofix-wi-attach-active", attachTab.classList.contains("selected"));
 }
 
 /** MUST stay idempotent — runs on every route change and DOM settle. */
 function enhance(): void {
+  // Before the rail check: on the Attachments view the rail is unmounted,
+  // but the proxy's count/active state still needs refreshing.
+  ensureAttachmentsProxy();
   const rail = document.querySelector<HTMLElement>(".work-item-form-right");
   if (!rail) {
     return;
@@ -283,11 +343,6 @@ function enhance(): void {
   }
   host.dataset.snapshot = snapshot;
   host.textContent = "";
-
-  const title = document.createElement("div");
-  title.className = "adofix-wi-details-label";
-  title.textContent = "Details";
-  host.append(title);
 
   for (const row of rows) {
     const el = document.createElement("div");
@@ -445,10 +500,32 @@ button.work-item-form-toggle[aria-label^="Maximize"] {
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   margin-bottom: 12px;
 }
-.adofix-wi-details-label {
-  font-size: 16px;
-  font-weight: 600;
-  margin: 8px 0;
+/* The tab strip goes (Details is the only content tab left — Attachments
+   is proxied into the header command bar and History/Links are gone), and
+   with it the "Updated by …" line (now an Updated row in the KV list).
+   The native tabs stay mounted: display:none elements still take .click()
+   for the proxy toggling. The subheader row then collapses to nothing. */
+.wif-tabbar,
+.wif-tabbar-container .secondary-text {
+  display: none !important;
+}
+.work-item-form-subheader {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  min-height: 0 !important;
+}
+.adofix-wi-attach-proxy {
+  white-space: nowrap;
+}
+.adofix-wi-attach-active {
+  color: var(--communication-foreground, #4fa3ff) !important;
+}
+/* While teleported, the control's own label hides — the adofix row's key
+   stays visible and the control lands on the value column alone. */
+.adofix-wi-teleport .work-item-control-label,
+.adofix-wi-teleport .workitemcontrol-label,
+.adofix-wi-teleport .work-item-form-control-content-wrapper > :first-child {
+  display: none !important;
 }
 .adofix-wi-kv {
   display: flex;

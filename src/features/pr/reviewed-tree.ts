@@ -12,7 +12,12 @@ export const TREE_SELECTORS = {
   table: ".repos-changes-explorer-tree",
   /** The tree pane's scroll wrapper (also hosts the repo header row). */
   scroller: ".repos-changes-explorer-splitter .vss-Splitter--pane-fixed > .absolute-fill",
-  row: "tr.bolt-tree-row",
+  /**
+   * pr-drafts injects lookalike draft rows (.adofix-tree-draft) after file
+   * rows; they carry no data-row-index, so letting them through would break
+   * buildWindowedPaths' contiguity check for everything below them.
+   */
+  row: "tr.bolt-tree-row:not(.adofix-tree-draft)",
   /**
    * The name span inside a row's tree cell. Change-type pills ("+" on added
    * files) are sibling .bolt-pill DIVs — matching span.text-ellipsis skips

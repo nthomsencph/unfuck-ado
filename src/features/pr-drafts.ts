@@ -91,7 +91,7 @@ const CARD_ID_ATTR = "data-adofix-draft-id";
 const DRAFTS_CSS = `
 /* The panel gets --adofix-ink from .adofix-surface; these are inline (non-
    surface) hosts that need it too. */
-.adofix-draft-card, .adofix-draft-capture, .adofix-file-comment {
+.adofix-draft-card, .adofix-draft-capture, .adofix-file-comment, .adofix-tree-draft-item {
   --adofix-ink: color-mix(in srgb, ${ACCENT} 62%, var(--text-primary-color, #201f1e));
 }
 
@@ -227,6 +227,16 @@ const DRAFTS_CSS = `
 /* Zones render under .view-lines without a z-index (verified 2026-08-19). */
 .adofix-zone-wrap { z-index: 10; }
 .adofix-zone-card { margin: 3px 12px 3px 4px; }
+
+/* -- draft rows in the file tree ----------------------------------------- */
+.adofix-tree-draft { cursor: pointer; }
+.adofix-tree-draft:hover { background: var(--palette-black-alpha-4, rgba(0, 0, 0, 0.05)); }
+.adofix-tree-draft-item { gap: 4px; }
+.adofix-tree-draft-icon { color: var(--adofix-ink); font-size: 12px; flex-shrink: 0; }
+.adofix-tree-draft-text {
+  font-size: 12px;
+  color: var(--text-secondary-color, rgba(0, 0, 0, 0.7));
+}
 
 /* -- "Show" landing flash ------------------------------------------------- */
 @keyframes adofix-flash {
@@ -571,6 +581,7 @@ function captureDraft(input: HTMLTextAreaElement, cancel: HTMLButtonElement): vo
   renderDraftCards();
   markMonacoDraftLines();
   renderMonacoZoneCards();
+  renderTreeDraftRows();
   updateToolbar();
   renderPanel();
   showToast(
@@ -738,6 +749,7 @@ function startInlineEdit(host: HTMLElement, draft: Draft): void {
     safeQuery(`[${CARD_ID_ATTR}="${draft.id}"]`)?.remove();
     renderDraftCards();
     renderMonacoZoneCards();
+    renderTreeDraftRows();
     renderPanel();
   };
   const save = (): void => {
@@ -996,6 +1008,114 @@ function markMonacoDraftLines(): void {
   }
 }
 
+// ---- draft rows in the file tree --------------------------------------------
+//
+// ADO lists a file's comment THREADS as child tree rows, but those are
+// server-side; local drafts get lookalike rows (structure cloned from the
+// native .repos-file-explorer-tree-thread-item rows, verified live
+// 2026-08-19). bolt's virtualized tree re-renders its own rows on scroll, so
+// rows are keyed and checked in place on every settle — the no-op path makes
+// no DOM writes (the settle observer would otherwise re-fire forever).
+// TREE_SELECTORS.row excludes these rows so the shared path math never sees
+// them.
+
+const TREE_ROW_ATTR = "data-adofix-tree-draft";
+
+function treeDraftLabel(draft: Draft): string {
+  return `${locLabel(draft)} · ${draft.content}`;
+}
+
+function presentationCell(): HTMLTableCellElement {
+  const td = document.createElement("td");
+  td.className = "bolt-table-cell-compact bolt-table-cell bolt-list-cell";
+  td.setAttribute("role", "presentation");
+  return td;
+}
+
+function buildTreeDraftRow(draft: Draft, fileRow: HTMLElement): HTMLElement {
+  const tr = document.createElement("tr");
+  tr.className = "bolt-tree-row bolt-table-row bolt-list-row adofix-tree-draft";
+  tr.setAttribute("role", "row");
+  tr.setAttribute(TREE_ROW_ATTR, draft.id);
+  tr.setAttribute("aria-level", String(Number(fileRow.getAttribute("aria-level") ?? "1") + 1));
+  tr.setAttribute("data-adofix-label", treeDraftLabel(draft));
+  tr.title = draft.content;
+
+  const mid = document.createElement("td");
+  mid.className = "bolt-table-cell bolt-list-cell";
+  mid.setAttribute("role", "gridcell");
+  const midContent = document.createElement("div");
+  midContent.className = "bolt-table-cell-content flex-row flex-center";
+  mid.appendChild(midContent);
+
+  const cell = document.createElement("td");
+  cell.className = "bolt-tree-cell bolt-table-cell bolt-list-cell";
+  cell.setAttribute("role", "gridcell");
+  const content = document.createElement("div");
+  content.className = "bolt-table-cell-content flex-row flex-center adofix-tree-draft-item";
+  // Native child rows start their content where the parent's NAME starts —
+  // measured off the live row so any tree depth works.
+  const name = safeQuery<HTMLElement>(TREE_SELECTORS.name, fileRow);
+  const indent = name
+    ? Math.max(0, name.getBoundingClientRect().left - fileRow.getBoundingClientRect().left)
+    : 96;
+  const spacer = document.createElement("span");
+  spacer.style.cssText = `width:${Math.round(indent)}px;flex-shrink:0`;
+  const icon = document.createElement("span");
+  icon.className = "fabric-icon ms-Icon--Comment adofix-tree-draft-icon";
+  icon.setAttribute("aria-hidden", "true");
+  const label = document.createElement("div");
+  label.className = "flex-grow text-ellipsis adofix-tree-draft-text";
+  label.textContent = treeDraftLabel(draft);
+  content.append(spacer, icon, label);
+  cell.appendChild(content);
+
+  tr.append(presentationCell(), mid, cell, presentationCell());
+  tr.addEventListener("click", (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    void showDraft(draft);
+  });
+  return tr;
+}
+
+function renderTreeDraftRows(): void {
+  const existing = safeQueryAll<HTMLElement>(".adofix-tree-draft");
+  const drafts = currentKey ? loadDrafts(currentKey) : [];
+  const expected: Array<{ draft: Draft; fileRow: HTMLElement }> = [];
+  if (drafts.length > 0) {
+    // mapTreeFiles iterates in rendered tree order; virtualized-away files
+    // simply contribute nothing until they scroll back in.
+    for (const [path, entry] of mapTreeFiles()) {
+      for (const draft of drafts
+        .filter((d) => d.filePath === path)
+        .sort((a, b) => a.line - b.line))
+        expected.push({ draft, fileRow: entry.row });
+    }
+  }
+  const intact =
+    existing.length === expected.length &&
+    expected.every(({ draft, fileRow }, i) => {
+      const row = existing[i]!;
+      const prevOk =
+        i > 0 && expected[i - 1]!.fileRow === fileRow
+          ? row.previousElementSibling === existing[i - 1]
+          : row.previousElementSibling === fileRow;
+      return (
+        row.getAttribute(TREE_ROW_ATTR) === draft.id &&
+        prevOk &&
+        row.getAttribute("data-adofix-label") === treeDraftLabel(draft)
+      );
+    });
+  if (intact) return;
+  for (const row of existing) row.remove();
+  // Back-to-front so same-file drafts keep line order under fileRow.after().
+  for (let i = expected.length - 1; i >= 0; i--) {
+    const { draft, fileRow } = expected[i]!;
+    fileRow.after(buildTreeDraftRow(draft, fileRow));
+  }
+}
+
 // ---- "Show": navigate to a draft's location ---------------------------------
 
 function flashCard(card: HTMLElement): void {
@@ -1014,6 +1134,7 @@ function flashCard(card: HTMLElement): void {
  */
 function revealDraftLine(draft: Draft): void {
   renderMonacoZoneCards();
+  renderTreeDraftRows();
   const ed = findDiffEditor()?.getModifiedEditor();
   if (!ed) return;
   ed.revealLineInCenter(draft.fileLevel ? 1 : draft.line);
@@ -1106,6 +1227,7 @@ function deleteDraft(id: string): void {
   safeQuery(`[${CARD_ID_ATTR}="${id}"]`)?.remove();
   markMonacoDraftLines();
   renderMonacoZoneCards();
+  renderTreeDraftRows();
   updateToolbar();
   renderPanel();
 }
@@ -1264,6 +1386,7 @@ async function submitAll(): Promise<void> {
   renderDraftCards();
   markMonacoDraftLines();
   renderMonacoZoneCards();
+  renderTreeDraftRows();
   updateToolbar();
   renderPanel();
 
@@ -1297,6 +1420,7 @@ export const prDrafts: Feature = {
     renderDraftCards();
     markMonacoDraftLines();
     renderMonacoZoneCards();
+    renderTreeDraftRows();
     updateToolbar();
     log(
       FEATURE_ID,

@@ -2,7 +2,7 @@ import type { Feature } from "../core/registry";
 import type { Route } from "../core/router";
 import { injectStyleOnce, safeQuery, safeQueryAll, showToast } from "../core/dom";
 import { log } from "../core/log";
-import { DRAFT_SELECTORS, sectionFilePath } from "./pr-drafts";
+import { DIFF_SELECTORS, sectionFilePath } from "./pr/diff";
 import { prRefFromRoute, refKey, type PrRef } from "./pr/threads-api";
 import { patchViewed, viewedState } from "./pr/reviewed-data";
 import { clickTreeCheckbox, mapTreeFiles } from "./pr/reviewed-tree";
@@ -111,7 +111,7 @@ export const prReviewed: Feature = {
     const ref = prRefFromRoute(route);
     if (!ref) return;
     currentRef = ref;
-    const sections = safeQueryAll<HTMLElement>(DRAFT_SELECTORS.fileSection);
+    const sections = safeQueryAll<HTMLElement>(DIFF_SELECTORS.fileSection);
     if (sections.length === 0) return;
     const viewed = viewedState(ref, () => this.apply(route));
     const rendered = mapTreeFiles();

@@ -5,43 +5,9 @@ import { waitFor } from "../core/observe";
 import { log } from "../core/log";
 import { createThread, prRefFromRoute, type PrRef } from "./pr/threads-api";
 import { draftKey, loadDrafts, newDraftId, saveDrafts, type Draft } from "./pr/drafts-store";
+import { currentFilePath, DIFF_SELECTORS, sectionFilePath } from "./pr/diff";
 import { findDiffEditor, type MonacoEditor, type ViewZone } from "./pr/monaco";
 import { clickTreeFileRow, mapTreeFiles, TREE_SELECTORS } from "./pr/reviewed-tree";
-
-/**
- * ADO renders PR diffs with TWO different engines (both verified live
- * 2026-08-01):
- *
- * - "All changes" stacked view: a CSS table (div display:table, table-row
- *   rows, span table-cell cells) inside per-file .repos-summary-header cards.
- * - Single-file view (a file selected in the tree): a virtualized Monaco diff
- *   editor (.monaco-diff-editor).
- *
- * Drafting rides ADO's OWN comment composer instead of a custom editor
- * (verified live 2026-08-01): the native "Add comment" affordances open ADO's
- * widget — markdown toolbar, @mentions, suggestions and all — and we inject a
- * "Comment as draft" button next to Cancel/Comment. It captures the composer
- * text into local storage, closes the widget without posting (Cancel with
- * text does NOT prompt), and the draft ships later via "Submit all".
- */
-export const DRAFT_SELECTORS = {
-  /** Stacked view: one div-table row per diff line. Verified live 2026-08-01. */
-  row: ".repos-diff-contents-row",
-  /** Stacked view: line-number cells. Verified live 2026-08-01. */
-  lineNumberCell: ".text-right.secondary-text",
-  /** Stacked view: the code cell; added/removed/unchanged encodes the side. Verified live 2026-08-01. */
-  lineContent: ".repos-line-content",
-  /** Stacked view: per-file section card; a .secondary-text holds the path. Verified live 2026-08-01. */
-  fileSection: ".repos-summary-header",
-  /** Single-file view: the Monaco diff editor root. Verified live 2026-08-01. */
-  monacoRoot: ".monaco-diff-editor",
-  /** Single-file view: line-number overlays in the modified editor's gutter. Verified live 2026-08-01. */
-  monacoLineNumber: ".monaco-diff-editor .editor.modified .line-numbers",
-  /** Both views: elements that may carry the current file path ("/…"). Verified live 2026-08-01. */
-  pathText: ".secondary-text",
-  /** Present only when the Files tab is active. Verified live 2026-08-01. */
-  filesView: ".repos-changes-viewer",
-};
 
 /** ADO's native comment composer (all verified live 2026-08-01). */
 export const COMPOSER_SELECTORS = {
@@ -264,37 +230,15 @@ export interface StackedRange {
   end: number;
 }
 
-/** First "/"-prefixed text that is an actual path (breadcrumbs emit bare "/"). */
-export function pickFilePath(texts: Array<string | null | undefined>): string | null {
-  return (
-    texts
-      .map((t) => (t ?? "").trim())
-      .find((t) => t.startsWith("/") && t.length > 1) ?? null
-  );
-}
-
-export function sectionFilePath(section: HTMLElement): string | null {
-  return pickFilePath(
-    safeQueryAll<HTMLElement>(DRAFT_SELECTORS.pathText, section).map((e) => e.textContent)
-  );
-}
-
-/** Single-file (Monaco) view: the open file's path from the breadcrumb. */
-export function currentFilePath(): string | null {
-  return pickFilePath(
-    safeQueryAll<HTMLElement>(DRAFT_SELECTORS.pathText).map((e) => e.textContent)
-  );
-}
-
 /** Stacked view only: where in the diff a table row sits. Null → not a code line. */
 export function rowInfo(row: HTMLElement): RowInfo | null {
-  const content = safeQuery<HTMLElement>(DRAFT_SELECTORS.lineContent, row);
+  const content = safeQuery<HTMLElement>(DIFF_SELECTORS.lineContent, row);
   if (!content) return null;
-  const numText = safeQueryAll<HTMLElement>(DRAFT_SELECTORS.lineNumberCell, row)
+  const numText = safeQueryAll<HTMLElement>(DIFF_SELECTORS.lineNumberCell, row)
     .map((c) => c.textContent?.trim() ?? "")
     .find((t) => /^\d+$/.test(t));
   if (!numText) return null;
-  const section = row.closest<HTMLElement>(DRAFT_SELECTORS.fileSection);
+  const section = row.closest<HTMLElement>(DIFF_SELECTORS.fileSection);
   if (!section) return null;
   const filePath = sectionFilePath(section);
   if (!filePath) return null;
@@ -361,7 +305,7 @@ export function selectionStackedRange(): StackedRange | null {
   if (!sel || sel.isCollapsed || !sel.anchorNode || !sel.focusNode) return null;
   const rowOf = (node: Node): HTMLElement | null => {
     const el = node instanceof Element ? node : node.parentElement;
-    return el?.closest<HTMLElement>(DRAFT_SELECTORS.row) ?? null;
+    return el?.closest<HTMLElement>(DIFF_SELECTORS.row) ?? null;
   };
   const anchorRow = rowOf(sel.anchorNode);
   const focusRow = rowOf(sel.focusNode);
@@ -376,7 +320,7 @@ export function selectionStackedRange(): StackedRange | null {
 }
 
 function lineAtY(editorEl: HTMLElement, y: number): number | null {
-  const overlay = safeQueryAll<HTMLElement>(DRAFT_SELECTORS.monacoLineNumber, editorEl).find(
+  const overlay = safeQueryAll<HTMLElement>(DIFF_SELECTORS.monacoLineNumber, editorEl).find(
     (o) => {
       const r = o.getBoundingClientRect();
       return y >= r.top && y <= r.bottom;
@@ -389,7 +333,7 @@ function onGestureMouseDown(e: MouseEvent): void {
   if (!currentKey) return;
   if (!(e.target instanceof Element)) return;
   if (e.target.closest(GESTURE_GUARD)) return;
-  const editorEl = e.target.closest<HTMLElement>(DRAFT_SELECTORS.monacoRoot);
+  const editorEl = e.target.closest<HTMLElement>(DIFF_SELECTORS.monacoRoot);
   if (!editorEl) return;
   pendingMonacoRange = null; // a new gesture invalidates the previous drag
   dragStartLine = lineAtY(editorEl, e.clientY);
@@ -403,7 +347,7 @@ function onGestureMouseUp(e: MouseEvent): void {
   if (dragStartLine === null) return;
   const start = dragStartLine;
   dragStartLine = null;
-  const editorEl = e.target.closest<HTMLElement>(DRAFT_SELECTORS.monacoRoot);
+  const editorEl = e.target.closest<HTMLElement>(DIFF_SELECTORS.monacoRoot);
   if (!editorEl) return;
   const end = lineAtY(editorEl, e.clientY);
   if (end === null || end === start) return;
@@ -444,7 +388,7 @@ export function findFooterCancel(input: HTMLElement): HTMLButtonElement | null {
 export function composerAnchor(composerRow: HTMLElement): RowInfo | null {
   let prev = composerRow.previousElementSibling;
   while (prev) {
-    if (prev instanceof HTMLElement && prev.matches(DRAFT_SELECTORS.row)) {
+    if (prev instanceof HTMLElement && prev.matches(DIFF_SELECTORS.row)) {
       const info = rowInfo(prev);
       if (info) return info;
     }
@@ -494,7 +438,7 @@ function monacoComposerAnchor(input: HTMLElement): DraftAnchor | null {
   const filePath = currentFilePath();
   if (!filePath) return null;
   const top = input.getBoundingClientRect().top;
-  const overlays = safeQueryAll<HTMLElement>(DRAFT_SELECTORS.monacoLineNumber)
+  const overlays = safeQueryAll<HTMLElement>(DIFF_SELECTORS.monacoLineNumber)
     .map((o) => ({
       line: lineFromOverlayText(o.textContent),
       bottom: o.getBoundingClientRect().bottom,
@@ -515,7 +459,7 @@ function captureDraft(input: HTMLTextAreaElement, cancel: HTMLButtonElement): vo
     showToast("Write the comment first — then save it as a draft");
     return;
   }
-  const composerRow = input.closest<HTMLElement>(DRAFT_SELECTORS.row);
+  const composerRow = input.closest<HTMLElement>(DIFF_SELECTORS.row);
   const anchor: DraftAnchor | null = composerRow
     ? composerAnchor(composerRow)
     : monacoComposerAnchor(input);
@@ -606,7 +550,7 @@ async function startFileComment(section: HTMLElement): Promise<void> {
     view.click();
     // Wait for the single-file view: stacked sections gone, Monaco up.
     const inFileView = await waitFor(() =>
-      !safeQuery(DRAFT_SELECTORS.fileSection) && safeQuery(DRAFT_SELECTORS.monacoRoot)
+      !safeQuery(DIFF_SELECTORS.fileSection) && safeQuery(DIFF_SELECTORS.monacoRoot)
         ? true
         : null
     );
@@ -646,7 +590,7 @@ async function startFileComment(section: HTMLElement): Promise<void> {
 /** Put a "Comment on file" button into every stacked per-file header. */
 function adornFileHeaders(): number {
   let adorned = 0;
-  for (const section of safeQueryAll<HTMLElement>(DRAFT_SELECTORS.fileSection)) {
+  for (const section of safeQueryAll<HTMLElement>(DIFF_SELECTORS.fileSection)) {
     const host = safeQuery<HTMLElement>(".justify-end", section);
     if (!host || host.querySelector(".adofix-file-comment")) continue;
     const btn = document.createElement("button");
@@ -697,9 +641,9 @@ function adornComposers(): number {
 // ---- draft display: inline cards (stacked) + gutter marks (Monaco) ----------
 
 function findRowFor(draft: Draft): HTMLElement | null {
-  for (const section of safeQueryAll<HTMLElement>(DRAFT_SELECTORS.fileSection)) {
+  for (const section of safeQueryAll<HTMLElement>(DIFF_SELECTORS.fileSection)) {
     if (sectionFilePath(section) !== draft.filePath) continue;
-    for (const row of safeQueryAll<HTMLElement>(DRAFT_SELECTORS.row, section)) {
+    for (const row of safeQueryAll<HTMLElement>(DIFF_SELECTORS.row, section)) {
       const info = rowInfo(row);
       if (info && info.line === draft.line && info.side === draft.side) return row;
     }
@@ -821,7 +765,7 @@ function renderDraftCards(): void {
     if (safeQuery(`[${CARD_ID_ATTR}="${draft.id}"]`)) continue;
     if (draft.fileLevel) {
       // No row to anchor to — the card sits at the top of its file section.
-      const section = safeQueryAll<HTMLElement>(DRAFT_SELECTORS.fileSection).find(
+      const section = safeQueryAll<HTMLElement>(DIFF_SELECTORS.fileSection).find(
         (s) => sectionFilePath(s) === draft.filePath
       );
       if (!section) continue;
@@ -832,7 +776,7 @@ function renderDraftCards(): void {
     }
     const row = findRowFor(draft);
     if (!row) continue;
-    const contentCell = safeQuery<HTMLElement>(DRAFT_SELECTORS.lineContent, row);
+    const contentCell = safeQuery<HTMLElement>(DIFF_SELECTORS.lineContent, row);
     (contentCell ?? row).appendChild(buildCard(draft));
   }
 }
@@ -913,7 +857,7 @@ function measureZoneHeight(node: HTMLElement, width: number): number {
 }
 
 function renderMonacoZoneCards(): void {
-  if (!safeQuery(DRAFT_SELECTORS.monacoRoot)) return;
+  if (!safeQuery(DIFF_SELECTORS.monacoRoot)) return;
   const diffEditor = findDiffEditor();
   if (!diffEditor) return;
   const ed = diffEditor.getModifiedEditor();
@@ -971,7 +915,7 @@ function renderMonacoZoneCards(): void {
  * Monaco recreates overlays on scroll, and the marks ride along.
  */
 function markMonacoDraftLines(): void {
-  const overlays = safeQueryAll<HTMLElement>(DRAFT_SELECTORS.monacoLineNumber);
+  const overlays = safeQueryAll<HTMLElement>(DIFF_SELECTORS.monacoLineNumber);
   if (overlays.length === 0) return;
   const path = currentFilePath();
   const drafted = new Set<number>();
@@ -1116,7 +1060,7 @@ async function showDraft(draft: Draft): Promise<void> {
   const key = currentKey;
   if (!key) return;
   closePanel();
-  if (safeQuery(DRAFT_SELECTORS.monacoRoot)) {
+  if (safeQuery(DIFF_SELECTORS.monacoRoot)) {
     if (currentFilePath() === draft.filePath) {
       revealDraftLine(draft);
       return;
@@ -1133,7 +1077,7 @@ async function showDraft(draft: Draft): Promise<void> {
   }
   // Stacked view: rows (and our card) only exist once the section scrolls
   // near the viewport — scroll there, then wait for the card to become real.
-  const section = safeQueryAll<HTMLElement>(DRAFT_SELECTORS.fileSection).find(
+  const section = safeQueryAll<HTMLElement>(DIFF_SELECTORS.fileSection).find(
     (s) => sectionFilePath(s) === draft.filePath
   );
   if (section) {
@@ -1354,7 +1298,7 @@ export const prDrafts: Feature = {
       log(FEATURE_ID, "not a concrete PR route — inactive", route.path);
       return;
     }
-    if (!safeQuery(DRAFT_SELECTORS.filesView)) {
+    if (!safeQuery(DIFF_SELECTORS.filesView)) {
       log(FEATURE_ID, "files view not present (overview tab?) — waiting");
       return;
     }
@@ -1367,7 +1311,7 @@ export const prDrafts: Feature = {
     updateToolbar();
     log(
       FEATURE_ID,
-      `mode=${safeQuery(DRAFT_SELECTORS.monacoLineNumber) ? "monaco" : "stacked"}` +
+      `mode=${safeQuery(DIFF_SELECTORS.monacoLineNumber) ? "monaco" : "stacked"}` +
         `, composers adorned: ${adorned}, file buttons: ${fileButtons}` +
         `, drafts: ${loadDrafts(currentKey).length}`
     );

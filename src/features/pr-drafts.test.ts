@@ -6,12 +6,11 @@ import {
   lineLabel,
   monacoAnchorLine,
   nearestLineAbove,
-  pickFilePath,
   rowInfo,
-  sectionFilePath,
   selectionStackedRange,
   splitPath,
 } from "./pr-drafts";
+import { sectionFilePath } from "./pr/diff";
 
 /** Mirrors the live stacked-view structure verified 2026-08-01. */
 function makeSection(path: string): HTMLElement {
@@ -52,16 +51,6 @@ function makeComposerRow(section: HTMLElement): HTMLElement {
   section.appendChild(row);
   return row;
 }
-
-describe("pickFilePath", () => {
-  it("skips breadcrumb dividers and picks the real path", () => {
-    expect(pickFilePath(["/", "/", "/backend/app/x.py"])).toBe("/backend/app/x.py");
-  });
-
-  it("returns null when nothing looks like a path", () => {
-    expect(pickFilePath(["36", "View", "/", null, undefined])).toBeNull();
-  });
-});
 
 describe("lineFromOverlayText", () => {
   it("parses plain gutter numbers", () => {

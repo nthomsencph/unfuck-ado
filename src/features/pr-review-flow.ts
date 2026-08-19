@@ -10,7 +10,7 @@ import {
 } from "../core/dom";
 import { waitFor } from "../core/observe";
 import { getValue, setValue } from "../core/storage";
-import { currentFilePath, DRAFT_SELECTORS, sectionFilePath } from "./pr-drafts";
+import { currentFilePath, DIFF_SELECTORS, sectionFilePath } from "./pr/diff";
 import { prRefFromRoute, refKey, type PrRef } from "./pr/threads-api";
 import { patchViewed, resyncViewed, viewedState } from "./pr/reviewed-data";
 import {
@@ -127,7 +127,7 @@ async function jumpStacked(path: string): Promise<boolean> {
   const scroller = safeQuery<HTMLElement>(FLOW_SELECTORS.stackedScroller);
   if (!scroller) return false;
   const findSection = (): HTMLElement | null =>
-    safeQueryAll<HTMLElement>(DRAFT_SELECTORS.fileSection).find(
+    safeQueryAll<HTMLElement>(DIFF_SELECTORS.fileSection).find(
       (s) => sectionFilePath(s) === path
     ) ?? null;
   let section = findSection();
@@ -158,7 +158,7 @@ async function jumpNext(ref: PrRef): Promise<void> {
       return;
     }
     const viewed = viewedState(ref) ?? new Set<string>();
-    const inMonaco = safeQuery(DRAFT_SELECTORS.monacoRoot) !== null;
+    const inMonaco = safeQuery(DIFF_SELECTORS.monacoRoot) !== null;
     const target = nextUnreviewedPath(order, viewed, inMonaco ? currentFilePath() : null);
     if (!target) {
       showToast("All files reviewed 🎉");
@@ -180,9 +180,9 @@ async function startReview(ref: PrRef): Promise<void> {
   const key = refKey(ref);
   writeFlow(key, { ...readFlow(key), started: true });
   document.documentElement.setAttribute("data-adofix-reviewing", "");
-  if (!safeQuery(DRAFT_SELECTORS.filesView)) {
+  if (!safeQuery(DIFF_SELECTORS.filesView)) {
     safeQuery<HTMLElement>(FLOW_SELECTORS.filesTab)?.click();
-    await waitFor(() => safeQuery(DRAFT_SELECTORS.filesView));
+    await waitFor(() => safeQuery(DIFF_SELECTORS.filesView));
   }
   await jumpNext(ref);
 }
@@ -301,7 +301,7 @@ export const prReviewFlow: Feature = {
     const counterText = counterLabel(n, m);
     if (counterBtn.textContent !== counterText) counterBtn.textContent = counterText;
 
-    const inMonaco = safeQuery(DRAFT_SELECTORS.monacoRoot) !== null;
+    const inMonaco = safeQuery(DIFF_SELECTORS.monacoRoot) !== null;
     if (!inMonaco) {
       mark?.remove();
       return;

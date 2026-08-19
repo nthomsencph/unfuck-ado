@@ -195,6 +195,24 @@ const BASE_CSS = `
   100% { box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18); }
 }
 .adofix-flash { animation: adofix-flash 1.4s ease-out; }
+/*
+ * Keyboard a11y: every injected control gets a visible focus ring (most
+ * carry only adofix-* classes, so no native focus treatment applies). The
+ * class-substring match deliberately catches them all; non-focusable
+ * adofix divs never match :focus-visible, so it's inert on them.
+ * Accent-filled controls get a text-colored ring — an accent ring on an
+ * accent background would vanish.
+ */
+[class*="adofix-"]:focus-visible {
+  outline: 2px solid ${ACCENT} !important;
+  outline-offset: 2px;
+}
+.adofix-review-btn:focus-visible,
+.adofix-toggle:focus-visible,
+.adofix-draft-btn.adofix-primary:focus-visible,
+.adofix-draft-capture:focus-visible {
+  outline-color: var(--text-primary-color, #fff) !important;
+}
 `;
 
 export function injectBaseStyle(): void {

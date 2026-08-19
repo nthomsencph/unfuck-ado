@@ -170,9 +170,11 @@ div.padding-vertical-16:has(> .vss-FilterBar) {
    expand chevron, and a 31px View button. The row is top-aligned by ADO
    (.flex-start, and the chevron carries .flex-self-start) — with one line
    everything centers instead. Verified live 2026-08-01. */
+/* 8px (not 4) keeps the header comfortably tall for the reviewed checkbox +
+   comment icon (user request 2026-08-19). */
 .repos-summary-header > .flex-row > .flex-row.flex-start.flex-grow {
-  padding-top: 4px !important;
-  padding-bottom: 4px !important;
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
   align-items: center !important;
 }
 .repos-summary-header .bolt-card-expand-button {

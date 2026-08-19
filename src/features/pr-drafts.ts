@@ -96,12 +96,13 @@ const DRAFTS_CSS = `
   --adofix-ink: color-mix(in srgb, ${ACCENT} 62%, var(--text-primary-color, #201f1e));
 }
 
-/* -- "Comment on file" button in the per-file header --------------------- */
+/* -- "Comment on file" icon button in the per-file header ----------------- */
 .adofix-file-comment {
   border: none; background: transparent;
   color: var(--text-secondary-color, rgba(0, 0, 0, 0.7));
-  font-weight: 600; font-size: 12px; padding: 3px 10px; border-radius: 2px;
-  margin-right: 8px; cursor: pointer; font-family: inherit; white-space: nowrap;
+  font-size: 14px; padding: 4px 8px; border-radius: 2px;
+  margin-right: 8px; cursor: pointer; line-height: 1;
+  display: inline-flex; align-items: center;
 }
 .adofix-file-comment:hover {
   background: var(--palette-black-alpha-4, rgba(0, 0, 0, 0.05));
@@ -651,7 +652,11 @@ function adornFileHeaders(): number {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "adofix-file-comment";
-    btn.textContent = "Comment on file";
+    const icon = document.createElement("span");
+    icon.className = "fabric-icon ms-Icon--CommentAdd";
+    icon.setAttribute("aria-hidden", "true");
+    btn.appendChild(icon);
+    btn.setAttribute("aria-label", "Comment on file");
     btn.title = "Comment on the whole file (ado-unfuck)";
     btn.addEventListener("click", (e) => {
       e.stopPropagation();

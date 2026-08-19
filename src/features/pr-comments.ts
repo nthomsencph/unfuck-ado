@@ -34,6 +34,8 @@ const CSS = `
 .adofix-toggle {
   background: ${ACCENT} !important; color: #fff !important;
   margin-left: 8px; border-radius: 2px;
+  /* flex + gap so the icon glyph and the count text can never overlap */
+  display: inline-flex; align-items: center; gap: 6px;
 }
 .adofix-toggle:hover { background: #9161ea !important; }
 .adofix-toggle[aria-pressed="true"] { background: #6b40ba !important; }
@@ -43,8 +45,7 @@ const CSS = `
 .adofix-comments-menu { width: 260px; overflow: hidden; }
 
 /* ADO's own fluent icon font (glyph classes verified live 2026-08-19). */
-.adofix-comments-icon { font-size: 14px; }
-.adofix-comments-icon:not(:only-child) { margin-right: 6px; }
+.adofix-comments-icon { font-size: 14px; line-height: 1; flex-shrink: 0; }
 `;
 
 /** "0/2 comments resolved" → { resolved: 0, total: 2 }; anything else → null. */

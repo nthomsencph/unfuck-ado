@@ -134,6 +134,16 @@ export function viewedState(ref: PrRef, onFresh?: () => void): Set<string> | nul
   return slotPaths;
 }
 
+/**
+ * Force a server resync — for changes that bypass our toggles entirely
+ * (folder/root checkbox sweeps mark many files at once, 2026-08-19).
+ */
+export function resyncViewed(ref: PrRef, onFresh?: () => void): void {
+  ensureKey(ref);
+  slotFailed = false;
+  if (!slotInFlight) startFetch(ref, onFresh);
+}
+
 /** Optimistic local patch after a toggle click, plus a background resync. */
 export function patchViewed(ref: PrRef, path: string, viewed: boolean): void {
   ensureKey(ref);

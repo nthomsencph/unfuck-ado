@@ -12,8 +12,13 @@ import { waitFor } from "../core/observe";
 import { getValue, setValue } from "../core/storage";
 import { currentFilePath, DRAFT_SELECTORS, sectionFilePath } from "./pr-drafts";
 import { prRefFromRoute, refKey, type PrRef } from "./pr/threads-api";
-import { patchViewed, viewedState } from "./pr/reviewed-data";
-import { clickTreeCheckbox, clickTreeFileRow, orderedFilePaths } from "./pr/reviewed-tree";
+import { patchViewed, resyncViewed, viewedState } from "./pr/reviewed-data";
+import {
+  clickTreeCheckbox,
+  clickTreeFileRow,
+  mapTreeFiles,
+  orderedFilePaths,
+} from "./pr/reviewed-tree";
 import { findToolbar } from "./pr/toolbar";
 
 const FEATURE_ID = "pr-review-flow";
@@ -36,8 +41,10 @@ const CSS = `
 }
 .adofix-review-btn {
   background: ${ACCENT}; color: #fff; border: none; border-radius: 2px;
-  font-weight: 600; font-size: 13px; padding: 5px 14px; margin-right: 8px;
+  font-weight: 600; font-size: 13px; padding: 0 14px; margin-right: 8px;
   cursor: pointer; font-family: inherit; white-space: nowrap;
+  /* Match the Approve split-button (32px, measured live 2026-08-19). */
+  height: 32px; box-sizing: border-box; align-self: center;
 }
 .adofix-review-btn:hover { background: #9161ea; }
 .adofix-review-btn.adofix-done { background: rgba(130, 80, 223, 0.22); color: var(--adofix-ink); }
@@ -54,7 +61,7 @@ const CSS = `
 }
 
 /* Our counter replaces ADO's native header progress while a review is on. */
-html[data-adofix-reviewing] ${FLOW_SELECTORS.nativeProgress} { display: none; }
+html[data-adofix-reviewing] ${FLOW_SELECTORS.nativeProgress} { display: none !important; }
 `;
 
 interface FlowState {
@@ -73,6 +80,7 @@ function writeFlow(key: string, state: FlowState): void {
 
 let flowRef: PrRef | null = null;
 let jumpBusy = false;
+let lastResync = 0;
 
 /** "40 changed files" → 40 (the Files toolbar's total; verified 2026-08-19). */
 export function parseChangedFiles(text: string | null | undefined): number | null {
@@ -210,6 +218,18 @@ export const prReviewFlow: Feature = {
     document.documentElement.toggleAttribute("data-adofix-reviewing", flow.started);
 
     const viewed = viewedState(ref, () => this.apply(route));
+    // Folder/root checkbox sweeps mark many files server-side without going
+    // through our toggles — when a rendered tree row disagrees with the
+    // slot, resync (rate-limited; the in-flight guard dedupes fetches).
+    if (viewed && performance.now() - lastResync > 3000) {
+      for (const [path, entry] of mapTreeFiles()) {
+        if (entry.reviewed !== viewed.has(path)) {
+          lastResync = performance.now();
+          resyncViewed(ref, () => this.apply(route));
+          break;
+        }
+      }
+    }
     const toolbar = findToolbar();
     if (toolbar) {
       const parsed =
@@ -242,12 +262,17 @@ export const prReviewFlow: Feature = {
         });
         vote.parentElement.insertBefore(btn, vote);
       }
-      const label = reviewButtonLabel(n, m, flow.started);
+      // While the toolbar counter is visible it owns the n/m readout — the
+      // button compresses so the message isn't repeated (user, 2026-08-19).
+      const counterVisible = toolbar !== null && flow.started;
+      const done = n !== null && m !== null && m > 0 && n >= m;
+      const label = counterVisible
+        ? done
+          ? "Reviewed ✓"
+          : "Reviewing"
+        : reviewButtonLabel(n, m, flow.started);
       if (btn.textContent !== label) btn.textContent = label;
-      btn.classList.toggle(
-        "adofix-done",
-        flow.started && n !== null && m !== null && m > 0 && n >= m
-      );
+      btn.classList.toggle("adofix-done", flow.started && done);
     }
 
     // Files-toolbar counter + mark-and-next (only while reviewing).

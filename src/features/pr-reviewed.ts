@@ -28,24 +28,38 @@ const FEATURE_ID = "pr-reviewed";
  */
 const CSS = `
 .adofix-reviewed {
-  width: 16px; height: 16px; box-sizing: border-box; flex-shrink: 0;
-  display: inline-flex; align-items: center; justify-content: center;
-  border: 1px solid rgba(var(--palette-neutral-20, 200, 198, 196), 1);
-  border-radius: 2px; cursor: pointer; padding: 0; margin-right: 10px;
-  background: transparent; font-size: 11px; line-height: 1; color: transparent;
-  opacity: 0; transition: opacity 0.12s;
+  display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
+  border: none; background: transparent; cursor: pointer;
+  padding: 2px 6px; margin-right: 6px; border-radius: 2px;
+  font-family: inherit; opacity: 0; transition: opacity 0.12s;
 }
 .repos-summary-header > .flex-row:hover .adofix-reviewed,
 .adofix-reviewed:focus-visible,
-.adofix-reviewed[aria-checked="true"] { opacity: 1; }
-.adofix-reviewed:hover { border-color: var(--communication-background, #0078d4); }
-.adofix-reviewed[aria-checked="true"] {
+.adofix-reviewed[aria-checked="true"],
+html[data-adofix-reviewing] .adofix-reviewed { opacity: 1; }
+.adofix-reviewed-box {
+  width: 16px; height: 16px; box-sizing: border-box; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid rgba(var(--palette-neutral-20, 200, 198, 196), 1);
+  border-radius: 2px; font-size: 11px; line-height: 1; color: transparent;
+}
+.adofix-reviewed:hover .adofix-reviewed-box {
+  border-color: var(--communication-background, #0078d4);
+}
+.adofix-reviewed[aria-checked="true"] .adofix-reviewed-box {
   background: var(--communication-background, #0078d4);
   border-color: var(--communication-background, #0078d4);
   color: #fff;
 }
+.adofix-reviewed-label {
+  font-size: 12px; font-weight: 600;
+  color: var(--text-secondary-color, rgba(0, 0, 0, 0.7));
+}
 .adofix-reviewed.adofix-busy { cursor: progress; opacity: 0.6; }
 `;
+
+/** The stacked card's own collapse chevron (verified live 2026-08-19). */
+const SECTION_EXPAND_SELECTOR = ".bolt-card-expand-button";
 
 // Display state comes from the shared live slot in pr/reviewed-data.
 
@@ -78,6 +92,11 @@ async function toggleReviewed(section: HTMLElement, box: HTMLElement): Promise<v
     // Patch the shared set so settle re-applies don't flicker the box back
     // while the refetch is in flight, then resync with the server.
     if (currentRef) patchViewed(currentRef, path, !wasReviewed);
+    // GH-style drawer: reviewed collapses the file's card, unmarking reopens.
+    const expand = safeQuery<HTMLElement>(SECTION_EXPAND_SELECTOR, section);
+    const expanded = expand?.getAttribute("aria-expanded") === "true";
+    if (!wasReviewed && expanded) expand?.click();
+    else if (wasReviewed && expand && !expanded) expand.click();
   } finally {
     box.classList.remove("adofix-busy");
     toggleBusy = false;
@@ -106,8 +125,14 @@ export const prReviewed: Feature = {
         box = document.createElement("button");
         box.type = "button";
         box.className = "adofix-reviewed";
-        box.textContent = "✓";
         box.setAttribute("role", "checkbox");
+        const inner = document.createElement("span");
+        inner.className = "adofix-reviewed-box";
+        inner.textContent = "✓";
+        const labelEl = document.createElement("span");
+        labelEl.className = "adofix-reviewed-label";
+        labelEl.textContent = "Reviewed";
+        box.append(inner, labelEl);
         const ownBox = box;
         box.addEventListener("click", (e) => {
           e.stopPropagation();

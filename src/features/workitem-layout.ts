@@ -55,7 +55,10 @@ export const workitemLayout: Feature = {
     // Resize reflows the header without DOM mutations — the promoted
     // State field's measured position must follow.
     window.addEventListener("resize", () => {
-      window.requestAnimationFrame(() => placeStateField());
+      window.requestAnimationFrame(() => {
+        placeHeaderControls();
+        placeStateField();
+      });
     });
   },
   apply(): void {
@@ -411,10 +414,38 @@ function placeStateField(): void {
   const row3 = header?.children[2] as HTMLElement | undefined;
   if (!header || !page || !state || !row3) return;
   state.classList.add("adofix-wi-state-promoted");
+  // Vertically center on the ASSIGNEE cluster itself (the row's first
+  // in-flow child), not the row box — they differ and misaligned.
+  const assignee =
+    [...row3.children].find(
+      (c) => !c.classList.contains("work-item-header-command-bar")
+    ) ?? row3;
+  const ar = assignee.getBoundingClientRect();
   const r3 = row3.getBoundingClientRect();
   const pr = page.getBoundingClientRect();
-  state.style.setProperty("top", `${Math.round(r3.top - pr.top + (r3.height - 32) / 2)}px`);
+  state.style.setProperty("top", `${Math.round(ar.top - pr.top + (ar.height - 32) / 2)}px`);
   state.style.setProperty("left", `${Math.round(r3.left - pr.left + 8)}px`);
+}
+
+/**
+ * The command bar and the dialog's Fullscreen/Close buttons sit ON the
+ * title row — vertical centers measured from the title row's live rect
+ * (horizontal offsets are CSS).
+ */
+function placeHeaderControls(): void {
+  const header = document.querySelector<HTMLElement>(".work-item-form-header");
+  const title = header?.children[1] as HTMLElement | undefined;
+  if (!header || !title) return;
+  const hr = header.getBoundingClientRect();
+  const tr = title.getBoundingClientRect();
+  const top = `${Math.round(tr.top - hr.top + (tr.height - 32) / 2)}px`;
+  const cb = header.querySelector<HTMLElement>(
+    ":scope > :nth-child(3) > .work-item-header-command-bar"
+  );
+  cb?.style.setProperty("top", top);
+  for (const sel of ['button[aria-label="Fullscreen"]', 'button[aria-label="Close"]']) {
+    header.querySelector<HTMLElement>(sel)?.style.setProperty("top", top);
+  }
 }
 
 /** MUST stay idempotent — runs on every route change and DOM settle. */
@@ -422,6 +453,7 @@ function enhance(): void {
   // Before the rail check: on the Attachments view the rail is unmounted,
   // but the proxy's count/active state still needs refreshing.
   ensureAttachmentsProxy();
+  placeHeaderControls();
   placeStateField();
   // Description loses its section header (and with it the 1px border and
   // the collapse affordance). Text-matched: the bug form's Repro Steps /
@@ -513,28 +545,41 @@ const CSS = `
    keeps 16px of air on the right. */
 .work-item-grid {
   grid-template-columns: minmax(0, 1fr) 320px !important;
+  /* auto rows: ADO's fixed row heights boxed the description into a
+     scrolling 207px track (user 2026-08-18). */
+  grid-template-rows: auto auto !important;
   max-width: 1250px !important;
   margin: 0 auto !important;
   padding-right: 16px !important;
   box-sizing: border-box !important;
 }
+/* NO overflow-x:hidden here: pairing hidden with visible-y computes
+   overflow-y to auto, which turns a height-constrained section into a
+   scrollbox. Wide content is handled inside the rooster editor. */
 .work-item-form-first-section {
   grid-area: 1 / 1 / 2 / 2 !important;
   min-width: 0 !important;
   max-width: 100% !important;
-  overflow-x: hidden;
+  height: auto !important;
+  max-height: none !important;
 }
 .work-item-form-discussion {
   grid-area: 2 / 1 / 3 / 2 !important;
   min-width: 0 !important;
   max-width: 100% !important;
-  overflow-x: hidden;
+  height: auto !important;
+  max-height: none !important;
 }
 .work-item-form-page .html-editor .rooster-editor {
   overflow-x: auto !important;
 }
 .work-item-form-right {
   grid-area: 1 / 2 / 3 / 3 !important;
+  /* display:flex is LOAD-BEARING: despite its flex-row class the rail
+     computes display:grid from ADO's own CSS — flex-direction alone was
+     ignored, and its sections sat in fixed grid tracks (870px+), leaving
+     a huge gap above Related Work (user 2026-08-18). */
+  display: flex !important;
   flex-direction: column !important;
   flex-wrap: nowrap !important;
   width: 320px !important;
@@ -544,6 +589,11 @@ const CSS = `
   width: 100% !important;
   max-width: none !important;
   flex: 0 0 auto !important;
+  /* ADO gives sections height:100% (of the two-row rail span) — with its
+     groups absorbed to zero, an empty full-height section shoved Related
+     Work far down the rail (user 2026-08-18). */
+  height: auto !important;
+  min-height: 0 !important;
 }
 /* Rail noise out. */
 .work-item-form-group:has([class*="deployments"]) {
@@ -571,11 +621,12 @@ const CSS = `
 .adofix-wi-header-hide {
   display: none !important;
 }
-/* Header: the Save/refresh/undo/⋮/📎 command bar joins the FIRST row,
-   right-aligned next to the dialog's in-flow Fullscreen/Close buttons
-   (fixed offsets against later rows proved unstable — absoluting content
-   out of a row changes the row heights themselves). The title row keeps
-   its full width. */
+/* Header: the Save/refresh/undo/⋮/📎 command bar and the dialog's
+   Fullscreen/Close all sit ON the title row, right-aligned. Horizontal
+   offsets are CSS; vertical tops are MEASURED per pass in enhance()
+   against the title row's live rect (fixed offsets drift — absoluting
+   content out of a row changes the row heights themselves). The title
+   row reserves space so a long title never slides underneath. */
 .work-item-form-header {
   position: relative !important;
 }
@@ -592,6 +643,24 @@ const CSS = `
   > :nth-child(3)
   > .work-item-header-command-bar {
   right: 84px;
+}
+.work-item-form-dialog .work-item-form-header button[aria-label="Fullscreen"] {
+  position: absolute !important;
+  top: 5px;
+  right: 46px;
+  z-index: 6;
+}
+.work-item-form-dialog .work-item-form-header button[aria-label="Close"] {
+  position: absolute !important;
+  top: 5px;
+  right: 8px;
+  z-index: 6;
+}
+.work-item-form-header > :nth-child(2) {
+  padding-right: 400px !important;
+}
+.work-item-form-dialog .work-item-form-header > :nth-child(2) {
+  padding-right: 470px !important;
 }
 /* Assignee row makes room at its left for the promoted State field.
    NOT position:relative — that would become the absolute command bar's
@@ -615,6 +684,13 @@ const CSS = `
   pointer-events: auto !important;
   overflow: visible !important;
   z-index: 5;
+}
+/* Same clamp as teleports: the state control's inner fixed widths must
+   not render wider than the 190px box (it overlapped the assignee). */
+.adofix-wi-state-promoted * {
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
 }
 .work-item-form-subheader .work-item-control-label {
   display: none !important;

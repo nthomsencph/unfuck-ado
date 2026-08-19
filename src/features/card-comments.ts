@@ -79,9 +79,9 @@ function render(): void {
     const id = cardId(card);
     if (id === null) continue;
     const n = counts.get(id);
-    const idEl = card.querySelector(".font-weight-semibold.selectable-text");
+    const line = card.querySelector(".flex-row.full-width");
     let chip = card.querySelector(`.${CHIP_CLASS}`);
-    if (typeof n !== "number" || n === 0 || !idEl) {
+    if (typeof n !== "number" || n === 0 || !line) {
       chip?.remove();
       continue;
     }
@@ -91,9 +91,12 @@ function render(): void {
       const icon = document.createElement("span");
       icon.className = "fabric-icon ms-Icon--Comment";
       chip.append(icon, document.createElement("span"));
-      // Inline right after the id number (user 2026-08-18; was
-      // right-aligned at the line's far end).
-      idEl.insertAdjacentElement("afterend", chip);
+      // Right-aligned on the id line (user 2026-08-18, after trying
+      // inline-after-id): margin-left auto pushes to the line's end,
+      // before the ⋮ context menu.
+      const menu = line.querySelector(".card-context-menu");
+      if (menu) line.insertBefore(chip, menu);
+      else line.append(chip);
     }
     const num = chip.lastElementChild;
     if (num && num.textContent !== String(n)) num.textContent = String(n);
@@ -118,7 +121,8 @@ const CSS = `
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  margin-left: 2px;
+  margin-left: auto;
+  padding-right: 2px;
   color: var(--text-secondary-color, #a19f9d);
   font-size: 12px;
   flex-shrink: 0;

@@ -1,5 +1,5 @@
 import type { Feature } from "../core/registry";
-import type { Route } from "../core/router";
+import { parseHubPath, type Route } from "../core/router";
 import { injectStyleOnce, makeCommandProxy } from "../core/dom";
 import { log } from "../core/log";
 
@@ -113,7 +113,7 @@ export const backlogToolbar: Feature = {
   areas: ["boards"],
   apply(route: Route): void {
     injectStyleOnce(FEATURE_ID, CSS);
-    const onBacklogs = route.path.includes("_backlogs");
+    const onBacklogs = parseHubPath(route.path).hub === "_backlogs";
     document.documentElement.toggleAttribute(ATTR, onBacklogs);
     if (!onBacklogs) return;
 

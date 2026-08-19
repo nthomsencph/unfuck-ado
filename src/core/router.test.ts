@@ -1,4 +1,34 @@
 import { describe, expect, it } from "vitest";
+import { parseHubPath } from "./router";
+
+describe("parseHubPath", () => {
+  it("splits org, project, hub and decoded rest", () => {
+    expect(parseHubPath("/o/My%20Project/_sprints/taskboard/My%20Team/Iter", "dev.azure.com")).toEqual({
+      org: "o",
+      project: "My Project",
+      hub: "_sprints",
+      rest: ["taskboard", "My Team", "Iter"],
+    });
+  });
+
+  it("takes the org from the subdomain on legacy hosts and drops DefaultCollection", () => {
+    expect(parseHubPath("/DefaultCollection/proj/_backlogs/backlog/Team/Epics", "myorg.visualstudio.com")).toEqual({
+      org: "myorg",
+      project: "proj",
+      hub: "_backlogs",
+      rest: ["backlog", "Team", "Epics"],
+    });
+  });
+
+  it("returns null hub and empty rest without a hub segment", () => {
+    expect(parseHubPath("/o/p", "dev.azure.com")).toEqual({
+      org: "o",
+      project: "p",
+      hub: null,
+      rest: [],
+    });
+  });
+});
 import { createRouter, parseRoute, type Route } from "./router";
 
 describe("parseRoute", () => {

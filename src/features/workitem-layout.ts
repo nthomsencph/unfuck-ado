@@ -53,6 +53,8 @@ import { log } from "../core/log";
  */
 export const workitemLayout: Feature = {
   id: "workitem-layout",
+  // "*" is deliberate: work item DIALOGS open on any hub (boards, queries,
+  // dashboards) — the form-DOM checks in enhance() are the real gate.
   areas: "*",
   init(): void {
     // Resize reflows the header without DOM mutations — the promoted
@@ -66,6 +68,9 @@ export const workitemLayout: Feature = {
   },
   apply(route: Route): void {
     injectStyleOnce("workitem-layout", CSS);
+    // Route.id is the work item (full page /_workitems/edit/{id} or dialog
+    // ?workitem={id}) everywhere except repos-pr, where it is the PR number.
+    currentId = route.area !== "repos-pr" && route.id ? Number(route.id) : null;
     enhance(route.org && route.project ? { org: route.org, project: route.project } : null);
   },
 };
@@ -73,13 +78,8 @@ export const workitemLayout: Feature = {
 const FEATURE_ID = "workitem-layout";
 const HOST_ID = "adofix-wi-details";
 
-/** Work item id: full page /_workitems/edit/{id} or dialog ?workitem={id}. */
-function workItemId(): number | null {
-  const m =
-    location.pathname.match(/_workitems\/edit\/(\d+)/) ??
-    location.search.match(/[?&]workitem=(\d+)/);
-  return m ? Number(m[1]) : null;
-}
+/** Work item in view, set per apply() — async fetch guards read it live. */
+let currentId: number | null = null;
 
 interface CreatedInfo {
   by: string;
@@ -113,7 +113,7 @@ function ensureCreated(id: number, ref: ProjectRef): void {
 }
 
 function renderCreated(id: number): void {
-  if (workItemId() !== id) return;
+  if (currentId !== id) return;
   const info = createdCache.get(id);
   if (!info) return;
   const host = document.getElementById(HOST_ID);
@@ -314,8 +314,7 @@ function collectRows(): DetailRow[] | null {
     }
   }
 
-  const id = workItemId();
-  const created = id !== null ? (createdCache.get(id) ?? null) : null;
+  const created = currentId !== null ? (createdCache.get(currentId) ?? null) : null;
   rows.push({ key: "created-by", label: "Created by", value: created?.by ?? "…" });
   rows.push({ key: "created-at", label: "Created", value: created?.date ?? "…" });
 
@@ -470,8 +469,7 @@ function enhance(ref: ProjectRef | null): void {
   }
   const rows = collectRows();
   if (!rows) return;
-  const id = workItemId();
-  if (id !== null && ref) ensureCreated(id, ref);
+  if (currentId !== null && ref) ensureCreated(currentId, ref);
 
   const snapshot = JSON.stringify(rows.map((r) => [r.key, r.value, r.dotColor]));
   let host = document.getElementById(HOST_ID);

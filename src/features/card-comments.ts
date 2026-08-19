@@ -23,7 +23,8 @@ import { log } from "../core/log";
  */
 export const cardComments: Feature = {
   id: "card-comments",
-  areas: "*",
+  // Cards exist only on boards surfaces (_boards, _backlogs, _sprints).
+  areas: ["boards"],
   apply(route: Route): void {
     injectStyleOnce("card-comments", CSS);
     enhance(route.org && route.project ? { org: route.org, project: route.project } : null);

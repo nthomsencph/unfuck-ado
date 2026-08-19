@@ -1,5 +1,5 @@
 import type { Feature } from "../core/registry";
-import type { Route } from "../core/router";
+import { parseHubPath, type Route } from "../core/router";
 import { injectStyleOnce } from "../core/dom";
 import { getValue, setValue } from "../core/storage";
 
@@ -85,22 +85,12 @@ export function parseBacklogFilters(search: string): BacklogFilters {
 
 /** "/{org}/{project}/_backlogs/backlog/{team}/{level}" → storage scope key. */
 export function backlogScopeKey(path: string): string | null {
-  const segments = path
-    .split("/")
-    .filter(Boolean)
-    .map((s) => {
-      try {
-        return decodeURIComponent(s);
-      } catch {
-        return s;
-      }
-    });
-  const hub = segments.indexOf("_backlogs");
-  if (hub < 1 || segments[hub + 1] !== "backlog") return null;
-  const team = segments[hub + 2];
-  const level = segments[hub + 3];
-  if (!team || !level) return null;
-  return `${segments[0]}/${segments[hub - 1]}/${team}/${level}`;
+  const { org, project, hub, rest } = parseHubPath(path);
+  if (hub !== "_backlogs" || rest[0] !== "backlog") return null;
+  const team = rest[1];
+  const level = rest[2];
+  if (!org || !project || !team || !level) return null;
+  return `${org}/${project}/${team}/${level}`;
 }
 
 /** "A", "B" for the first two values, then a " +n" tail. */
@@ -136,7 +126,7 @@ export const backlogStatus: Feature = {
   areas: ["boards"],
   apply(route: Route): void {
     injectStyleOnce(FEATURE_ID, CSS);
-    if (!route.path.includes("_backlogs")) return;
+    if (parseHubPath(route.path).hub !== "_backlogs") return;
     const row = document.querySelector<HTMLElement>(
       ".wit-backlogs-header-row .bolt-header-title-row"
     );

@@ -1,5 +1,5 @@
 import type { Feature } from "../core/registry";
-import type { Route } from "../core/router";
+import { parseHubPath, type Route } from "../core/router";
 import { ACCENT, ADOFIX_ATTR, injectStyleOnce } from "../core/dom";
 import { log } from "../core/log";
 import { debounce } from "../core/observe";
@@ -263,21 +263,11 @@ export function colTargets(
 
 /** "/{org}/{project}/_sprints/{tab}/{team}/…" → "org/project/team". */
 export function taskboardTeamKey(path: string): string | null {
-  const segments = path
-    .split("/")
-    .filter(Boolean)
-    .map((s) => {
-      try {
-        return decodeURIComponent(s);
-      } catch {
-        return s;
-      }
-    });
-  const hub = segments.indexOf("_sprints");
-  if (hub < 1) return null;
-  const team = segments[hub + 2];
-  if (!team) return null;
-  return `${segments[0]}/${segments[hub - 1]}/${team}`;
+  const { org, project, hub, rest } = parseHubPath(path);
+  if (hub !== "_sprints") return null;
+  const team = rest[1];
+  if (!org || !project || !team) return null;
+  return `${org}/${project}/${team}`;
 }
 
 function prefs(key: string): Prefs {

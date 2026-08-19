@@ -21,11 +21,23 @@ const HUB_AREAS: Record<string, Area> = {
   _wiki: "wiki",
 };
 
-export function parseRoute(
-  pathname: string,
-  hostname: string = location.hostname,
-  search: string = ""
-): Route {
+/** Decoded, org/project/hub-split pathname — see parseHubPath. */
+export interface HubPath {
+  org: string | null;
+  project: string | null;
+  /** "_backlogs", "_sprints", … — the first path segment starting with "_". */
+  hub: string | null;
+  /** Decoded segments after the hub. */
+  rest: string[];
+}
+
+/**
+ * The single place that knows how an ADO pathname splits into org, project
+ * and hub — including {org}.visualstudio.com legacy hosts (org is the
+ * subdomain) and DefaultCollection prefixes. Feature-side path parsing goes
+ * through here, never through positional segment math.
+ */
+export function parseHubPath(pathname: string, hostname: string = location.hostname): HubPath {
   const segments = pathname
     .split("/")
     .filter(Boolean)
@@ -47,33 +59,39 @@ export function parseRoute(
   }
 
   const hubIndex = segments.findIndex((s) => s.startsWith("_"));
-  const hub = hubIndex >= 0 ? segments[hubIndex] : null;
+  const hub = hubIndex >= 0 ? (segments[hubIndex] ?? null) : null;
   const project =
     hubIndex !== 0 && segments.length > 0 && !segments[0]!.startsWith("_") ? segments[0]! : null;
+
+  return { org, project, hub, rest: hubIndex >= 0 ? segments.slice(hubIndex + 1) : [] };
+}
+
+export function parseRoute(
+  pathname: string,
+  hostname: string = location.hostname,
+  search: string = ""
+): Route {
+  const { org, project, hub, rest } = parseHubPath(pathname, hostname);
 
   let area: Area = "unknown";
   let id: string | null = null;
   let repo: string | null = null;
 
-  if (hub) {
-    if (hub === "_git") {
-      // Only the PR views of the repos hub are interesting to us.
-      const rest = segments.slice(hubIndex + 1);
-      const prIndex = rest.findIndex((s) => s === "pullrequest" || s === "pullrequests");
-      if (prIndex >= 0) {
-        area = "repos-pr";
-        // /_git/{repo}/pullrequest/{id} — the segment before the pr marker.
-        repo = prIndex >= 1 ? (rest[prIndex - 1] ?? null) : null;
-        const next = rest[prIndex + 1];
-        if (next && /^\d+$/.test(next)) id = next;
-      }
-    } else {
-      area = HUB_AREAS[hub] ?? "unknown";
+  if (hub === "_git") {
+    // Only the PR views of the repos hub are interesting to us.
+    const prIndex = rest.findIndex((s) => s === "pullrequest" || s === "pullrequests");
+    if (prIndex >= 0) {
+      area = "repos-pr";
+      // /_git/{repo}/pullrequest/{id} — the segment before the pr marker.
+      repo = prIndex >= 1 ? (rest[prIndex - 1] ?? null) : null;
+      const next = rest[prIndex + 1];
+      if (next && /^\d+$/.test(next)) id = next;
     }
+  } else if (hub) {
+    area = HUB_AREAS[hub] ?? "unknown";
   }
 
-  if (area === "workitems" && hubIndex >= 0) {
-    const rest = segments.slice(hubIndex + 1);
+  if (area === "workitems") {
     const editIndex = rest.findIndex((s) => s === "edit");
     const next = editIndex >= 0 ? rest[editIndex + 1] : undefined;
     if (next && /^\d+$/.test(next)) id = next;

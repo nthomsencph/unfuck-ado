@@ -1,5 +1,5 @@
 import type { Feature } from "../core/registry";
-import type { Route } from "../core/router";
+import { parseHubPath, type Route } from "../core/router";
 import { injectStyleOnce, makeCommandProxy } from "../core/dom";
 import { log } from "../core/log";
 import { getValue, setValue } from "../core/storage";
@@ -182,11 +182,9 @@ html[${ATTR}] .sprints-tabbar-header .bolt-tabbar {
 
 /** "/{org}/{project}/_sprints/{tab}/…" → the tab segment, or null. */
 export function sprintTab(path: string): string | null {
-  const segments = path.split("/").filter(Boolean);
-  const hub = segments.indexOf("_sprints");
-  if (hub < 0) return null;
-  const tab = segments[hub + 1];
-  return tab ? tab.toLowerCase() : null;
+  const { hub, rest } = parseHubPath(path);
+  if (hub !== "_sprints") return null;
+  return rest[0]?.toLowerCase() ?? null;
 }
 
 /**
@@ -195,18 +193,9 @@ export function sprintTab(path: string): string | null {
  * own total (taskboard counts tasks, backlog counts tree rows).
  */
 export function sprintScopeKey(path: string): string | null {
-  if (sprintTab(path) === null) return null;
-  return path
-    .split("/")
-    .filter(Boolean)
-    .map((s) => {
-      try {
-        return decodeURIComponent(s);
-      } catch {
-        return s;
-      }
-    })
-    .join("/");
+  const { org, project, hub, rest } = parseHubPath(path);
+  if (hub !== "_sprints") return null;
+  return [org, project, hub, ...rest].filter(Boolean).join("/");
 }
 
 /**

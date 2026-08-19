@@ -5,6 +5,7 @@ import { log } from "../core/log";
 import { createThread, prRefFromRoute, type PrRef } from "./pr/threads-api";
 import { draftKey, loadDrafts, newDraftId, saveDrafts, type Draft } from "./pr/drafts-store";
 import { findDiffEditor, type MonacoEditor, type ViewZone } from "./pr/monaco";
+import { mapTreeFiles, TREE_SELECTORS } from "./pr/reviewed-tree";
 
 /**
  * ADO renders PR diffs with TWO different engines (both verified live
@@ -226,6 +227,13 @@ const DRAFTS_CSS = `
 /* Zones render under .view-lines without a z-index (verified 2026-08-19). */
 .adofix-zone-wrap { z-index: 10; }
 .adofix-zone-card { margin: 3px 12px 3px 4px; }
+
+/* -- "Show" landing flash ------------------------------------------------- */
+@keyframes adofix-flash {
+  0% { box-shadow: 0 0 0 2px ${ACCENT}; }
+  100% { box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18); }
+}
+.adofix-flash { animation: adofix-flash 1.4s ease-out; }
 
 /* -- drafted-line gutter markers (Monaco view) --------------------------- */
 .line-numbers.adofix-has-draft { color: ${ACCENT} !important; font-weight: 700; }
@@ -988,6 +996,105 @@ function markMonacoDraftLines(): void {
   }
 }
 
+// ---- "Show": navigate to a draft's location ---------------------------------
+
+function flashCard(card: HTMLElement): void {
+  card.classList.remove("adofix-flash");
+  void card.offsetWidth; // restart the animation
+  card.classList.add("adofix-flash");
+  card.addEventListener("animationend", () => card.classList.remove("adofix-flash"), {
+    once: true,
+  });
+}
+
+/**
+ * Center the drafted line in the Monaco view and flash its zone card.
+ * Left-side (removed-line) drafts land approximately — the gutter counts
+ * modified lines, but the panes stay roughly aligned.
+ */
+function revealDraftLine(draft: Draft): void {
+  renderMonacoZoneCards();
+  const ed = findDiffEditor()?.getModifiedEditor();
+  if (!ed) return;
+  ed.revealLineInCenter(draft.fileLevel ? 1 : draft.line);
+  const card = safeQuery<HTMLElement>(`[${CARD_ID_ATTR}="${draft.id}"]`);
+  if (card) flashCard(card);
+}
+
+/**
+ * Click the file's tree row (SPA-switches to its single-file view — verified
+ * live 2026-08-19; pushState+popstate does NOT drive ADO's router). The tree
+ * is virtualized, so sweep-scroll from the top until the path maps to a
+ * rendered row; the scroll position only needs restoring on failure — success
+ * navigates and ADO re-scrolls the tree to the selected row itself.
+ */
+async function clickTreeFile(path: string): Promise<boolean> {
+  const clickRow = (): boolean => {
+    const entry = mapTreeFiles().get(path);
+    if (!entry) return false;
+    entry.row.click();
+    return true;
+  };
+  if (clickRow()) return true;
+  const scroller = safeQuery<HTMLElement>(TREE_SELECTORS.scroller);
+  if (!scroller) return false;
+  const savedTop = scroller.scrollTop;
+  scroller.scrollTop = 0;
+  for (let step = 0; step < 40; step++) {
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    if (clickRow()) return true;
+    if (scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 5) break;
+    scroller.scrollTop += Math.max(100, scroller.clientHeight * 0.8);
+  }
+  scroller.scrollTop = savedTop;
+  return false;
+}
+
+async function showDraft(draft: Draft): Promise<void> {
+  closePanel();
+  if (safeQuery(DRAFT_SELECTORS.monacoRoot)) {
+    if (currentFilePath() === draft.filePath) {
+      revealDraftLine(draft);
+      return;
+    }
+    if (!(await clickTreeFile(draft.filePath))) {
+      showToast(`Couldn't find ${splitPath(draft.filePath).base} in the file tree`);
+      return;
+    }
+    await waitFor(() =>
+      currentFilePath() === draft.filePath && findDiffEditor() ? true : null
+    );
+    revealDraftLine(draft);
+    return;
+  }
+  // Stacked view: rows (and our card) only exist once the section scrolls
+  // near the viewport — scroll there, then wait for the card to become real.
+  const section = safeQueryAll<HTMLElement>(DRAFT_SELECTORS.fileSection).find(
+    (s) => sectionFilePath(s) === draft.filePath
+  );
+  if (section) {
+    section.scrollIntoView({ block: "start" });
+    const card = await waitFor(() => {
+      renderDraftCards();
+      return safeQuery<HTMLElement>(`[${CARD_ID_ATTR}="${draft.id}"]`);
+    }, 3000);
+    if (card) {
+      card.scrollIntoView({ block: "center" });
+      flashCard(card);
+      return;
+    }
+  }
+  // Section virtualized away — the single-file view can always host it.
+  if (await clickTreeFile(draft.filePath)) {
+    await waitFor(() =>
+      currentFilePath() === draft.filePath && findDiffEditor() ? true : null
+    );
+    revealDraftLine(draft);
+  } else {
+    showToast(`Couldn't find ${splitPath(draft.filePath).base} in the file tree`);
+  }
+}
+
 // ---- drafts panel + submit --------------------------------------------------
 
 function deleteDraft(id: string): void {
@@ -1056,7 +1163,9 @@ function renderPanel(): void {
     const lines = document.createElement("span");
     lines.className = "adofix-draft-lines";
     lines.textContent = locLabel(draft);
-    name.append(file, lines, actionsFor(item, draft));
+    const actions = actionsFor(item, draft);
+    actions.prepend(quietButton("Show", () => void showDraft(draft)));
+    name.append(file, lines, actions);
 
     const dirEl = document.createElement("div");
     dirEl.className = "adofix-draft-dir";

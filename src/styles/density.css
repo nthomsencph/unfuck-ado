@@ -14,7 +14,7 @@
 /* Card shell: the dense-era margin (4px 8px 0, 2026-08-01) left stacked
    cards touching once the layered material shipped — cards now separate
    with a real 12px gap below each (user 2026-08-18). Body padding is owned
-   by the card material in chrome.css (.wit-card .card-content). */
+   by the card material below (.wit-card .card-content). */
 .wit-card {
   margin: 0 8px 12px !important;
   min-height: 0 !important;
@@ -44,4 +44,48 @@
 .board-swimlane-header {
   min-height: 24px !important;
   padding: 0 4px !important;
+}
+
+/*
+ * Kanban board joins the layered theme (verified live 2026-08-18): canvas
+ * behind the board and the column-header strip, lane surfaces on columns,
+ * card material on every wit-card — which covers the sprint taskboard's
+ * cards too (.taskboard-card is a .wit-card); overflow clips their state
+ * stripes to the rounded corners.
+ */
+.kanban-board,
+.kanban-board-column-header-container {
+  background: var(--adofix-bg) !important;
+}
+.kanban-board-column {
+  background: var(--adofix-lane) !important;
+}
+.wit-card {
+  background: var(--adofix-card) !important;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.45),
+    0 2px 10px rgba(0, 0, 0, 0.25) !important;
+  border-radius: var(--adofix-radius) !important;
+  overflow: hidden;
+}
+/* ADO frames the content in a 1px #605e5c border (top/right/bottom; the
+   state flag covers the left) — the card material IS the boundary, so the
+   frame goes, and the freed edge becomes vertical breathing room (native
+   padding is 12px all round). Covers kanban .boards-card and sprint
+   .taskboard-card alike (user request 2026-08-18: borders + colors). */
+.wit-card .card-content {
+  border: none !important;
+  padding: 20px 14px !important;
+}
+/* Work-item-type flag: a 3px accent, not a 4px full-saturation band. */
+.wit-card .card-flag {
+  width: 3px !important;
+  opacity: 0.85;
+}
+/* Tags row: ADO stacks 8px pill margin + 12px list margin under the last
+   pill — 40px of slack with the card padding (measured live 2026-08-18).
+   -8px swallows both, leaving exactly the card padding; pills keep their
+   8px wrap gap between rows. */
+.wit-card .responsive-tags-list {
+  margin-bottom: -8px !important;
 }

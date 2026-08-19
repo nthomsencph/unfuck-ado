@@ -16,6 +16,7 @@ import { prComments } from "./features/pr-comments";
 import { prDiffTotals } from "./features/pr-diff-totals";
 import { prDrafts } from "./features/pr-drafts";
 import { prKeynav } from "./features/pr-keynav";
+import { prOverview } from "./features/pr-overview";
 import { prReviewed } from "./features/pr-reviewed";
 import { prThreadFilter } from "./features/pr-thread-filter";
 import { sprintHeader } from "./features/sprint-header";
@@ -51,6 +52,7 @@ declare global {
   registry.register(sprintHeader);
   registry.register(taskboardColumns);
   registry.register(prKeynav);
+  registry.register(prOverview);
   registry.register(prThreadFilter);
   registry.register(prDrafts);
   // After prDrafts: both adorn header .justify-end via insertBefore(firstChild),
@@ -80,6 +82,6 @@ declare global {
   // debugging). Detail logging: localStorage.setItem("adofix.debug", "1").
   info(
     `ado-unfuck v${__ADOFIX_VERSION__} active`,
-    "— features: board-density, chrome-density, workitem-layout, card-comments, backlog-toolbar, backlog-grid, backlog-status, sprint-header, taskboard-columns, pr-keynav, pr-thread-filter, pr-drafts, pr-reviewed, pr-diff-totals, pr-comments, pr-checks, pr-actions, workitem-state"
+    "— features: board-density, chrome-density, workitem-layout, card-comments, backlog-toolbar, backlog-grid, backlog-status, sprint-header, taskboard-columns, pr-keynav, pr-overview, pr-thread-filter, pr-drafts, pr-reviewed, pr-diff-totals, pr-comments, pr-checks, pr-actions, workitem-state"
   );
 })();

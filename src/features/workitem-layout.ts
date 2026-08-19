@@ -543,7 +543,7 @@ const CSS = `
   gap: 12px;
 }
 /* Comments sit flat on the canvas (user 2026-08-18); the composer's text
-   field carries the card color instead — see chrome.css. */
+   field carries the card color instead — see the form-surface rules below. */
 .comment-item.displayed-comment {
   background: transparent !important;
   box-shadow: none !important;
@@ -817,4 +817,53 @@ ${stubHide(".adofix-wi-group-absorb")}
   padding: 2px 10px;
   font-size: 12px;
 }
+
+/*
+ * Work item form (dialog and full page, verified live 2026-08-18): the
+ * shell, page, subheader, tab strip and every flat field (bolt textfields,
+ * editable dropdowns, the description html-editor + rooster command bar)
+ * natively paint four different greys. ADO's fields are flat by design
+ * (same color as the page), so everything goes to the canvas; the
+ * discussion composer and the zero-data hint boxes are content cards.
+ */
+.work-item-form-dialog,
+.work-item-form-page,
+.work-item-form-subheader,
+.wif-tabbar,
+.work-item-form-page .bolt-textfield,
+.work-item-form-page .bolt-textfield-input,
+.work-item-form-page .bolt-editable-dropdown,
+.work-item-form-page .html-editor,
+.work-item-form-page .rooster-editor,
+.work-item-form-page .ms-CommandBar {
+  background: var(--adofix-bg) !important;
+}
+/* The description editor's visible surface CANNOT be painted directly:
+   ADO's dark-theme sanitizer (.work-item-form-section-dark-theme-override
+   .html-editor [style]:not(a):not(pre):not(…)) repaints every inline-styled
+   editor descendant var(--background-color) !important at unbeatable
+   specificity — and the editor div carries style="user-select: text".
+   Redefining the token in the editor's scope turns ADO's own hammer into
+   the paintbrush. */
+.work-item-form-page .html-editor {
+  --background-color: var(--adofix-bg);
+}
+.work-item-form-page .html-command-bar-button:not(:hover):not(.is-checked) {
+  background: transparent !important;
+}
+/* Discussion composer: flat on the canvas — the card color moved onto the
+   text field itself (user 2026-08-18; was the inverse). The zero-data
+   hint boxes keep card material. */
+.discussion-new-comment {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.discussion-new-comment .markdown-editor,
+.discussion-new-comment .bolt-textfield,
+.discussion-new-comment .bolt-textfield-input {
+  background: var(--adofix-card) !important;
+  border-radius: var(--adofix-radius) !important;
+}
+/* (.deployments-zero-data / .links-control-zero-state card styling removed:
+   workitem-layout hides both containers outright, so the rules were dead.) */
 `;

@@ -70,7 +70,7 @@ html[${TWO_UP_ATTR}] .taskboard-expanded-cell .flex-row.flex-wrap > .taskboard-c
   max-width: min(100%, 240px);
   min-width: 0;
 }
-/* Card padding lives with the card material in chrome.css (.wit-card). */
+/* Card padding lives with the card material in density.css (.wit-card). */
 /* Card layout: line 1 = type icon + id (+ ⋮), the title on its own line(s). */
 .taskboard-card a.title {
   display: block;
@@ -79,7 +79,7 @@ html[${TWO_UP_ATTR}] .taskboard-expanded-cell .flex-row.flex-wrap > .taskboard-c
 /* Lane surfaces with canvas gutters between them: transparent side borders
    + padding-box clip make the near-black canvas shine through WITHOUT
    touching the fixed-table geometry, and the show-lines cell borders go
-   invisible. Card material lives in chrome.css (.wit-card covers these). */
+   invisible. Card material lives in density.css (.wit-card covers these). */
 .taskboard-expanded-cell {
   background: var(--adofix-lane, #1d1c1b) !important;
   border-left: 4px solid transparent !important;

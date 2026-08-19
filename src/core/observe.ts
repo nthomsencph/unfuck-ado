@@ -39,3 +39,23 @@ export function startObserver(onSettle: () => void, ms = 100): () => void {
   observer.observe(target, { childList: true, subtree: true });
   return () => observer.disconnect();
 }
+
+/** Poll for a DOM condition; resolves null on timeout. */
+export function waitFor<T>(get: () => T | null, timeoutMs = 5000, stepMs = 150): Promise<T | null> {
+  return new Promise((resolve) => {
+    const deadline = performance.now() + timeoutMs;
+    const tick = (): void => {
+      const value = get();
+      if (value !== null) {
+        resolve(value);
+        return;
+      }
+      if (performance.now() > deadline) {
+        resolve(null);
+        return;
+      }
+      setTimeout(tick, stepMs);
+    };
+    tick();
+  });
+}

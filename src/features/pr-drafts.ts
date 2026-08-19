@@ -1,6 +1,7 @@
 import type { Feature } from "../core/registry";
 import type { Route } from "../core/router";
-import { ACCENT, injectStyleOnce, safeQuery, safeQueryAll, showToast } from "../core/dom";
+import { ACCENT, flashOutline, injectStyleOnce, safeQuery, safeQueryAll, showToast } from "../core/dom";
+import { waitFor } from "../core/observe";
 import { log } from "../core/log";
 import { createThread, prRefFromRoute, type PrRef } from "./pr/threads-api";
 import { draftKey, loadDrafts, newDraftId, saveDrafts, type Draft } from "./pr/drafts-store";
@@ -237,13 +238,6 @@ const DRAFTS_CSS = `
   font-size: 12px;
   color: var(--text-secondary-color, rgba(0, 0, 0, 0.7));
 }
-
-/* -- "Show" landing flash ------------------------------------------------- */
-@keyframes adofix-flash {
-  0% { box-shadow: 0 0 0 2px ${ACCENT}; }
-  100% { box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18); }
-}
-.adofix-flash { animation: adofix-flash 1.4s ease-out; }
 
 /* -- drafted-line gutter markers (Monaco view) --------------------------- */
 .line-numbers.adofix-has-draft { color: ${ACCENT} !important; font-weight: 700; }
@@ -587,26 +581,6 @@ function captureDraft(input: HTMLTextAreaElement, cancel: HTMLButtonElement): vo
   showToast(
     `Draft saved — ${splitPath(anchor.filePath).base} ${locLabel({ line: start, endLine, fileLevel: anchor.fileLevel })}`
   );
-}
-
-/** Poll for a DOM condition; resolves null on timeout. */
-function waitFor<T>(get: () => T | null, timeoutMs = 5000, stepMs = 150): Promise<T | null> {
-  return new Promise((resolve) => {
-    const deadline = performance.now() + timeoutMs;
-    const tick = (): void => {
-      const value = get();
-      if (value !== null) {
-        resolve(value);
-        return;
-      }
-      if (performance.now() > deadline) {
-        resolve(null);
-        return;
-      }
-      setTimeout(tick, stepMs);
-    };
-    tick();
-  });
 }
 
 let fileCommentBusy = false;
@@ -1118,15 +1092,6 @@ function renderTreeDraftRows(): void {
 
 // ---- "Show": navigate to a draft's location ---------------------------------
 
-function flashCard(card: HTMLElement): void {
-  card.classList.remove("adofix-flash");
-  void card.offsetWidth; // restart the animation
-  card.classList.add("adofix-flash");
-  card.addEventListener("animationend", () => card.classList.remove("adofix-flash"), {
-    once: true,
-  });
-}
-
 /**
  * Center the drafted line in the Monaco view and flash its zone card.
  * Left-side (removed-line) drafts land approximately — the gutter counts
@@ -1139,7 +1104,7 @@ function revealDraftLine(draft: Draft): void {
   if (!ed) return;
   ed.revealLineInCenter(draft.fileLevel ? 1 : draft.line);
   const card = safeQuery<HTMLElement>(`[${CARD_ID_ATTR}="${draft.id}"]`);
-  if (card) flashCard(card);
+  if (card) flashOutline(card);
 }
 
 /**
@@ -1201,7 +1166,7 @@ async function showDraft(draft: Draft): Promise<void> {
     }, 3000);
     if (card) {
       card.scrollIntoView({ block: "center" });
-      flashCard(card);
+      flashOutline(card);
       return;
     }
   }

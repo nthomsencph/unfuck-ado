@@ -189,6 +189,12 @@ const BASE_CSS = `
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
   font-family: "Segoe UI", system-ui, sans-serif;
 }
+/* One-shot accent flash used by flashOutline() after programmatic jumps. */
+@keyframes adofix-flash {
+  0% { box-shadow: 0 0 0 2px ${ACCENT}; }
+  100% { box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18); }
+}
+.adofix-flash { animation: adofix-flash 1.4s ease-out; }
 `;
 
 export function injectBaseStyle(): void {
@@ -218,4 +224,12 @@ export function showToast(message: string, ms = 2500): void {
   el.textContent = message;
   document.body.appendChild(el);
   setTimeout(() => el.remove(), ms);
+}
+
+/** One-shot accent flash to land the eye after a programmatic navigation. */
+export function flashOutline(el: HTMLElement): void {
+  el.classList.remove("adofix-flash");
+  void el.offsetWidth; // restart the animation
+  el.classList.add("adofix-flash");
+  el.addEventListener("animationend", () => el.classList.remove("adofix-flash"), { once: true });
 }

@@ -59,33 +59,62 @@ export function markApplied(el: Element, featureId: string): void {
 }
 
 /**
- * Icon-only proxy for a (stubbed) native commandbar button: a fresh button
- * carrying bolt's subtle icon-button classes (fixed list, not a clone, so no
- * transient state — active highlight, aria-expanded — leaks in from a
- * template) with the native's icon cloned in. The native is resolved BY ID AT
- * CLICK TIME because ADO re-renders its headers and stateful controls must
- * never be mirrored statically. Returns null when the native (or its icon)
- * is not in the DOM.
+ * Bolt-styled subtle icon-only toolbar button: a fresh button carrying
+ * bolt's classes (fixed list, not a clone, so no transient state — active
+ * highlight, aria-expanded — leaks in from a template). `className` is the
+ * caller's own marker class — each feature keeps its own so existence
+ * guards next to the shared #__bolt-filter row never collide.
+ */
+export function makeToolbarButton(
+  label: string,
+  icon: Node,
+  className = "adofix-toolbar-btn"
+): HTMLButtonElement {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className =
+    `${className} bolt-header-command-item-button bolt-button ` +
+    "bolt-icon-button enabled subtle icon-only bolt-focus-treatment";
+  btn.setAttribute("aria-label", label);
+  btn.title = label;
+  btn.appendChild(icon);
+  return btn;
+}
+
+/**
+ * Icon-only proxy for a (stubbed) native commandbar button, with the
+ * native's icon cloned in. The native is resolved BY ID AT CLICK TIME
+ * because ADO re-renders its headers and stateful controls must never be
+ * mirrored statically. Returns null when the native (or its icon) is not in
+ * the DOM.
  */
 export function makeCommandProxy(nativeId: string, label: string): HTMLButtonElement | null {
   const native = document.getElementById(nativeId);
   const icon = native?.querySelector('[class*="fluent"], .bolt-button-icon');
   if (!native || !icon) return null;
-  const btn = document.createElement("button");
-  btn.type = "button";
-  btn.className =
-    "adofix-toolbar-btn bolt-header-command-item-button bolt-button " +
-    "bolt-icon-button enabled subtle icon-only bolt-focus-treatment";
-  btn.setAttribute("aria-label", label);
-  btn.title = label;
+  const btn = makeToolbarButton(label, icon.cloneNode(true));
   btn.dataset["native"] = nativeId;
-  btn.appendChild(icon.cloneNode(true));
   btn.addEventListener("click", (e) => {
     e.preventDefault();
     e.stopPropagation();
     document.getElementById(nativeId)?.click();
   });
   return btn;
+}
+
+/**
+ * Idempotent adofix text span: created under `parent` on first call, then
+ * textContent updated only when it changed (apply() re-runs on every settle;
+ * unchanged writes would still dirty the DOM).
+ */
+export function ensureText(parent: HTMLElement, className: string, text: string): void {
+  let span = parent.querySelector<HTMLElement>(`:scope .${className}`);
+  if (!span) {
+    span = document.createElement("span");
+    span.className = className;
+    parent.appendChild(span);
+  }
+  if (span.textContent !== text) span.textContent = text;
 }
 
 /**

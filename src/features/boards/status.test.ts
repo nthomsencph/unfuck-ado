@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
-import { backlogScopeKey, formatBacklogStatus, parseBacklogFilters } from "./backlog-status";
+import { beforeEach, describe, expect, it } from "vitest";
+import { formatBacklogStatus, parseBacklogFilters, resolveTotal } from "./status";
+import { storageKey } from "../../core/storage";
 
 describe("parseBacklogFilters", () => {
   it("parses System.* params into labeled entries, in URL order", () => {
@@ -95,19 +96,27 @@ describe("formatBacklogStatus", () => {
   });
 });
 
-describe("backlogScopeKey", () => {
-  it("builds org/project/team/level from a backlog path", () => {
-    expect(backlogScopeKey("/Akademikernes/AI%20og%20DT/_backlogs/backlog/AI%20og%20DT%20Team/Epics")).toBe(
-      "Akademikernes/AI og DT/AI og DT Team/Epics"
-    );
+describe("resolveTotal", () => {
+  const FEATURE = "resolve-total-test";
+  const SCOPE = "o/p/team/Stories";
+
+  beforeEach(() => {
+    localStorage.removeItem(storageKey(FEATURE, SCOPE));
   });
 
-  it("keeps the key stable across deeper backlog sub-paths", () => {
-    expect(backlogScopeKey("/o/p/_backlogs/backlog/Team/Stories/whatever")).toBe("o/p/Team/Stories");
+  it("stores the unfiltered count as the scope's total and returns null", () => {
+    expect(resolveTotal(FEATURE, SCOPE, 255, false)).toBeNull();
+    expect(resolveTotal(FEATURE, SCOPE, 176, true)).toBe(255);
   });
 
-  it("returns null for non-backlog paths", () => {
-    expect(backlogScopeKey("/o/p/_boards/board/t/Team/Epics")).toBeNull();
-    expect(backlogScopeKey("/o/p/_backlogs/backlog/TeamOnly")).toBeNull();
+  it("guards against the transient zero while a board is still mounting", () => {
+    resolveTotal(FEATURE, SCOPE, 255, false);
+    resolveTotal(FEATURE, SCOPE, 0, false);
+    expect(resolveTotal(FEATURE, SCOPE, 10, true)).toBe(255);
+  });
+
+  it("returns null when filtered with no stored total, and without a scope", () => {
+    expect(resolveTotal(FEATURE, SCOPE, 5, true)).toBeNull();
+    expect(resolveTotal(FEATURE, null, 5, false)).toBeNull();
   });
 });

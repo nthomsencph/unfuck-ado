@@ -1,7 +1,6 @@
 import type { Feature } from "../core/registry";
 import { injectStyleOnce } from "../core/dom";
-import { debounce } from "../core/observe";
-import { log } from "../core/log";
+import { observeResize } from "../core/observe";
 
 /**
  * Backlogs hierarchy grid (user request 2026-08-18):
@@ -79,7 +78,6 @@ export function fitColumns(specs: ColSpec[], containerWidth: number): number[] |
  * the next run's "natural" and columns could never grow back.
  */
 const colMemory = new WeakMap<HTMLTableColElement, { natural: number; written: number }>();
-const observedContainers = new WeakSet<Element>();
 
 function naturalWidth(col: HTMLTableColElement): number {
   const cur = col.getBoundingClientRect().width;
@@ -124,15 +122,10 @@ function fitTable(table: HTMLTableElement): void {
 
   // The settle observer is childList-only: splitter drags and window resizes
   // never reach it. A ResizeObserver on the scroll container covers both.
-  if (!observedContainers.has(container)) {
-    observedContainers.add(container);
-    const refit = debounce(() => {
-      const t = container.querySelector<HTMLTableElement>("table.backlog-tree");
-      if (t) fitTable(t);
-    }, 100);
-    new ResizeObserver(refit).observe(container);
-    log(FEATURE_ID, "fit engaged", container.clientWidth);
-  }
+  observeResize(FEATURE_ID, container, () => {
+    const t = container.querySelector<HTMLTableElement>("table.backlog-tree");
+    if (t) fitTable(t);
+  });
 }
 
 export const backlogGrid: Feature = {

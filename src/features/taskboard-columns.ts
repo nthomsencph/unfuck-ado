@@ -1,6 +1,6 @@
 import type { Feature } from "../core/registry";
-import { parseHubPath, type Route } from "../core/router";
-import { ACCENT, injectStyleOnce, setStyle } from "../core/dom";
+import type { Route } from "../core/router";
+import { ACCENT, ensureText, injectStyleOnce, makeToolbarButton, setStyle } from "../core/dom";
 import {
   closePopover,
   isPopoverOpen,
@@ -10,9 +10,9 @@ import {
   openPopover,
 } from "../core/popover";
 import { log } from "../core/log";
-import { debounce } from "../core/observe";
+import { observeResize } from "../core/observe";
 import { getValue, setValue } from "../core/storage";
-import { sprintTab } from "./sprint-header";
+import { sprintTab, taskboardTeamKey } from "./boards/paths";
 
 /**
  * Taskboard column chooser + multi-card rows (user request 2026-08-18: ADO
@@ -228,15 +228,6 @@ export function colTargets(
   return { widths, tableMin: fill ? containerW : parent + 8 + NATIVE_COL * n };
 }
 
-/** "/{org}/{project}/_sprints/{tab}/{team}/…" → "org/project/team". */
-export function taskboardTeamKey(path: string): string | null {
-  const { org, project, hub, rest } = parseHubPath(path);
-  if (hub !== "_sprints") return null;
-  const team = rest[1];
-  if (!org || !project || !team) return null;
-  return `${org}/${project}/${team}`;
-}
-
 function prefs(key: string): Prefs {
   return getValue<Prefs>(FEATURE_ID, key, DEFAULT_PREFS);
 }
@@ -267,20 +258,12 @@ function applyCounts(): void {
     // Hidden cells stay in the DOM (display:none), so the original nth
     // mapping counts correctly for hidden columns too.
     const n = table.querySelectorAll(`tbody tr > td:nth-child(${col.nth}) .taskboard-card`).length;
-    let span = th.querySelector<HTMLElement>(`.${COUNT_CLASS}`);
-    if (!span) {
-      span = document.createElement("span");
-      span.className = COUNT_CLASS;
-      th.appendChild(span);
-    }
-    const text = ` (${n})`;
-    if (span.textContent !== text) span.textContent = text;
+    ensureText(th, COUNT_CLASS, ` (${n})`);
   }
 }
 
 /** Original inline styles, remembered so "Show all columns" restores them. */
 const originalColStyle = new WeakMap<HTMLTableColElement, string>();
-const observedContainers = new WeakSet<Element>();
 let refitKey: string | null = null;
 
 function parentColPx(cols: HTMLTableColElement[]): number {
@@ -335,13 +318,9 @@ function applyColWidths(hiddenNth: number[], visibleNth: number[]): number {
 
   // Splitter drags and window resizes never reach the childList-only settle
   // observer — refit from a ResizeObserver, same as backlog-grid.
-  if (!observedContainers.has(container)) {
-    observedContainers.add(container);
-    const refit = debounce(() => {
-      if (refitKey) applyColumnCss(refitKey);
-    }, 100);
-    new ResizeObserver(refit).observe(container);
-  }
+  observeResize(FEATURE_ID, container, () => {
+    if (refitKey) applyColumnCss(refitKey);
+  });
   return tableMin;
 }
 
@@ -441,14 +420,10 @@ function ensureButton(key: string): void {
   const filter = document.getElementById("__bolt-filter");
   const bar = filter?.parentElement;
   if (!filter || !bar || bar.querySelector(`.${BTN_CLASS}`)) return;
-  const btn = document.createElement("button");
-  btn.type = "button";
-  btn.className =
-    `${BTN_CLASS} bolt-header-command-item-button bolt-button ` +
-    "bolt-icon-button enabled subtle icon-only bolt-focus-treatment";
-  btn.setAttribute("aria-label", "Show or hide board columns");
+  // Own marker class (not adofix-toolbar-btn): sprint-header's proxy guard
+  // scans the same filter row and must not mistake this button for its own.
+  const btn = makeToolbarButton("Show or hide board columns", columnsIcon(), BTN_CLASS);
   btn.title = "Show/hide board columns (ado-unfuck)";
-  btn.appendChild(columnsIcon());
   btn.addEventListener("click", (e) => {
     e.preventDefault();
     e.stopPropagation();

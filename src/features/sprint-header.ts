@@ -1,9 +1,9 @@
 import type { Feature } from "../core/registry";
-import { parseHubPath, type Route } from "../core/router";
-import { injectStyleOnce, makeCommandProxy, stubHide } from "../core/dom";
+import type { Route } from "../core/router";
+import { ensureText, injectStyleOnce, makeCommandProxy, stubHide } from "../core/dom";
 import { log } from "../core/log";
-import { getValue, setValue } from "../core/storage";
-import { formatBacklogStatus, parseBacklogFilters } from "./backlog-status";
+import { formatBacklogStatus, parseBacklogFilters, resolveTotal } from "./boards/status";
+import { sprintScopeKey, sprintTab } from "./boards/paths";
 
 /**
  * Sprints hub header compressed to two rows (user request 2026-08-18, the
@@ -172,23 +172,6 @@ html[${ATTR}] .sprints-tabbar-header .bolt-tabbar {
 `;
 
 /** "/{org}/{project}/_sprints/{tab}/…" → the tab segment, or null. */
-export function sprintTab(path: string): string | null {
-  const { hub, rest } = parseHubPath(path);
-  if (hub !== "_sprints") return null;
-  return rest[0]?.toLowerCase() ?? null;
-}
-
-/**
- * Storage scope for the unfiltered total: the decoded path — it carries
- * org/project/tab/team/iteration, so each tab of each sprint remembers its
- * own total (taskboard counts tasks, backlog counts tree rows).
- */
-export function sprintScopeKey(path: string): string | null {
-  const { org, project, hub, rest } = parseHubPath(path);
-  if (hub !== "_sprints") return null;
-  return [org, project, hub, ...rest].filter(Boolean).join("/");
-}
-
 /**
  * Items currently visible per tab. Taskboard: .taskboard-card count —
  * verified NOT virtualized (89 cards mounted at every scroll position,
@@ -217,19 +200,9 @@ function applyStatus(tab: string, path: string): void {
   const filters = parseBacklogFilters(location.search);
   const filtered = filters.entries.length > 0 || filters.keyword !== null;
   const shown = shownCount(tab);
-  const scope = sprintScopeKey(path);
   let countText: string | null = null;
   if (shown !== null) {
-    let total: number | null = null;
-    if (scope && !filtered) {
-      // Unfiltered view: this IS the total. Guard against the transient
-      // zero-card state while the board is still loading.
-      if (shown > 0 && getValue<number | null>(FEATURE_ID, scope, null) !== shown) {
-        setValue(FEATURE_ID, scope, shown);
-      }
-    } else if (scope) {
-      total = getValue<number | null>(FEATURE_ID, scope, null);
-    }
+    const total = resolveTotal(FEATURE_ID, sprintScopeKey(path), shown, filtered);
     countText = formatBacklogStatus(shown, total, filters);
   }
 
@@ -239,13 +212,7 @@ function applyStatus(tab: string, path: string): void {
     ?.textContent?.trim();
   const text = [countText, dates, remaining].filter(Boolean).join(" · ");
   if (!text) return;
-  let span = row.querySelector<HTMLElement>(`.${STATUS_CLASS}`);
-  if (!span) {
-    span = document.createElement("span");
-    span.className = STATUS_CLASS;
-    row.appendChild(span);
-  }
-  if (span.textContent !== text) span.textContent = text;
+  ensureText(row, STATUS_CLASS, text);
 }
 
 function applyProxy(tab: string): void {

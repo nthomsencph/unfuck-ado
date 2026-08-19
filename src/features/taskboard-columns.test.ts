@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { colTargets, columnCss, headerName, stateColumns, taskboardTeamKey } from "./taskboard-columns";
+import { colTargets, columnCss, headerName, stateColumns } from "./taskboard-columns";
 
 /** The live taskboard header captured 2026-08-18. */
 const HEADERS = [
@@ -119,25 +119,5 @@ describe("colTargets", () => {
   it("is empty for degenerate input", () => {
     expect(colTargets(0, 8, 1000, 220).widths.size).toBe(0);
     expect(colTargets(1, 8, 0, 220).widths.size).toBe(0);
-  });
-});
-
-describe("taskboardTeamKey", () => {
-  it("builds org/project/team from a sprints path", () => {
-    expect(
-      taskboardTeamKey(
-        "/Akademikernes/AI%20og%20DT/_sprints/taskboard/AI%20og%20DT%20Team/AI%20og%20DT/Sprint%2008-26"
-      )
-    ).toBe("Akademikernes/AI og DT/AI og DT Team");
-  });
-
-  it("is iteration-independent", () => {
-    expect(taskboardTeamKey("/o/p/_sprints/taskboard/Team/It1")).toBe(
-      taskboardTeamKey("/o/p/_sprints/taskboard/Team/It2")
-    );
-  });
-
-  it("returns null off the sprints hub", () => {
-    expect(taskboardTeamKey("/o/p/_backlogs/backlog/Team/Epics")).toBeNull();
   });
 });

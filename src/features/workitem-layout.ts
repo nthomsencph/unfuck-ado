@@ -2,6 +2,7 @@ import type { Feature } from "../core/registry";
 import type { Route } from "../core/router";
 import { getWorkItem, type ProjectRef } from "../core/api";
 import { injectStyleOnce } from "../core/dom";
+import { createFetchCache } from "../core/fetch-cache";
 import { log } from "../core/log";
 
 /**
@@ -84,14 +85,13 @@ interface CreatedInfo {
   by: string;
   date: string;
 }
-const createdCache = new Map<number, CreatedInfo | "pending" | "failed">();
+const createdCache = createFetchCache<number, CreatedInfo>();
 
 function ensureCreated(id: number, ref: ProjectRef): void {
-  if (createdCache.has(id)) return;
-  createdCache.set(id, "pending");
+  if (createdCache.begin([id]).length === 0) return;
   void getWorkItem(ref, id, ["System.CreatedBy", "System.CreatedDate"]).then((res) => {
     if (!res.ok) {
-      createdCache.set(id, "failed");
+      createdCache.fail([id]);
       log(FEATURE_ID, "created-by fetch failed", res.error.message);
       return;
     }
@@ -106,7 +106,7 @@ function ensureCreated(id: number, ref: ProjectRef): void {
           year: "numeric",
         })
       : "?";
-    createdCache.set(id, { by, date });
+    createdCache.settle(id, { by, date });
     // The fetch resolves between settles — patch the mounted rows now.
     renderCreated(id);
   });
@@ -115,7 +115,7 @@ function ensureCreated(id: number, ref: ProjectRef): void {
 function renderCreated(id: number): void {
   if (workItemId() !== id) return;
   const info = createdCache.get(id);
-  if (!info || info === "pending" || info === "failed") return;
+  if (!info) return;
   const host = document.getElementById(HOST_ID);
   if (!host) return;
   const by = host.querySelector('[data-adofix-kv="created-by"] .adofix-wi-kv-value');
@@ -315,8 +315,7 @@ function collectRows(): DetailRow[] | null {
   }
 
   const id = workItemId();
-  const info = id !== null ? createdCache.get(id) : undefined;
-  const created = info && info !== "pending" && info !== "failed" ? info : null;
+  const created = id !== null ? (createdCache.get(id) ?? null) : null;
   rows.push({ key: "created-by", label: "Created by", value: created?.by ?? "…" });
   rows.push({ key: "created-at", label: "Created", value: created?.date ?? "…" });
 

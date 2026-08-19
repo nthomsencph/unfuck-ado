@@ -8,7 +8,8 @@ import {
   scopedTotals,
   type DiffTotals,
 } from "./pr/diff-totals-api";
-import type { PrRef } from "./pr/threads-api";
+import { prRefFromRoute, refKey } from "./pr/threads-api";
+import { createFetchCache } from "../core/fetch-cache";
 
 /**
  * Whole-PR "-dels +adds" next to the toolbar's "n changed files" label —
@@ -31,17 +32,9 @@ const CSS = `
 `;
 
 // One fetch per PR per page lifetime: totals only move on a new iteration,
-// and a reload is cheap enough to be the refresh gesture.
-const totalsByPr = new Map<string, DiffTotals>();
-const inflight = new Set<string>();
-// A failure also sticks for the page lifetime — apply() re-runs on every DOM
-// settle, and retrying there turned a deterministic 400 into a request flood
-// (shipped in v0.6.0; reported by the user within minutes).
-const failed = new Set<string>();
-
-function refKey(ref: PrRef): string {
-  return `${ref.org}/${ref.project}/${ref.repo}/${ref.prId}`;
-}
+// and a reload is cheap enough to be the refresh gesture. Failures latch —
+// see core/fetch-cache.ts for the v0.6.0 flood lesson.
+const totalsByPr = createFetchCache<string, DiffTotals>();
 
 /**
  * The tree scopes the view to a folder (or single file) via the `path` query
@@ -81,31 +74,24 @@ export const prDiffTotals: Feature = {
   areas: ["repos-pr"],
   apply(route: Route): void {
     injectStyleOnce(FEATURE_ID, CSS);
-    if (!route.org || !route.project || !route.repo || !route.id) return;
+    const ref = prRefFromRoute(route);
+    if (!ref) return;
     if (!safeQuery(LABEL_ROW_SELECTOR)) return; // Files tab not up yet
-    const ref: PrRef = {
-      org: route.org,
-      project: route.project,
-      repo: route.repo,
-      prId: route.id,
-    };
     const key = refKey(ref);
     const cached = totalsByPr.get(key);
     if (cached) {
       render(cached);
       return;
     }
-    if (inflight.has(key) || failed.has(key)) return;
-    inflight.add(key);
+    if (totalsByPr.begin([key]).length === 0) return;
     void fetchDiffTotals(ref).then((res) => {
-      inflight.delete(key);
       if (!res.ok) {
         // Passive feature: log once and stand down until the next reload.
-        failed.add(key);
+        totalsByPr.fail([key]);
         log(FEATURE_ID, "fetch failed — not retrying this page load", res.error);
         return;
       }
-      totalsByPr.set(key, res.value);
+      totalsByPr.settle(key, res.value);
       const overall = scopedTotals(res.value.files, null);
       log(
         FEATURE_ID,

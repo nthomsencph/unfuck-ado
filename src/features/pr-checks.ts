@@ -8,7 +8,8 @@ import {
   statusText,
   type CheckRow,
 } from "./pr/checks-api";
-import type { PrRef } from "./pr/threads-api";
+import { prRefFromRoute, refKey } from "./pr/threads-api";
+import { createFetchCache } from "../core/fetch-cache";
 
 /**
  * All checks inline in the PR Overview status card. ADO's checks box shows
@@ -65,15 +66,8 @@ const NEUTRAL_ICON =
   '<svg width="16" height="16" viewBox="0 0 12 12" aria-hidden="true">' +
   '<circle cx="6" cy="6" r="6" fill="#8a8886"></circle></svg>';
 
-const rowsByPr = new Map<string, CheckRow[]>();
-const inflight = new Set<string>();
-// apply() re-runs on every DOM settle — a failure must stand down for the
-// page lifetime or it becomes a request flood (the v0.6.0 lesson).
-const failed = new Set<string>();
-
-function refKey(ref: PrRef): string {
-  return `${ref.org}/${ref.project}/${ref.repo}/${ref.prId}`;
-}
+// Latching (the default) is load-bearing here: see core/fetch-cache.ts.
+const rowsByPr = createFetchCache<string, CheckRow[]>();
 
 function render(rows: CheckRow[]): void {
   const table = safeQuery<HTMLElement>(CHECK_LIST_SELECTOR);
@@ -105,31 +99,24 @@ export const prChecks: Feature = {
   areas: ["repos-pr"],
   apply(route: Route): void {
     injectStyleOnce(FEATURE_ID, CSS);
-    if (!route.org || !route.project || !route.repo || !route.id) return;
+    const ref = prRefFromRoute(route);
+    if (!ref) return;
     if (!safeQuery(CHECK_LIST_SELECTOR)) return; // Overview checks box not up
-    const ref: PrRef = {
-      org: route.org,
-      project: route.project,
-      repo: route.repo,
-      prId: route.id,
-    };
     const key = refKey(ref);
     const cached = rowsByPr.get(key);
     if (cached) {
       render(cached);
       return;
     }
-    if (inflight.has(key) || failed.has(key)) return;
-    inflight.add(key);
+    if (rowsByPr.begin([key]).length === 0) return;
     void fetchPolicyEvaluations(ref).then((res) => {
-      inflight.delete(key);
       if (!res.ok) {
-        failed.add(key);
+        rowsByPr.fail([key]);
         log(FEATURE_ID, "fetch failed — not retrying this page load", res.error);
         return;
       }
       const rows = selectInlineChecks(res.value);
-      rowsByPr.set(key, rows);
+      rowsByPr.settle(key, rows);
       log(FEATURE_ID, `${rows.length} hidden check(s) for ${key}`);
       render(rows);
     });

@@ -2,6 +2,7 @@ import type { Feature } from "../core/registry";
 import type { Route } from "../core/router";
 import { getWorkItems, type ProjectRef } from "../core/api";
 import { injectStyleOnce } from "../core/dom";
+import { createFetchCache } from "../core/fetch-cache";
 import { log } from "../core/log";
 
 /**
@@ -33,8 +34,9 @@ const FEATURE_ID = "card-comments";
 const CHIP_CLASS = "adofix-card-comments";
 const BATCH = 200;
 
-/** id -> comment count; "pending" while a batch containing it is in flight. */
-const counts = new Map<number, number | "pending">();
+// id -> comment count. Retry policy: a failed chunk is forgotten so a later
+// settle refetches it (counts are worth a second request; see fetch-cache).
+const counts = createFetchCache<number, number>({ onFailure: "retry" });
 
 function cardId(card: Element): number | null {
   const el = card.querySelector(".font-weight-semibold.selectable-text");
@@ -43,23 +45,22 @@ function cardId(card: Element): number | null {
 }
 
 function fetchCounts(ids: number[], ref: ProjectRef): void {
-  for (const id of ids) counts.set(id, "pending");
   for (let i = 0; i < ids.length; i += BATCH) {
-    const chunk = ids.slice(i, i + BATCH);
+    const chunk = counts.begin(ids.slice(i, i + BATCH));
+    if (chunk.length === 0) continue;
     void getWorkItems(ref, chunk, ["System.CommentCount"]).then((res) => {
       if (!res.ok) {
-        // Forget the chunk so a later settle can retry.
-        for (const id of chunk) counts.delete(id);
+        counts.fail(chunk);
         log(FEATURE_ID, "comment-count fetch failed", res.error.message);
         return;
       }
       for (const item of res.value.value ?? []) {
         const n = item.fields["System.CommentCount"];
-        counts.set(item.id, typeof n === "number" ? n : 0);
+        counts.settle(item.id, typeof n === "number" ? n : 0);
       }
       // Deleted/permission-filtered ids never come back — stop retrying.
       for (const id of chunk) {
-        if (counts.get(id) === "pending") counts.set(id, 0);
+        if (counts.get(id) === undefined) counts.settle(id, 0);
       }
       render();
     });
@@ -101,7 +102,7 @@ function enhance(ref: ProjectRef | null): void {
   const unknown: number[] = [];
   for (const card of cards) {
     const id = cardId(card);
-    if (id !== null && !counts.has(id)) unknown.push(id);
+    if (id !== null && !counts.known(id)) unknown.push(id);
   }
   if (unknown.length > 0 && ref) fetchCounts(unknown, ref);
   render();

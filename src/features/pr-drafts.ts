@@ -2,7 +2,7 @@ import type { Feature } from "../core/registry";
 import type { Route } from "../core/router";
 import { ACCENT, injectStyleOnce, safeQuery, safeQueryAll, showToast } from "../core/dom";
 import { log } from "../core/log";
-import { createThread, type PrRef } from "./pr/threads-api";
+import { createThread, prRefFromRoute, type PrRef } from "./pr/threads-api";
 import { draftKey, loadDrafts, newDraftId, saveDrafts, type Draft } from "./pr/drafts-store";
 
 /**
@@ -1017,10 +1017,7 @@ export const prDrafts: Feature = {
   apply(route: Route): void {
     injectStyleOnce(FEATURE_ID, DRAFTS_CSS);
     currentKey = draftKey(route);
-    currentRef =
-      currentKey && route.org && route.project && route.repo && route.id
-        ? { org: route.org, project: route.project, repo: route.repo, prId: route.id }
-        : null;
+    currentRef = currentKey ? prRefFromRoute(route) : null;
     if (!currentKey) {
       log(FEATURE_ID, "not a concrete PR route — inactive", route.path);
       return;

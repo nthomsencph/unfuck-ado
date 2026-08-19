@@ -3,7 +3,7 @@ import type { Route } from "../core/router";
 import { injectStyleOnce, safeQuery, safeQueryAll, showToast } from "../core/dom";
 import { log } from "../core/log";
 import { DRAFT_SELECTORS, sectionFilePath } from "./pr-drafts";
-import type { PrRef } from "./pr/threads-api";
+import { prRefFromRoute, refKey, type PrRef } from "./pr/threads-api";
 import { fetchViewedPaths } from "./pr/reviewed-data";
 import {
   buildTreePaths,
@@ -53,6 +53,9 @@ const CSS = `
 `;
 
 // ---- server-side viewed state (display source of truth) ---------------------
+// Deliberately NOT core/fetch-cache: this slot is optimistically patched on
+// toggle, un-latched by user action, and refetched while the stale value
+// keeps rendering — a live-synced value, not a fetch-once cache.
 
 let currentRef: PrRef | null = null;
 let viewedKey: string | null = null;
@@ -251,12 +254,9 @@ export const prReviewed: Feature = {
   areas: ["repos-pr"],
   apply(route: Route): void {
     injectStyleOnce(FEATURE_ID, CSS);
-    const ref: PrRef | null =
-      route.org && route.project && route.repo && route.id
-        ? { org: route.org, project: route.project, repo: route.repo, prId: route.id }
-        : null;
+    const ref = prRefFromRoute(route);
     if (!ref) return;
-    const key = `${ref.org}/${ref.project}/${ref.repo}/${ref.prId}`;
+    const key = refKey(ref);
     if (key !== viewedKey) {
       viewedKey = key;
       viewedPaths = null;

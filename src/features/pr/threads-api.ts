@@ -1,9 +1,22 @@
 import { apiFetch, projectBase, type ApiResult, type ProjectRef } from "../../core/api";
+import type { Route } from "../../core/router";
 
 /** Everything needed to address one PR through the REST API. */
 export interface PrRef extends ProjectRef {
   repo: string;
   prId: string;
+}
+
+/** Null unless the route addresses one concrete PR. */
+export function prRefFromRoute(route: Route): PrRef | null {
+  return route.org && route.project && route.repo && route.id
+    ? { org: route.org, project: route.project, repo: route.repo, prId: route.id }
+    : null;
+}
+
+/** Cache/dedupe key: one string per PR. */
+export function refKey(ref: PrRef): string {
+  return `${ref.org}/${ref.project}/${ref.repo}/${ref.prId}`;
 }
 
 export type DiffSide = "left" | "right";

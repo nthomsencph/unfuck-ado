@@ -128,19 +128,27 @@ function renderCreated(id: number): void {
  * restore the stub on the next mousedown anywhere (the callout itself
  * handles that click before the anchor snaps back).
  */
+const OVERLAY_SELECTOR = '[class*="callout"], [class*="portal"], [class*="flyout"], [class*="dropdown-items"]';
+
+/** At most one teleport is live; whatever ends it runs this. */
+let endTeleport: (() => void) | null = null;
+
 function teleport(native: HTMLElement, row: HTMLElement): void {
+  endTeleport?.();
   // Anchor on the VALUE column, not the whole row: the control then lands
   // exactly where the value text sits (its own label is hidden via the
-  // teleport class), so nothing shifts or covers the neighbouring rows.
-  const r = (row.querySelector(".adofix-wi-kv-value") ?? row).getBoundingClientRect();
+  // teleport class), so nothing shifts. Height is the row's EXACT height —
+  // min-height/auto let tall controls cover the row below.
+  const rowRect = row.getBoundingClientRect();
+  const valRect = (row.querySelector(".adofix-wi-kv-value") ?? row).getBoundingClientRect();
   native.classList.add("adofix-wi-teleport");
   const s = native.style;
   s.setProperty("position", "fixed", "important");
-  s.setProperty("left", `${r.left}px`, "important");
-  s.setProperty("top", `${r.top}px`, "important");
-  s.setProperty("width", `${r.width}px`, "important");
-  s.setProperty("min-height", `${r.height}px`, "important");
-  s.setProperty("height", "auto", "important");
+  s.setProperty("left", `${valRect.left}px`, "important");
+  s.setProperty("top", `${rowRect.top}px`, "important");
+  s.setProperty("width", `${valRect.width}px`, "important");
+  s.setProperty("height", `${rowRect.height}px`, "important");
+  s.setProperty("min-height", "0", "important");
   /* VISIBLE while editing: the live control replaces the row in place —
      fields without a callout (e.g. Story Points) are typed into directly. */
   s.setProperty("opacity", "1", "important");
@@ -149,18 +157,52 @@ function teleport(native: HTMLElement, row: HTMLElement): void {
   s.setProperty("background", "var(--adofix-bg, #141414)", "important");
   s.setProperty("z-index", "2000", "important");
   s.setProperty("pointer-events", "auto", "important");
-  const input = native.querySelector<HTMLElement>("input") ?? native;
-  input.click();
-  input.focus();
-  const onDown = (e: MouseEvent): void => {
-    const t = e.target instanceof HTMLElement ? e.target : null;
-    // Clicks inside the control or its callout/portal keep the edit alive.
-    if (t && (native.contains(t) || t.closest('[class*="callout"], [class*="portal"], [class*="flyout"]'))) return;
+
+  const cleanup = (): void => {
+    endTeleport = null;
     document.removeEventListener("mousedown", onDown, true);
+    document.removeEventListener("scroll", onScroll, true);
+    document.removeEventListener("keydown", onKey, true);
+    native.removeEventListener("focusout", onFocusOut);
     native.removeAttribute("style");
     native.classList.remove("adofix-wi-teleport");
   };
-  window.setTimeout(() => document.addEventListener("mousedown", onDown, true), 0);
+  const isInside = (t: EventTarget | null): boolean =>
+    t instanceof HTMLElement && (native.contains(t) || !!t.closest(OVERLAY_SELECTOR));
+  const onDown = (e: MouseEvent): void => {
+    // Clicks inside the control or its callout keep the edit alive.
+    if (!isInside(e.target)) cleanup();
+  };
+  const onScroll = (e: Event): void => {
+    // Page scroll while fixed = the control sticks to the viewport — end
+    // the edit. Scrolling INSIDE the callout list stays alive.
+    if (!isInside(e.target)) cleanup();
+  };
+  const onKey = (e: KeyboardEvent): void => {
+    if (e.key === "Escape") cleanup();
+  };
+  const onFocusOut = (): void => {
+    // A dropdown pick closes the callout and drops focus — restore then,
+    // not on some later unrelated click. Deferred: focus may be moving
+    // WITHIN the control or into its callout.
+    window.setTimeout(() => {
+      if (endTeleport !== cleanup) return;
+      const a = document.activeElement;
+      if (a && (native.contains(a) || a.closest?.(OVERLAY_SELECTOR))) return;
+      cleanup();
+    }, 100);
+  };
+  endTeleport = cleanup;
+
+  const input = native.querySelector<HTMLElement>("input") ?? native;
+  input.click();
+  input.focus();
+  window.setTimeout(() => {
+    document.addEventListener("mousedown", onDown, true);
+    document.addEventListener("scroll", onScroll, true);
+    document.addEventListener("keydown", onKey, true);
+    native.addEventListener("focusout", onFocusOut);
+  }, 0);
 }
 
 interface DetailRow {
@@ -531,7 +573,10 @@ button.work-item-form-toggle[aria-label^="Maximize"] {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 0;
+  padding: 1px 0;
+  /* Tall enough that a teleported bolt input (~30px) fits INSIDE the row's
+     own box instead of covering the row below. */
+  min-height: 32px;
   font-size: 13px;
 }
 .adofix-wi-kv-label {

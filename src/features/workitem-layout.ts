@@ -637,6 +637,10 @@ const CSS = `
    row reserves space so a long title never slides underneath. */
 .work-item-form-header {
   position: relative !important;
+  /* the type icon + number sat pressed against the page top (user
+     2026-08-18); JS placements measure AFTER this applies, so the
+     overlaid controls follow the shifted rows automatically */
+  padding-top: 12px !important;
 }
 /* TWO nested elements carry this class — position only the outer (the
    row's direct child); absoluting both collapses the outer to 4px. */
@@ -720,11 +724,14 @@ const CSS = `
 .adofix-wi-relwork {
   position: relative;
 }
-.adofix-wi-relwork .work-item-form-control-wrapper:has(.bolt-expandable-button) {
-  position: absolute;
-  top: -4px;
+/* Position the BUTTON, not its wrapper: the wrapper also contains the
+   .compact-links-list itself — absoluting it dragged the links into the
+   header box (user 2026-08-18). */
+.adofix-wi-relwork .bolt-expandable-button {
+  position: absolute !important;
+  top: -2px;
   right: 30px;
-  margin: 0 !important;
+  z-index: 2;
 }
 .adofix-wi-relwork .bolt-expandable-button .bolt-button-text,
 .adofix-wi-relwork .bolt-expandable-button .fluent-icons-enabled {

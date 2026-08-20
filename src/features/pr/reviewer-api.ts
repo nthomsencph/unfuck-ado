@@ -63,8 +63,12 @@ let cachedUserId: string | null | undefined;
 /** The signed-in user's identity GUID; cached for the page's lifetime. */
 export async function fetchCurrentUserId(org: string): Promise<string | null> {
   if (cachedUserId !== undefined) return cachedUserId;
+  // connectionData is a preview-only resource: bare api-version=7.1 is a 400
+  // ("must supply the -preview flag") — the default apiFetch appends exactly
+  // that, which silently null'ed the identity and hid the reviewer-gated UI
+  // (bit us 2026-08-19; verified 7.1-preview.1 returns 200).
   const res = await apiFetch<{ authenticatedUser?: { id?: string } }>(
-    `${orgBase(org)}/_apis/connectionData`
+    `${orgBase(org)}/_apis/connectionData?api-version=7.1-preview.1`
   );
   if (!res.ok) return null; // transient failure — stays uncached, retried later
   cachedUserId = res.value.authenticatedUser?.id ?? null;

@@ -93,6 +93,12 @@ throws). Key live findings baked into the code:
   clicks. A fresh composer view zone measures ~700px above the viewport for
   its first seconds — capture refuses to anchor a lineless composer more
   than 300px above line 1 (`monacoAnchorLine`).
+- **connectionData needs a -preview api-version** (bit us 2026-08-19):
+  `_apis/connectionData?api-version=7.1` is a 400 — the resource is
+  preview-only, so the identity fetch must pin `7.1-preview.1` (200).
+  apiFetch's auto-appended default made the reviewer gate silently hide the
+  Review button for everyone. The reviewer-entry ids in `reviewers[]` DO
+  equal connectionData's authenticatedUser.id (verified across 4 live PRs).
 - **Review-flow anchors (verified live 2026-08-19)**: the header Approve
   split-button sits in `.repos-pr-header-vote-button` (our Review button
   inserts before it); `a.bolt-tab[href*="_a=files"]` SPA-navigates on

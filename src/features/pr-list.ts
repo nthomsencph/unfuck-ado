@@ -1,6 +1,8 @@
 import type { Feature } from "../core/registry";
 import type { Route } from "../core/router";
 import { ACCENT, injectStyleOnce } from "../core/dom";
+import { fetchCurrentUserId } from "./pr/reviewer-api";
+import { fetchActivePrs, ownershipMap, type Ownership } from "./pr/list-api";
 
 /**
  * GitHub-style restyle of the PR list page (spec:
@@ -29,8 +31,57 @@ export const prList: Feature = {
     if (shouldRedirectToActive(location.search))
       document.querySelector<HTMLElement>("#__bolt-tab-active")?.click();
     sweepMetaLines(document);
+    tintOwnership(route);
   },
 };
+
+/*
+ * "Mine" tinting, the Mine view's replacement: rows the user authored or
+ * reviews get an accent wash (author stronger than reviewer). One fetch per
+ * repo per page load, success and failure both cached until reload (the
+ * pr-checks precedent); the fetch targets active PRs, so Completed/
+ * Abandoned rows simply never match. Rows are tagged with a data attribute
+ * the settle re-apply repairs after React re-renders, like the meta sweep.
+ */
+let ownershipSlot: {
+  key: string;
+  map: ReadonlyMap<number, Ownership> | null;
+  pending: boolean;
+} | null = null;
+
+function tintOwnership(route: Route): void {
+  const { org, project, repo } = route;
+  if (!org || !project || !repo) return;
+  const key = `${org}/${project}/${repo}`;
+  if (!ownershipSlot || ownershipSlot.key !== key)
+    ownershipSlot = { key, map: null, pending: false };
+  const slot = ownershipSlot;
+  if (slot.map) {
+    sweepOwnership(document, slot.map);
+    return;
+  }
+  if (slot.pending) return;
+  slot.pending = true;
+  void (async () => {
+    const [myId, prs] = await Promise.all([
+      fetchCurrentUserId(org),
+      fetchActivePrs({ org, project, repo }),
+    ]);
+    slot.map = myId && prs.ok ? ownershipMap(prs.value, myId) : new Map();
+    sweepOwnership(document, slot.map);
+  })();
+}
+
+/** Tags every list row with its ownership; clears rows that lost it. */
+export function sweepOwnership(root: ParentNode, map: ReadonlyMap<number, Ownership>): void {
+  const rows = root.querySelectorAll<HTMLElement>('.repos-pr-list a[href*="/pullrequest/"]');
+  for (const row of rows) {
+    const match = /\/pullrequest\/(\d+)/.exec(row.getAttribute("href") ?? "");
+    const rel = match ? map.get(Number(match[1])) : undefined;
+    if (rel) row.setAttribute("data-adofix-mine", rel);
+    else row.removeAttribute("data-adofix-mine");
+  }
+}
 
 /**
  * True when the list URL resolves to the retired Mine view: an explicit
@@ -208,5 +259,21 @@ const CSS = `
 }
 [${ATTR}] .repos-pr-listing-filterbar .vss-FilterBar--item-keyword-container {
   max-width: 215px !important;
+}
+
+/* "Mine" tinting (the Mine view's replacement): authored rows wash stronger
+   than reviewer-assigned ones; hover variants keep the hover feedback
+   (these land after the generic hover rule, so they need their own). */
+[${ATTR}] a.bolt-table-row[data-adofix-mine="author"] {
+  background: color-mix(in srgb, ${ACCENT} 10%, transparent) !important;
+}
+[${ATTR}] a.bolt-table-row[data-adofix-mine="author"]:hover {
+  background: color-mix(in srgb, ${ACCENT} 14%, transparent) !important;
+}
+[${ATTR}] a.bolt-table-row[data-adofix-mine="reviewer"] {
+  background: color-mix(in srgb, ${ACCENT} 5%, transparent) !important;
+}
+[${ATTR}] a.bolt-table-row[data-adofix-mine="reviewer"]:hover {
+  background: color-mix(in srgb, ${ACCENT} 9%, transparent) !important;
 }
 `;

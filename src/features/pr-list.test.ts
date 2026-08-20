@@ -1,5 +1,45 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { rewriteMetaValues, shouldRedirectToActive, sweepMetaLines } from "./pr-list";
+import {
+  rewriteMetaValues,
+  shouldRedirectToActive,
+  sweepMetaLines,
+  sweepOwnership,
+} from "./pr-list";
+
+describe("sweepOwnership", () => {
+  afterEach(() => {
+    document.body.innerHTML = "";
+  });
+
+  function listWithRows(ids: number[]): HTMLElement[] {
+    const table = document.createElement("table");
+    table.className = "repos-pr-list";
+    const rows = ids.map((id) => {
+      const row = document.createElement("a");
+      row.className = "bolt-table-row";
+      row.href = `/org/proj/_git/repo/pullrequest/${id}`;
+      table.appendChild(row);
+      return row;
+    });
+    document.body.appendChild(table);
+    return rows;
+  }
+
+  it("tags rows by ownership and clears stale tags", () => {
+    const [a, b, c] = listWithRows([7039, 6970, 6904]);
+    c!.setAttribute("data-adofix-mine", "author"); // stale from a prior sweep
+    sweepOwnership(
+      document,
+      new Map([
+        [7039, "author"],
+        [6970, "reviewer"],
+      ])
+    );
+    expect(a!.getAttribute("data-adofix-mine")).toBe("author");
+    expect(b!.getAttribute("data-adofix-mine")).toBe("reviewer");
+    expect(c!.hasAttribute("data-adofix-mine")).toBe(false);
+  });
+});
 
 describe("shouldRedirectToActive", () => {
   it("redirects the explicit Mine view", () => {

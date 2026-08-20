@@ -37,6 +37,8 @@ matching entry here moves with it. The user-facing overview lives in the
 
 | `pr-review-flow` | GitHub-style review flow riding ADO's built-in per-file reviewed state. **Reviewer-gated**: the UI renders only when the signed-in user (via `_apis/connectionData`, cached per page) matches a non-container entry in the PR's `reviewers[]` (group/team membership alone does not match — known limit). After a vote the button turns quiet with the vote label (10 "Approved ✓", 5 "Approved · suggestions", -5 "Waiting for author", -10 "Rejected ✕"); the latest iteration id is stored per PR when a vote (change) is first seen, and when newer iterations land the button flips to accent **"Re-review · k new"** (k = files from `iterations/{latest}/changes?compareTo={votedIteration}`) — clicking it runs the review loop over just those files ("j/k re-reviewed" counter, done-list persisted per PR; finishing or re-voting re-baselines). The snapshot (reviewers + latest iteration) refetches on settle at most every 30s, plus a forced refetch ~2.5s after any native vote-button click. A **Review** button in the PR header (before Approve, all tabs) starts a per-PR review: lands on the Files tab and jumps to the first unreviewed file; its label tracks state (Review → "Reviewing · n/m" → "Reviewed ✓"). While reviewing, the Files toolbar shows an "n/m files reviewed" counter (click → next unreviewed; ADO's native `.pr-header-viewed-files` text is hidden meanwhile) and, in the single-file view, a "✓ Reviewed · next" action that clicks ADO's real tree checkbox for the open file and advances. Tree order and navigation come from the shared virtualized-tree index (`pr/reviewed-tree`); n comes from the shared viewed-state slot (`pr/reviewed-data`); m is parsed from the toolbar's "n changed files" text and remembered per PR. |
 
+| `pr-list` | Pure CSS restyle of the PR list page (`…/_git/<repo>/pullrequests`), GitHub-flavored: the list card gets the adofix card recipe (`--adofix-card`, radius, heavy shadow — also the Mine tab's two section cards), the filter bar sits flat, row hairlines soften, rows get a hover tint, the new-activity edge turns accent, the 32px author coin shrinks to 20px centered on the title line, and the filled repo-tag pills go outline-style (the state pills — Draft/Declined/Required — are natively outlined with semantic colors and stay untouched). The updated column mutes with the "n new push/comments" notice line popping in accent. Selectors are list-page-only (`.repos-pr-list`, `.repos-pr-section-card`, `.repos-pr-listing-filterbar`), so the sheet is inert on PR detail routes. |
+
 ### Hotkeys
 
 Active outside of inputs/editors only. Each default key travels with its
@@ -150,6 +152,26 @@ throws). Key live findings baked into the code:
   (`.repos-reviewer` — name column `.flex-column` with an optional
   `.body-s.secondary-text` status line) and an empty-state well
   (`.repos-pr-no-items-well`).
+
+- PR list page (verified live 2026-08-20, `…/_git/<repo>/pullrequests`):
+  rows are `a.bolt-table-row[href*="/pullrequest/"]` in
+  `table.repos-pr-list.bolt-table-show-lines` inside
+  `.repos-pr-section-card.bolt-card` (the Mine tab renders one card per
+  section, same row DOM). The new-activity marker is a **2px border-left on
+  the row's first `td.bolt-table-spacer-cell`** (rgb(82,143,217)) — not on
+  the row, not a pseudo-element. The author coin is the only `.size32` coin
+  (reviewer coins are `size24`); title line sits at top 11px / height 17.5px
+  in a 56px row, so a 20px coin centers on it via `align-items: flex-start`
+  + 10px top margin. State pills (Draft/Declined/Required) are natively
+  `outlined` with semantic colors (`repos-pr-list-draft-pill` etc.); repo
+  tags are filled `standard` pills. The updated cell's "Updated " prefix is
+  a bare text node in a classless div around `span.text-ellipsis > time.bolt-time-item`
+  (muting target: the div via `:has()`); rows with news use a
+  `.repos-pr-list-updates.flex-column` cell whose first line is
+  `.font-weight-semibold` (the "n new push/comments" notice). The meta line
+  span is discrete text nodes: `[name][" request !"][id][" into "][icon
+  span][monospaced-xs branch span]`. Filter bar:
+  `.repos-pr-listing-filterbar.depth-8`.
 
 - Backlogs page (verified live 2026-08-18, Epics backlog): header commands
   keep stable bolt ids (`#__bolt-new-work-item`, `#__bolt-view-as-board` — an

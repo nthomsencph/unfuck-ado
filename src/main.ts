@@ -16,6 +16,7 @@ import { prComments } from "./features/pr-comments";
 import { prDiffTotals } from "./features/pr-diff-totals";
 import { prDrafts } from "./features/pr-drafts";
 import { prKeynav } from "./features/pr-keynav";
+import { prList } from "./features/pr-list";
 import { prOverview } from "./features/pr-overview";
 import { prReviewed } from "./features/pr-reviewed";
 import { prReviewFlow } from "./features/pr-review-flow";
@@ -64,6 +65,7 @@ declare global {
   registry.register(prChecks);
   registry.register(prReviewFlow);
   registry.register(prActions);
+  registry.register(prList);
   registry.register(workitemState);
 
   hotkeys.install();
@@ -84,6 +86,6 @@ declare global {
   // debugging). Detail logging: localStorage.setItem("adofix.debug", "1").
   info(
     `ado-unfuck v${__ADOFIX_VERSION__} active`,
-    "— features: board-density, chrome-density, workitem-layout, card-comments, backlog-toolbar, backlog-grid, backlog-status, sprint-header, taskboard-columns, pr-keynav, pr-overview, pr-thread-filter, pr-drafts, pr-reviewed, pr-diff-totals, pr-comments, pr-checks, pr-actions, workitem-state"
+    "— features: board-density, chrome-density, workitem-layout, card-comments, backlog-toolbar, backlog-grid, backlog-status, sprint-header, taskboard-columns, pr-keynav, pr-overview, pr-thread-filter, pr-drafts, pr-reviewed, pr-diff-totals, pr-comments, pr-checks, pr-actions, pr-list, workitem-state"
   );
 })();

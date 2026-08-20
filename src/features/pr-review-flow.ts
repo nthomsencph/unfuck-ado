@@ -403,24 +403,34 @@ export const prReviewFlow: Feature = {
     const key = refKey(ref);
     refreshSnapshot(ref);
     const snap = snapshot?.key === key ? snapshot : null;
-    // Reviewer-gated: no button (or counter) until the snapshot proves the
-    // user is an assigned reviewer.
-    if (!snap || snap.myVote === null) {
-      if (snap) document.documentElement.removeAttribute("data-adofix-reviewing");
+    let flow = readFlow(key);
+    // Reviewer-gated, with memory: a stored seenVote means "was a reviewer
+    // last time" and renders the UI instantly while the snapshot loads; the
+    // fresh snapshot then corrects it (and clears the memory on decline/
+    // removal). Only a PR's first-ever visit waits for the fetch.
+    if (snap && snap.myVote === null) {
+      if (flow.seenVote !== undefined) {
+        const next: FlowState = { started: flow.started };
+        if (flow.total !== undefined) next.total = flow.total;
+        writeFlow(key, next);
+      }
+      document.documentElement.removeAttribute("data-adofix-reviewing");
       removeFlowUi();
       return;
     }
-    const vote = snap.myVote;
-
-    let flow = readFlow(key);
+    if (!snap && flow.seenVote === undefined) {
+      removeFlowUi();
+      return;
+    }
     // A vote change re-baselines: the new vote covers the latest iteration.
-    if (flow.seenVote !== vote) {
-      const next: FlowState = { started: flow.started, seenVote: vote };
+    if (snap && flow.seenVote !== snap.myVote) {
+      const next: FlowState = { started: flow.started, seenVote: snap.myVote! };
       if (flow.total !== undefined) next.total = flow.total;
-      if (vote !== 0) next.votedIteration = snap.latestIteration;
+      if (snap.myVote !== 0) next.votedIteration = snap.latestIteration;
       flow = next;
       writeFlow(key, flow);
     }
+    const vote = snap ? snap.myVote! : flow.seenVote!;
     document.documentElement.toggleAttribute("data-adofix-reviewing", flow.started);
 
     const viewed = viewedState(ref, reapply);
@@ -450,13 +460,16 @@ export const prReviewFlow: Feature = {
     const m = flow.total ?? null;
     const n = viewed === null ? null : m === null ? viewed.size : Math.min(viewed.size, m);
 
-    // New changes since the vote? (Only meaningful with a cast vote.)
+    // New changes since the vote? (Needs the fresh snapshot's iteration id.)
     const newSince =
-      vote !== 0 && flow.votedIteration !== undefined && snap.latestIteration > flow.votedIteration
+      snap &&
+      vote !== 0 &&
+      flow.votedIteration !== undefined &&
+      snap.latestIteration > flow.votedIteration
         ? peekChangedSince(ref, flow.votedIteration, snap.latestIteration)
         : null;
     const rereviewQueue =
-      flow.rereview !== undefined
+      snap && flow.rereview !== undefined
         ? peekChangedSince(ref, flow.rereview.base, snap.latestIteration)
         : null;
     const rereviewDone = flow.rereview

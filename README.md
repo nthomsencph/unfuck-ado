@@ -1,16 +1,21 @@
 # ado-unfuck
 
+[![Latest release](https://img.shields.io/github/v/release/nthomsencph/unfuck-ado?label=latest&color=8250df)](https://github.com/nthomsencph/unfuck-ado/releases/latest)
+[![Install](https://img.shields.io/badge/install-ado--unfuck.user.js-8250df)](https://github.com/nthomsencph/unfuck-ado/releases/latest/download/ado-unfuck.user.js)
+
 A Violentmonkey userscript that unfucks the Azure DevOps web UI. Client-side
 only, same-origin, no PAT, no background script. MIT-licensed.
 
 ## Install
 
 With [Violentmonkey](https://violentmonkey.github.io/) (or another userscript
-manager) installed, open the latest release build and confirm the install:
+manager) installed, click the **install** badge above — or open the latest
+release build directly — and confirm the install:
 
 > https://github.com/nthomsencph/unfuck-ado/releases/latest/download/ado-unfuck.user.js
 
-Updates arrive automatically through the same URL. Works on `dev.azure.com`
+Updates arrive automatically through the same URL; all versions are on the
+[releases page](https://github.com/nthomsencph/unfuck-ado/releases). Works on `dev.azure.com`
 and legacy `*.visualstudio.com` organizations, in Firefox (primary target)
 with English-language ADO UI; both ADO themes are supported.
 

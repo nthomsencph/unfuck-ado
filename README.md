@@ -21,8 +21,10 @@ with English-language ADO UI; both ADO themes are supported.
 - `pr-drafts` — batched review comments riding ADO's own composer: draft
   locally, see drafts as inline cards, Monaco view zones and file-tree rows,
   then submit them all at once.
-- `pr-review-flow` — GitHub-style review: a **Review** button, "n/m files
-  reviewed" progress, next-unreviewed navigation, mark-reviewed-and-next.
+- `pr-review-flow` — GitHub-style review (assigned reviewers only): a
+  **Review** button, "n/m files reviewed" progress, next-unreviewed
+  navigation, mark-reviewed-and-next; after voting the button shows your
+  vote and flips to "Re-review · k new" when the PR changes under it.
 - `pr-reviewed` — per-file "Reviewed" checkboxes on the diff headers, synced
   with ADO's file tree; checking collapses the file's card.
 - `pr-comments` — one toolbar button holding resolved counts, draft count,

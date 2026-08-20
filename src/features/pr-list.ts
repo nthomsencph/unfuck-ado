@@ -1,4 +1,5 @@
 import type { Feature } from "../core/registry";
+import type { Route } from "../core/router";
 import { ACCENT, injectStyleOnce } from "../core/dom";
 
 /**
@@ -11,10 +12,56 @@ import { ACCENT, injectStyleOnce } from "../core/dom";
 export const prList: Feature = {
   id: "pr-list",
   areas: ["repos-pr"],
-  apply(): void {
+  apply(route: Route): void {
     injectStyleOnce("pr-list", CSS);
+    if (route.id === null) sweepMetaLines(document);
   },
 };
+
+/**
+ * Meta-line rewrite: "{Display Name} request !{id} into {branch}" →
+ * "!{id} · {FirstName} · into {branch}". Pure function over the leading
+ * text-node values of the meta span; returns null when the shape doesn't
+ * match (localized UI, ADO update, already rewritten) so the sweep degrades
+ * to a no-op, never a mangled line. Idempotence falls out: after a rewrite
+ * no node equals " request !".
+ */
+export function rewriteMetaValues(values: readonly string[]): string[] | null {
+  const idx = values.indexOf(" request !");
+  if (idx < 1) return null;
+  const name = values[idx - 1]?.trim();
+  const id = values[idx + 1];
+  if (!name || !id || !/^\d+$/.test(id) || values[idx + 2] !== " into ") return null;
+  const out = [...values];
+  out[idx - 1] = `!${id}`;
+  out[idx] = " · ";
+  out[idx + 1] = name.split(/\s+/)[0]!;
+  out[idx + 2] = " · into ";
+  return out;
+}
+
+/**
+ * Applies rewriteMetaValues to every PR-list row's meta span. nodeValue
+ * writes only — no structural DOM change for React to fight; the registry's
+ * settle re-apply repairs any React re-render that restores the original.
+ */
+export function sweepMetaLines(root: ParentNode): void {
+  const lines = root.querySelectorAll<HTMLElement>(
+    '.repos-pr-list a[href*="/pullrequest/"] .secondary-text.body-s > span'
+  );
+  for (const line of lines) {
+    const textNodes: Text[] = [];
+    for (const node of line.childNodes) {
+      if (node.nodeType !== Node.TEXT_NODE) break; // leading text run only
+      textNodes.push(node as Text);
+    }
+    const next = rewriteMetaValues(textNodes.map((t) => t.nodeValue ?? ""));
+    if (!next) continue;
+    textNodes.forEach((t, i) => {
+      if (t.nodeValue !== next[i]) t.nodeValue = next[i]!;
+    });
+  }
+}
 
 const CSS = `
 /* Card material — the pr-overview card recipe, so list and overview read as

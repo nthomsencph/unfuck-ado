@@ -15,6 +15,9 @@ The script updates itself from that URL, and all versions live on the [releases 
 
 ## What it does
 
+A bundle of small, independent fixes. The bulk of it targets pull request
+review, with a second set for boards and work items.
+
 **Pull requests**
 
 - `Draft comments` — write review comments in ADO's own editor and keep them as local drafts instead of posting them one by one. Drafts show up as inline cards in the diff, under their file in the tree, and in a panel where you can edit them, jump to them, and submit the whole batch at once.
@@ -77,4 +80,4 @@ The Violentmonkey toolbar icon toggles the script per browser, and its dashboard
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT, see [LICENSE](LICENSE).

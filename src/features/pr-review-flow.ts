@@ -144,7 +144,7 @@ interface Snapshot {
 let snapshot: Snapshot | null = null;
 let snapshotFetching = false;
 let lastSnapshotFetch = 0;
-const SNAPSHOT_MIN_INTERVAL = 30_000;
+const SNAPSHOT_MIN_INTERVAL = 15_000;
 
 function refreshSnapshot(ref: PrRef, force = false): void {
   const key = refKey(ref);
@@ -377,13 +377,16 @@ export const prReviewFlow: Feature = {
   id: FEATURE_ID,
   areas: ["repos-pr"],
   init(): void {
-    // The native vote UI changes the user's vote without touching our code;
-    // pick the new vote up shortly after any interaction with it.
+    // Votes, declines and reviewer add/remove all happen in native UI our
+    // code never touches: the vote split-button, and bolt context menus
+    // (decline/remove live in the Reviewers section's ⋯ menu). Any click on
+    // either forces a snapshot refetch shortly after, so the gate reacts in
+    // seconds instead of waiting out the cadence.
     document.addEventListener(
       "click",
       (e) => {
         if (!(e.target instanceof Element)) return;
-        if (!e.target.closest(FLOW_SELECTORS.voteButton)) return;
+        if (!e.target.closest(`${FLOW_SELECTORS.voteButton}, .bolt-contextual-menu`)) return;
         setTimeout(() => {
           if (flowRef) refreshSnapshot(flowRef, true);
         }, 2500);

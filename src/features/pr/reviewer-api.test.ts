@@ -20,6 +20,11 @@ describe("myVote", () => {
     expect(myVote(reviewers, "team-guid")).toBeNull();
   });
 
+  it("treats a declined reviewer as not assigned", () => {
+    // ADO's "Decline to review" keeps the entry, flagged (live 2026-08-19).
+    expect(myVote([{ id: "me-guid", vote: 0, hasDeclined: true }], "me-guid")).toBeNull();
+  });
+
   it("returns null without an identity", () => {
     expect(myVote(reviewers, null)).toBeNull();
   });

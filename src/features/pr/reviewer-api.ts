@@ -19,12 +19,14 @@ export interface Reviewer {
   id: string;
   vote: number;
   isContainer?: boolean;
+  /** "Decline to review" keeps the entry, flagged (verified live 2026-08-19). */
+  hasDeclined?: boolean;
 }
 
-/** The user's vote, or null when they are not an assigned reviewer. */
+/** The user's vote, or null when they are not an (undeclined) reviewer. */
 export function myVote(reviewers: readonly Reviewer[], myId: string | null): number | null {
   if (!myId) return null;
-  const me = reviewers.find((r) => !r.isContainer && r.id === myId);
+  const me = reviewers.find((r) => !r.isContainer && !r.hasDeclined && r.id === myId);
   return me ? me.vote : null;
 }
 

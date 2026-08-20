@@ -1,5 +1,22 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { rewriteMetaValues, sweepMetaLines } from "./pr-list";
+import { rewriteMetaValues, shouldRedirectToActive, sweepMetaLines } from "./pr-list";
+
+describe("shouldRedirectToActive", () => {
+  it("redirects the explicit Mine view", () => {
+    expect(shouldRedirectToActive("?_a=mine")).toBe(true);
+  });
+
+  it("redirects the bare list URL (ADO defaults it to Mine)", () => {
+    expect(shouldRedirectToActive("")).toBe(true);
+    expect(shouldRedirectToActive("?createdBy=abc")).toBe(true);
+  });
+
+  it("respects any other explicit view", () => {
+    expect(shouldRedirectToActive("?_a=active")).toBe(false);
+    expect(shouldRedirectToActive("?_a=completed")).toBe(false);
+    expect(shouldRedirectToActive("?_a=abandoned")).toBe(false);
+  });
+});
 
 /** The live meta-line span: text nodes then the branch icon + name spans. */
 function buildRow(metaTextNodes: string[]): HTMLElement {

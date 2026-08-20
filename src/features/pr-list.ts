@@ -4,19 +4,43 @@ import { ACCENT, injectStyleOnce } from "../core/dom";
 
 /**
  * GitHub-style restyle of the PR list page (spec:
- * docs/specs/2026-08-20-pr-list-design.md). Pure CSS in this first cut; the
- * meta-line text sweep lands separately. Selectors verified live 2026-08-20
- * (.repos-pr-list / .repos-pr-section-card / .repos-pr-listing-filterbar
- * exist ONLY on the list page, so the sheet is inert on PR detail routes).
+ * docs/specs/2026-08-20-pr-list-design.md). Row/material selectors verified
+ * live 2026-08-20 (.repos-pr-list / .repos-pr-section-card /
+ * .repos-pr-listing-filterbar exist ONLY on the list page, so those rules
+ * are inert on PR detail routes). The header-consolidation rules target
+ * generic bolt chrome (.bolt-header, .bolt-tabbar) that every hub reuses,
+ * so they are gated behind a data-adofix-prlist attribute on <html> —
+ * which is why areas is "*": the attribute must clear when navigating to
+ * ANY other page, including other hubs where apply() would otherwise
+ * never run (the backlog-toolbar precedent).
  */
+const ATTR = "data-adofix-prlist";
+
 export const prList: Feature = {
   id: "pr-list",
-  areas: ["repos-pr"],
+  areas: "*",
   apply(route: Route): void {
+    const onList = route.area === "repos-pr" && route.id === null;
+    document.documentElement.toggleAttribute(ATTR, onList);
     injectStyleOnce("pr-list", CSS);
-    if (route.id === null) sweepMetaLines(document);
+    if (!onList) return;
+    // The Mine view is retired: bare /pullrequests defaults to it, so both
+    // land on Active instead (the hidden Mine tab still takes .click()).
+    if (shouldRedirectToActive(location.search))
+      document.querySelector<HTMLElement>("#__bolt-tab-active")?.click();
+    sweepMetaLines(document);
   },
 };
+
+/**
+ * True when the list URL resolves to the retired Mine view: an explicit
+ * `_a=mine` or no `_a` at all (ADO's default view is Mine). Any other
+ * explicit view is respected.
+ */
+export function shouldRedirectToActive(search: string): boolean {
+  const view = new URLSearchParams(search).get("_a");
+  return view === null || view === "mine";
+}
 
 /**
  * Meta-line rewrite: "{Display Name} request !{id} into {branch}" →
@@ -124,5 +148,65 @@ const CSS = `
 }
 .repos-pr-list .repos-pr-list-updates .font-weight-semibold {
   color: color-mix(in srgb, ${ACCENT} 70%, var(--text-primary-color, #fff)) !important;
+}
+
+/*
+ * Header consolidation (verified live 2026-08-20): title row, tab bar and
+ * filter bar merge into ONE bar — tabs left, filters right-packed, then the
+ * native filter toggle and New PR button. The stack is .bolt-header (59px,
+ * title + right commandbar) → .bolt-tabbar (48px) → the filter wrapper
+ * (67px, present only while toggled on) → the list card, all flex children
+ * of .bolt-page. The title text is redundant with the breadcrumb and hides;
+ * the commandbar keeps the row and right-aligns via margin-left:auto (the
+ * hidden title area was its flex-grow spacer). Tabbar and wrapper lift onto
+ * the header row with negative margins as click-through overlays:
+ * pointer-events none on the containers, auto on the interactive children.
+ * z-index 4 is load-bearing — the header is a FLEX ITEM with z-index: 3
+ * (z-index applies to flex items even at position:static), so the lifted
+ * bars must out-stack it or every click lands on the header. The Mine tab
+ * hides (stable bolt id); the redirect above covers direct URLs.
+ */
+[${ATTR}] .bolt-header-title-area {
+  display: none !important;
+}
+[${ATTR}] .bolt-header .bolt-header-commandbar {
+  margin-left: auto !important;
+}
+[${ATTR}] #__bolt-tab-mine {
+  display: none !important;
+}
+[${ATTR}] .bolt-tabbar {
+  background: transparent !important;
+  position: relative !important;
+  z-index: 4 !important;
+  margin-top: -55px !important;
+  padding-right: 220px !important;
+  pointer-events: none !important;
+}
+[${ATTR}] .bolt-tabbar .bolt-tabbar-tabs,
+[${ATTR}] .bolt-tabbar .bolt-header-commandbar {
+  pointer-events: auto !important;
+}
+/* The filter-bar lift needs the full row's width to clear the tabs; below
+   1400px it stays a second row (the tabbar lift above still applies). */
+@media (min-width: 1400px) {
+  [${ATTR}] .page-content-left.page-content-right.page-content-top {
+    margin-top: -57px !important;
+    position: relative !important;
+    z-index: 4 !important;
+    pointer-events: none !important;
+  }
+}
+[${ATTR}] .repos-pr-listing-filterbar .vss-FilterBar--list {
+  justify-content: flex-end !important;
+  padding-right: 260px !important;
+  pointer-events: none !important;
+}
+[${ATTR}] .repos-pr-listing-filterbar .vss-FilterBar--item,
+[${ATTR}] .repos-pr-listing-filterbar .vss-FilterBar--right-items {
+  pointer-events: auto !important;
+}
+[${ATTR}] .repos-pr-listing-filterbar .vss-FilterBar--item-keyword-container {
+  max-width: 215px !important;
 }
 `;

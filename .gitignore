@@ -1,3 +1,4 @@
 node_modules/
 dist/
 .dash/
+.firefox-claude/

@@ -7,7 +7,9 @@
     "build": "node build.mjs",
     "dev": "node build.mjs --watch",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "firefox:setup": "scripts/firefox-claude/setup.sh",
+    "firefox": "scripts/firefox-claude/launch.sh"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

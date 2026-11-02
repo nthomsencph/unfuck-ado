@@ -1,19 +1,25 @@
 #!/usr/bin/env node
 // Drive the user's Firefox through the project-local Claude for Firefox MCP
-// server, ALWAYS in a tab this script opened itself.
+// server, in the extension's OWN window — never in a tab the user is using.
 //
 //   node scripts/firefox-claude/ff.mjs '[["navigate",{"tabId":"$TAB","url":"https://…"}],["computer",{"tabId":"$TAB","action":"screenshot"}]]'
 //
-// Why its own tab: the extension's tab group adopts whatever tab sits in its
-// window. On 2026-11-02 Firefox reused the group's blank tab for an externally
-// opened about:debugging, and the next `navigate` replaced the user's tab
-// (likely also their Violentmonkey tracking tab). So every run opens a fresh
-// tab, refuses to touch privileged/local pages, and closes the tab at the end
-// (KEEP=1 to leave it open).
+// Lessons from 2026-11-02:
+// - The extension's tab group adopts tabs. Firefox reused its blank tab for an
+//   externally opened about:debugging (and likely the user's Violentmonkey
+//   tab); later navigates replaced the user's tab. And the user went on to
+//   browse in the group's tab.
+// - tabs_create_mcp opens tabs with active:false. Firefox throttles timers in
+//   background tabs so hard that the userscript's settle work (and dev probes)
+//   never ran — pages rendered half-applied.
+// So: work in the group's tab, which tabs_context_mcp(createIfEmpty) puts in
+// a dedicated, focused window; refuse to act if that tab shows a page this
+// script wouldn't have opened (the user may have wandered into it). If the
+// group holds a user tab, ask the user to close it — the next run then opens
+// a fresh dedicated window.
 //
 // Env: SHOT=<prefix> saves screenshots as <prefix>-<n>.jpg; MAX=<n> truncates
-// printed results (default 1200); KEEP=1 keeps the tab; PROBE results
-// ("b64:…") are decoded automatically.
+// printed results (default 1200). Probe results ("b64:…") are decoded.
 import { spawn } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -21,8 +27,9 @@ import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const server = join(here, "..", "..", ".firefox-claude", "firefox-mcp.mjs");
-// Our own fresh tab starts on about:newtab/about:blank — those are fine.
-const PROTECTED = /^(about:(?!newtab|blank|home)|moz-extension:|file:|chrome:|view-source:)/;
+// Pages this script opens itself. Anything else in the group's tab means the
+// user is using it.
+const OURS = /^(about:(newtab|blank|home)|https:\/\/(dev\.azure\.com|[\w-]+\.visualstudio\.com|github\.com|example\.com|www\.iana\.org)\/)/;
 
 const p = spawn(process.execPath, [server]);
 let buf = "";
@@ -46,23 +53,22 @@ const tool = async (name, args) => (await call("tools/call", { name, arguments: 
 const text = (res) => (res?.content ?? []).filter((c) => c.type === "text").map((c) => c.text).join("\n");
 
 await call("initialize", {});
-await tool("tabs_context_mcp", { createIfEmpty: true });
-const created = text(await tool("tabs_create_mcp", {}));
-const TAB = Number((created.match(/tab(?:Id)?\D{0,5}(\d+)/i) || [])[1]);
-if (!TAB) {
-  console.error("could not open a dedicated tab:", created.slice(0, 300));
+const ctx0 = JSON.parse(text(await tool("tabs_context_mcp", { createIfEmpty: true })).split("\n\n")[0]);
+const tabs = ctx0.availableTabs ?? [];
+if (tabs.length !== 1) {
+  console.error(`the Claude group holds ${tabs.length} tabs (${tabs.map((t) => `${t.tabId} ${t.url}`).join(", ")}) — expected exactly its own one; ask the user to close the extra tabs`);
   p.kill();
   process.exit(1);
 }
-
+const TAB = tabs[0].tabId;
 const max = Number(process.env.MAX || 1200);
 let n = 0;
 for (const [name, args] of JSON.parse(process.argv[2].replaceAll('"$TAB"', String(TAB)))) {
   // Guard: never act on a tab that has drifted onto a privileged/local page.
   const ctx = text(await tool("tabs_context_mcp", {}));
   const url = (ctx.match(new RegExp(`tabId ${TAB}: "[^"]*" \\(([^)\\s]+)`)) || [])[1] || "";
-  if (name !== "navigate" && !name.startsWith("tabs_") && PROTECTED.test(url)) {
-    console.error(`refusing ${name}: tab ${TAB} is on ${url}`);
+  if (!name.startsWith("tabs_") && url && !OURS.test(url)) {
+    console.error(`refusing ${name}: tab ${TAB} shows ${url}, which this script didn't open — the user may be using it`);
     break;
   }
   const t = Date.now();
@@ -82,5 +88,4 @@ for (const [name, args] of JSON.parse(process.argv[2].replaceAll('"$TAB"', Strin
   console.log(`## ${name} (${Date.now() - t}ms) =>`, out.length > max ? out.slice(0, max) + "…" : out);
 }
 
-if (!process.env.KEEP) await tool("tabs_close_mcp", { tabId: TAB });
 p.kill();

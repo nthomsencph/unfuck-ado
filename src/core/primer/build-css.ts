@@ -29,10 +29,20 @@ export interface PrimerOutput {
   bridge: string;
 }
 
+/*
+ * Primer writes sizes in rem against GitHub's 16px root. ADO's root font size
+ * differs, so a 0.0625rem "1px" border rendered as a hairline-to-nothing and
+ * 0.375rem corners shrank (live 2026-11-02, light theme). Converting to px
+ * at build time pins GitHub's actual rendered sizes.
+ */
+export function remToPx(css: string): string {
+  return css.replace(/(-?\d*\.?\d+)rem\b/g, (_, n: string) => `${+(parseFloat(n) * 16).toFixed(3)}px`);
+}
+
 export function buildPrimerCss(input: PrimerInput): PrimerOutput {
-  const dark = parseTheme(input.dark);
-  const light = parseTheme(input.light);
-  const whole = input.whole.map((css) => stripComments(css).replace(/\n\s*\n/g, "\n").trim() + "\n");
+  const dark = parseTheme(remToPx(input.dark));
+  const light = parseTheme(remToPx(input.light));
+  const whole = input.whole.map((css) => remToPx(stripComments(css)).replace(/\n\s*\n/g, "\n").trim() + "\n");
   // Palette values come from the FULL themes — they resolve tokens the
   // pruned sheet never ships.
   const bridge = buildBridgeCss(dark, light);

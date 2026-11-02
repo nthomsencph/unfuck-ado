@@ -81,7 +81,7 @@ ${[...new Set(Object.values(SEMANTIC))]
     });
     expect(tokens.match(/--fgColor-muted:/g)).toHaveLength(2);
     expect(tokens).not.toContain("--unused-token");
-    expect(tokens).toContain("--borderRadius-medium: 0.375rem;");
+    expect(tokens).toContain("--borderRadius-medium: 6px;");
     expect(tokens).not.toContain("/*");
     expect(tokens).not.toContain("@media (prefers-color-scheme");
   });
@@ -95,5 +95,15 @@ ${[...new Set(Object.values(SEMANTIC))]
         sources: [".a { color: var(--fgColor-mute); }"],
       })
     ).toThrow(/Primer token\(s\) referenced in src\/: --fgColor-mute\. /);
+  });
+});
+
+describe("remToPx", () => {
+  it("pins Primer's rem sizes to GitHub's 16px root", async () => {
+    const { remToPx } = await import("./build-css");
+    expect(remToPx("--borderWidth-thin: 0.0625rem; --x: 1.5rem; --y: -.5rem;")).toBe(
+      "--borderWidth-thin: 1px; --x: 24px; --y: -8px;",
+    );
+    expect(remToPx("--lineHeight: 1.5; --a: 2em;")).toBe("--lineHeight: 1.5; --a: 2em;");
   });
 });

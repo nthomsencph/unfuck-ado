@@ -353,3 +353,18 @@ Decisions made on the user's behalf while executing
 - **Decision:** commit and tag locally (v0.53.0, v0.54.0, docs), do not push
   or release until the live pass has run. Releasing would push an unverified
   makeover to every installed copy.
+
+## D10b — Live pass (dark) done; light not checked live
+- Dark: PR list, PR overview, PR files, work item and Kanban board checked
+  side by side with GitHub (2026-11-02). Two bugs found and fixed: theme
+  class matched a feature flag (v0.54.2); ADO page containers kept ADO's
+  canvas (v0.54.3). Monaco stays ADO-black (known, stage 3).
+- Light: checked after the user authorised switching their ADO theme
+  (switched to Light, checked PR list / PR overview / work item, switched
+  back to Dark). Reads as GitHub Light; borders confirmed at full zoom.
+
+## D10c — Primer rem sizes converted to px at build time
+- **Context:** Primer writes borders/radii/sizes in rem against GitHub's
+  16px root; ADO's root font size isn't guaranteed to be 16px.
+- **Decision:** `remToPx` (build-css.ts) converts every rem in the bundled
+  token files to px (×16), pinning GitHub's rendered sizes.

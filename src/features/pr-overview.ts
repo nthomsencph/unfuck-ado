@@ -65,11 +65,12 @@ const CSS = `
 .repos-pr-details-page .shadow-padding .comment-file-diff-container {
   border-top-color: transparent !important;
 }
-/* Nested boxes (checks, merge commit) as wells sunk into the muted card:
-   canvas fill, no hairline, 6px like every Box. */
+/* Nested boxes (checks, merge commit): no fill of their own (user
+   2026-11-02 — the canvas-colored well read as a hole in the card). The
+   rows sit straight on the card like GitHub's merge-box checks list. */
 .repos-pr-details-page .shadow-padding .status-details-container {
   border: var(--borderWidth-default) solid transparent !important;
-  background: var(--bgColor-default) !important;
+  background: transparent !important;
   border-radius: var(--borderRadius-medium) !important;
 }
 /*
@@ -81,6 +82,43 @@ const CSS = `
  */
 .repos-pr-details-page .repos-overview-right-pane .bolt-tag-picker {
   border-color: transparent !important;
+}
+
+/*
+ * Linked work items show their whole title (user request 2026-11-02): ADO
+ * ellipsizes the link to one line in a 280px column; the title wraps
+ * instead, with the type icon pinned to its first line. Verified live on
+ * PR 7288 (table.linked-wit-pr-details).
+ */
+.repos-pr-details-page .linked-wit-pr-details .bolt-table-two-line-cell-item {
+  overflow: visible !important;
+  align-items: flex-start;
+}
+.repos-pr-details-page .linked-wit-pr-details .bolt-table-two-line-cell-item > a.text-ellipsis {
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  overflow-wrap: anywhere;
+}
+
+/*
+ * PR header (user request 2026-11-02): GitHub's air around the title —
+ * the page-title padding above it comes from chrome.css — plus a gap
+ * between the title and the "X proposes to merge a into b" line, and room
+ * before the tabs. The reviewer avatars (and their vote badges) ride on
+ * that line right after the target branch: ADO pushes them to the far
+ * right with an empty flex-grow spacer between the two
+ * .pr-secondary-title-row groups; dropping the spacer is all it takes —
+ * no React node moves.
+ */
+.repos-pr-details-page .repos-pr-header {
+  margin-bottom: 16px !important;
+}
+.repos-pr-details-page .repos-pr-header > .flex-column > .flex-row + .flex-row {
+  margin-top: 8px;
+}
+.repos-pr-details-page .repos-pr-header .pr-secondary-title-row + .flex-grow:empty {
+  display: none;
 }
 
 /*

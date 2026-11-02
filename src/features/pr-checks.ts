@@ -2,7 +2,7 @@ import type { Feature } from "../core/registry";
 import type { Route } from "../core/router";
 import { injectStyleOnce, safeQuery } from "../core/dom";
 import { log } from "../core/log";
-import { octicon, type OcticonName } from "../core/primer";
+import { octicon, octiconMask, type OcticonName } from "../core/primer";
 import {
   fetchPolicyEvaluations,
   selectInlineChecks,
@@ -31,7 +31,42 @@ const FEATURE_ID = "pr-checks";
 const CHECK_LIST_SELECTOR =
   ".repos-pr-details-page .shadow-padding .status-details-container > .preview-check-list";
 
-const CSS = `
+/**
+ * Native ADO status drawings in the merge-status card (svg.bolt-status:
+ * the big summary icons, the build-policy rows, "No merge conflicts")
+ * repainted as the same filled octicons our rows use, so every check in
+ * the card shows one success and one failure glyph (user request
+ * 2026-11-02, GitHub's check-circle-fill / x-circle-fill). The svgs are
+ * React-owned, so the octicon is a CSS mask over the svg box and its own
+ * circle/path children are hidden — nothing is added to the DOM. Scope:
+ * the Overview column outside the activity feed (timeline vote icons and
+ * the reviewer list keep ADO's drawings).
+ */
+const NATIVE_STATUS =
+  ".repos-pr-details-page .shadow-padding .bolt-card svg.bolt-status:not(.bolt-timeline-cell *)";
+
+let cssText: string | undefined;
+const css = (): string => `
+${NATIVE_STATUS}:is(.success, .failed) > * { display: none; }
+${NATIVE_STATUS}.success {
+  background-color: var(--fgColor-success);
+  -webkit-mask: ${octiconMask("check-circle-fill", 24)} center / contain no-repeat;
+  mask: ${octiconMask("check-circle-fill", 24)} center / contain no-repeat;
+}
+${NATIVE_STATUS}.failed {
+  background-color: var(--fgColor-danger);
+  -webkit-mask: ${octiconMask("x-circle-fill", 24)} center / contain no-repeat;
+  mask: ${octiconMask("x-circle-fill", 24)} center / contain no-repeat;
+}
+/* The 16px row icons use the 16px drawings (octicons are tuned per size). */
+${NATIVE_STATUS}.success:not(.margin-4) {
+  -webkit-mask-image: ${octiconMask("check-circle-fill")};
+  mask-image: ${octiconMask("check-circle-fill")};
+}
+${NATIVE_STATUS}.failed:not(.margin-4) {
+  -webkit-mask-image: ${octiconMask("x-circle-fill")};
+  mask-image: ${octiconMask("x-circle-fill")};
+}
 .adofix-check-row {
   display: flex; align-items: center; gap: 8px;
   /* 18px left puts our icon pixel-identical to the native row's (measured
@@ -58,8 +93,8 @@ const CSS = `
  * status text carries the meaning.
  */
 const ICONS: Record<string, { name: OcticonName; tone: string }> = {
-  approved: { name: "check-circle", tone: "success" },
-  rejected: { name: "x-circle", tone: "danger" },
+  approved: { name: "check-circle-fill", tone: "success" },
+  rejected: { name: "x-circle-fill", tone: "danger" },
   queued: { name: "dot-fill", tone: "attention" },
   running: { name: "dot-fill", tone: "attention" },
 };
@@ -99,7 +134,7 @@ export const prChecks: Feature = {
   id: FEATURE_ID,
   areas: ["repos-pr"],
   apply(route: Route): void {
-    injectStyleOnce(FEATURE_ID, CSS);
+    injectStyleOnce(FEATURE_ID, (cssText ??= css()));
     const ref = prRefFromRoute(route);
     if (!ref) return;
     if (!safeQuery(CHECK_LIST_SELECTOR)) return; // Overview checks box not up

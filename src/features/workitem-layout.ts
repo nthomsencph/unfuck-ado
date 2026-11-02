@@ -4,7 +4,7 @@ import { getWorkItem, type ProjectRef } from "../core/api";
 import { injectStyleOnce, stubHide } from "../core/dom";
 import { createFetchCache } from "../core/fetch-cache";
 import { log } from "../core/log";
-import { octicon, type OcticonName } from "../core/primer";
+import { octicon, octiconMask } from "../core/primer";
 import {
   DESCRIPTION_HEADER_RE,
   formatCreatedDate,
@@ -464,16 +464,6 @@ function enhance(ref: ProjectRef | null): void {
   }
 }
 
-/** An octicon as a CSS mask image — for pseudo-elements on React-owned
-    native buttons, where appending an <svg> child would not survive (or
-    would confuse) React's reconciliation. Painted with currentColor via
-    background, so it follows the button's text color like a real icon. */
-function octiconMask(name: OcticonName): string {
-  const svg = octicon(name);
-  svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-  return `url("data:image/svg+xml,${encodeURIComponent(svg.outerHTML)}")`;
-}
-
 const CSS = `
 /* The header rows and the State/Area subheader join the same centered
    column — full-width header over a capped body clashed (user 2026-08-18).
@@ -919,24 +909,17 @@ ${stubHide(".adofix-wi-group-absorb")}
 .work-item-form-page .html-command-bar-button:not(:hover):not(.is-checked) {
   background: transparent !important;
 }
-/* Discussion composer: flat on the canvas, the text field itself a 6px
-   box in the translucent field fill, no border (B6) — user 2026-08-18 put
-   the material on the field, not the composer. The field's html-editor
-   gets the same scoped --background-color trick as above (transparent, so
-   the field fill shows through). */
-.discussion-new-comment {
-  background: transparent !important;
-  box-shadow: none !important;
-}
+/* Discussion composer: flat on the canvas, and since 2026-11-02 (B15) the
+   text field has no fill either — like every comment composer, the
+   placeholder alone marks it (user 2026-11-02, reversing the 2026-08-18
+   field box). The field's html-editor gets the same scoped
+   --background-color trick as above (transparent). */
+.discussion-new-comment,
 .discussion-new-comment .markdown-editor,
-.discussion-new-comment .bolt-textfield {
-  background: var(--bgColor-neutral-muted) !important;
-  border-radius: var(--borderRadius-medium) !important;
-}
-/* Inside the field: no second layer of the translucent fill. */
+.discussion-new-comment .bolt-textfield,
 .discussion-new-comment .bolt-textfield-input {
   background: transparent !important;
-  border-radius: var(--borderRadius-medium) !important;
+  box-shadow: none !important;
 }
 .discussion-new-comment .html-editor {
   --background-color: transparent;

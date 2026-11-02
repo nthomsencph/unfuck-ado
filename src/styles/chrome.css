@@ -45,6 +45,15 @@ table:has(td.taskboard-expanded-cell) th,
 .bolt-header:not([class*="tabbar"]):not([class*="tabs"]) {
   padding-top: 6px !important;
 }
+/* Page title rows get GitHub's air back (user 2026-11-02: the Aug squeeze
+   to 6px left the PR title and the sprint/backlog headers jammed under the
+   top bar). .no-padding headers are section headers inside a page (the PR
+   sidebar's Reviewers/Tags/Work items) and keep the tight 6px. The lifted
+   icon rows on the sprint and backlog headers use relative offsets, so the
+   extra padding moves them with the title. */
+.bolt-header:not([class*="tabbar"]):not([class*="tabs"]):not(.no-padding) {
+  padding-top: 20px !important;
+}
 
 /* Page titles: 21px -> 16px drops the title row ~15px. Verified 2026-08-01. */
 .bolt-header-title.title-m {

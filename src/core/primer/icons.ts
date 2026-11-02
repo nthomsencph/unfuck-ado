@@ -29,3 +29,15 @@ export function octicon(name: OcticonName, size = 16): SVGSVGElement {
   }
   return svg;
 }
+
+/**
+ * An octicon as a CSS `url()` mask image, for React-owned nodes where an
+ * appended <svg> child would not survive reconciliation (or would confuse
+ * it): native buttons, ADO's bolt-status drawings. Paint it with a
+ * background color, e.g. currentColor or a --fgColor-* token.
+ */
+export function octiconMask(name: OcticonName, size = 16): string {
+  const svg = octicon(name, size);
+  svg.setAttribute("xmlns", SVG_NS);
+  return `url("data:image/svg+xml,${encodeURIComponent(svg.outerHTML)}")`;
+}

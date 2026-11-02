@@ -44,4 +44,4 @@ export function syncPrimer(): void {
   injectStyleOnce(ADO_SHEET_ID, adoCss);
 }
 
-export { octicon, type OcticonName } from "./icons";
+export { octicon, octiconMask, type OcticonName } from "./icons";

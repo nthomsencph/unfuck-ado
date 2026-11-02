@@ -157,3 +157,28 @@ overlapping titles. **PROVISIONAL** entries first in review.
 - **Decision:** in light only, `--bgColor-muted` is overridden to `#eff1f3`
   (components.css, after Primer's block). Every borderless muted surface
   (cells, columns, rows, comment boxes, header) gets a visible step.
+
+## B15 — Content fields lose the fill; the composer hint goes
+- **Context:** user, 2026-11-02: the comment composers ("Add a comment…",
+  "Write a reply…") and the sidebar tag input should have no background of
+  their own; the "Markdown is supported…" line under a focused comment
+  field should go.
+- **Decision:** reverses B6 for fields that sit *in* content: PR comment
+  and reply composers, the work item discussion composer (its 2026-08-18
+  field box too), the PR title (an editable textfield) and every tag
+  picker. No fill, no outline, placeholder `--fgColor-disabled` — one step
+  fainter than ADO's muted placeholder. Focused/error/warning fields keep
+  ADO's border and ring. Standalone fields (filters, search, dialogs) keep
+  the B6 fill: without it, nothing marks them as fields. The hint is
+  hidden everywhere: only form messages that contain
+  `.markdown-text-container`, so validation messages stay.
+
+## B16 — Checks: one filled glyph per outcome, no well
+- **Context:** user, 2026-11-02: the checks box needs no background, and
+  pipeline rows and policy rows showed different green checks.
+- **Decision:** the `.status-details-container` well is transparent. Every
+  success/failure in the merge-status card is GitHub's
+  `check-circle-fill` / `x-circle-fill`: our rows render the octicons;
+  ADO's `svg.bolt-status` drawings get the same octicon as a CSS mask
+  (24px drawing for the 24px summary icons). Supersedes D44's outline
+  icons.

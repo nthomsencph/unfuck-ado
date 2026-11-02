@@ -59,7 +59,8 @@ html[${ATTR}] .wit-backlogs-header-row .bolt-header-command-item-button.bolt-exp
  * The icon row lifted onto the title row, inline with the ⋮ menu (user
  * request 2026-08-18) — the PR Files toolbar-merge pattern: pure CSS, DOM
  * stays where React put it, container is click-through so the team-name
- * dropdown underneath stays clickable. -64px puts the icons on the title
+ * dropdown underneath stays clickable. -50px (was -64px before the page-title
+ * padding went 6px -> 20px, re-measured 2026-11-02) puts the icons on the title
  * text's centerline (with chrome-density's 6px header padding and the ⋮
  * alignment fix above; all four centers measured equal 2026-08-18); 44px
  * right padding clears the ⋮ button (34px + rhythm gap). Below 900px the
@@ -68,7 +69,7 @@ html[${ATTR}] .wit-backlogs-header-row .bolt-header-command-item-button.bolt-exp
  */
 @media (min-width: 900px) {
   html[${ATTR}] .backlogs-tabbar-header {
-    margin-top: -64px !important;
+    margin-top: -50px !important;
     background: transparent !important;
     pointer-events: none;
     position: relative;

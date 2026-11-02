@@ -45,13 +45,35 @@ html[data-adofix-bridge] [class*="work-item-"] .bolt-textfield:not(.focused, .di
   border-color: transparent !important;
   background-color: var(--bgColor-neutral-muted) !important;
 }
-html[data-adofix-bridge] .bolt-textfield:not(.focused, .bolt-textfield-inline, .hide-border, .subtle, .not-active, .bolt-textfield-error, .bolt-textfield-warning, .bolt-dropdown-filter):not([class*="work-item-"] *),
-html[data-adofix-bridge] .bolt-tag-picker {
+html[data-adofix-bridge] .bolt-textfield:not(.focused, .bolt-textfield-inline, .hide-border, .subtle, .not-active, .bolt-textfield-error, .bolt-textfield-warning, .bolt-dropdown-filter, .repos-pr-title, .repos-comment-editor-max-width):not([class*="work-item-"] *, .repos-discussion-thread *, .repos-comment-editor-max-width *) {
   border-color: transparent !important;
   background-color: var(--bgColor-neutral-muted) !important;
 }
-html[data-adofix-bridge] .bolt-textfield:not(.focused, .bolt-textfield-inline, .hide-border, .subtle, .not-active, .bolt-textfield-error, .bolt-textfield-warning, .bolt-dropdown-filter):not([class*="work-item-"] *) .bolt-textfield-input {
+html[data-adofix-bridge] .bolt-textfield:not(.focused, .bolt-textfield-inline, .hide-border, .subtle, .not-active, .bolt-textfield-error, .bolt-textfield-warning, .bolt-dropdown-filter, .repos-pr-title, .repos-comment-editor-max-width):not([class*="work-item-"] *, .repos-discussion-thread *, .repos-comment-editor-max-width *) .bolt-textfield-input {
   background-color: transparent !important;
+}
+
+/* Fields that sit in content: no fill and no outline at all, the
+   placeholder alone marks them — one step fainter than ADO's (user
+   2026-11-02, reversing B6 for these; B15). Comment and reply composers
+   (PR threads; the work item composer lives in workitem-layout), the PR
+   title and every tag picker. Focused fields keep ADO's border and ring. */
+html[data-adofix-bridge] .bolt-tag-picker,
+html[data-adofix-bridge] :is(.repos-pr-title, .repos-comment-editor-max-width, .repos-discussion-thread .bolt-textfield, .repos-comment-editor-max-width .bolt-textfield):is(.bolt-textfield):not(.focused, .bolt-textfield-error, .bolt-textfield-warning) {
+  border-color: transparent !important;
+  background-color: transparent !important;
+}
+html[data-adofix-bridge] :is(.repos-pr-title, .repos-comment-editor-max-width, .repos-discussion-thread .bolt-textfield, .repos-comment-editor-max-width .bolt-textfield, .discussion-new-comment, .bolt-tag-picker) :is(input, textarea)::placeholder {
+  color: var(--fgColor-disabled) !important;
+  opacity: 1;
+}
+
+/* The "Markdown supported. Drag & drop, paste, or select files" line under
+   a focused comment field: hidden everywhere (user 2026-11-02; GitHub
+   shows no such hint). Only form messages that ARE the hint — validation
+   messages share .bolt-formitem-message and stay. */
+html[data-adofix-bridge] .bolt-formitem-message:has(> .markdown-text-container) {
+  display: none !important;
 }
 
 /* Outlined pills: filled with a wash of their own (ADO-set) color (B7). */

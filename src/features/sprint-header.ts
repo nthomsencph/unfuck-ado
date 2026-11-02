@@ -74,13 +74,15 @@ html[${ATTR}] .sprints-tabbar-header .bolt-tabbar {
   html[${ATTR}="taskboard"] .sprints-tabbar-header-commandbar.bolt-header-commandbar,
   html[${ATTR}="backlog"] .sprints-tabbar-header-commandbar.bolt-header-commandbar {
     position: relative;
-    top: -52px;
+    /* -36px (was -52px): centers the icons on the title row's centerline,
+       re-measured live 2026-11-02 (they sat 16px high). */
+    top: -36px;
     z-index: 3;
   }
   /* Sprint/person pickers right-aligned on the TITLE row (user request
      2026-08-18), left of the lifted icons (310px right padding clears them).
      margin-top -38px collapses the pickers' old row for the content below;
-     the remaining 48px up to the title line comes from relative top so the
+     the remaining 32px up to the title line comes from relative top so the
      filter bar does not ride up over the tabs. Click-through except on the
      pickers themselves. */
   html[${ATTR}="taskboard"] .sprints-header-dates,
@@ -91,9 +93,17 @@ html[${ATTR}] .sprints-tabbar-header .bolt-tabbar {
        before that button existed — the pickers overlapped, user 2026-08-18) */
     padding-right: 360px;
     position: relative;
-    top: -48px;
+    top: -32px; /* was -48px; 16px high, re-measured live 2026-11-02 */
     z-index: 4;
     pointer-events: none;
+  }
+  /* The Backlog tab's tab row sits 2px lower than the taskboard's, so its
+     lifts are 2px longer (centerlines measured equal live 2026-11-02). */
+  html[${ATTR}="backlog"] .sprints-tabbar-header-commandbar.bolt-header-commandbar {
+    top: -38px;
+  }
+  html[${ATTR}="backlog"] .sprints-header-dates {
+    top: -34px;
   }
   /*
    * Filter bar inline with the tabs, Taskboard AND Backlog tabs (user

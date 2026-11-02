@@ -63,3 +63,5 @@ tasklist
 telescope
 tools
 versions
+check-circle-fill
+x-circle-fill

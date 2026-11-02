@@ -292,7 +292,51 @@ const CSS = `
 [${ATTR}] .repos-pr-listing-filterbar .vss-FilterBar--right-items {
   pointer-events: auto !important;
 }
-[${ATTR}] .repos-pr-listing-filterbar .vss-FilterBar--item-keyword-container {
-  max-width: 215px !important;
+/* One size for every filter (user 2026-11-02): natively the ID/title box is
+   220x27, the two identity pickers 270x35 and Target branch 230x32 (live).
+   All become 220px wide and GitHub's 32px control height; the field is the
+   .bolt-textfield inside each item. */
+[${ATTR}] .repos-pr-listing-filterbar .vss-FilterBar--item {
+  flex: 0 0 220px !important;
+  width: 220px !important;
+  max-width: 220px !important;
+  min-width: 0 !important;
+  align-self: center !important;
+}
+/* ADO spaces only the keyword box (8px); the pickers and Target branch sat
+   flush against each other — one 8px gap between every filter. */
+[${ATTR}] .repos-pr-listing-filterbar .vss-FilterBar--item {
+  margin-right: 0 !important;
+}
+[${ATTR}] .repos-pr-listing-filterbar .vss-FilterBar--item + .vss-FilterBar--item {
+  margin-left: 8px !important;
+}
+[${ATTR}] .repos-pr-listing-filterbar .vss-FilterBar--item .bolt-textfield {
+  /* the identity pickers' field carries min-width: 270px natively, which
+     overflowed the 220px item under its neighbour */
+  min-width: 0 !important;
+  width: 100% !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  box-sizing: border-box !important;
+}
+[${ATTR}] .repos-pr-listing-filterbar .vss-FilterBar--item .bolt-textfield-input {
+  height: 100% !important;
+  min-height: 0 !important;
+  min-width: 0 !important;
+  width: 0 !important; /* flex-grow fills the field; no intrinsic width */
+}
+/* The pickers' flex wrappers default to min-width: auto, so they grew to
+   the input's intrinsic width (239px) past the item. */
+[${ATTR}] .repos-pr-listing-filterbar .vss-FilterBar--item :is(.bolt-identitypickerdropdown, .bolt-identitypickerdropdown-container, .repos-version-dropdown-filterbaritem, .flex-column) {
+  min-width: 0 !important;
+}
+/* Target branch's wrapper column has no flex-grow of its own (with its
+   min-width at 0 it collapsed to the chevron); the version dropdown also
+   doesn't fill the item by default. */
+[${ATTR}] .repos-pr-listing-filterbar .repos-version-dropdown-filterbaritem,
+[${ATTR}] .repos-pr-listing-filterbar .repos-version-dropdown-filterbaritem > .flex-column {
+  flex: 1 1 auto !important;
+  width: 100% !important;
 }
 `;

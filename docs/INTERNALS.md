@@ -342,7 +342,12 @@ throws). Key live findings baked into the code:
   −38 / −34 (its tab row sits 2px lower), Backlogs page −50px margin.
   PR list (v0.57.1): with the 55px header the lifted tab row needs
   `top: 13px` and the filter wrapper `top: 5px` to share the New PR
-  button's centerline (y≈85.5, measured). Our review button
+  button's centerline (y≈85.5, measured). Filter items (v0.57.2): natively
+  220x27 keyword, 270x35 identity pickers (their `.bolt-textfield` has
+  `min-width: 270px`, and the flex wrappers' `min-width: auto` grows them
+  to the input's intrinsic width), 230x32 Target branch
+  (`.repos-version-dropdown-filterbaritem`, whose wrapper column has no
+  flex-grow); unified to 220x32 with 8px gaps. Our review button
   (`.adofix-review-btn`) is the vote split-button's previous sibling and
   carries `data-vote`. ADO's focused-field ring is
   `.bolt-textfield.focused.focus-treatment` (accent border + 3px pulsing

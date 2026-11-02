@@ -290,7 +290,7 @@ const CSS = `
    right-hand columns all move together. */
 .repos-pr-list a.bolt-table-row .bolt-table-cell-content {
   padding-top: 14px !important;
-  padding-bottom: 20px !important; /* a touch more below (user 2026-11-02) */
+  padding-bottom: 28px !important; /* more below than above (user 2026-11-02) */
 }
 /* Row diffstat: GitHub's green adds / red dels, semibold (D45). */
 .adofix-pr-diffstat .adofix-adds,

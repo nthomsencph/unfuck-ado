@@ -324,16 +324,29 @@ const CSS = `
   background: linear-gradient(var(--control-transparent-bgColor-hover), var(--control-transparent-bgColor-hover)),
     var(--bgColor-muted) !important;
 }
-/* "New activity" left edge in GitHub's accent instead of ADO blue. Verified
-   live 2026-08-20: the marker is a 2px border-left on the row's FIRST spacer
-   cell — not on the row, not a pseudo-element. */
-/* Drawn as an inset shadow, not the native border: a border spans the
-   cell's 4px canvas-colored top/bottom edges too, so the bars of adjacent
-   marked rows ran together through the gaps (2026-11-02). The inset stays
-   inside the tile. */
+/* "New activity" (ADO marks the row .bolt-list-row-marked: changes since
+   you last opened the PR, or never opened) as GitHub's unread dot instead
+   of ADO's 2px left edge (user 2026-11-02; the edge read as decoration).
+   An 8px accent dot in the gutter left of the author coin, centered on the
+   row; absolutely positioned, so no column moves. Verified live
+   2026-08-20: ADO's edge is a border-left on the row's FIRST spacer cell. */
 .repos-pr-list .bolt-list-row-marked > .bolt-table-spacer-cell:first-child {
   border-left-color: transparent !important;
-  box-shadow: inset 2px 0 0 var(--borderColor-accent-emphasis) !important;
+  box-shadow: none !important;
+}
+.repos-pr-list a.bolt-table-row > td:nth-child(2) {
+  position: relative;
+}
+.repos-pr-list a.bolt-list-row-marked > td:nth-child(2)::before {
+  content: "";
+  position: absolute;
+  left: 2px; /* the cell clips overflow, so the dot stays inside it */
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  margin-top: -4px;
+  border-radius: 50%;
+  background: var(--bgColor-accent-emphasis);
 }
 /* Author coin 32 → 20px, centered vertically in the row like the other
    columns (user 2026-11-02; it used to sit on the title line). size32
@@ -351,6 +364,9 @@ const CSS = `
 }
 .repos-pr-list .bolt-coin.size32 {
   margin-top: 0 !important;
+  /* every row's coin 12px right, clearing the unread dot's gutter (below);
+     user 2026-11-02: 6px still read as cramped */
+  transform: translateX(12px);
 }
 /* Pills as gh-Label: GitHub's 20px pill, 12px medium text, filled rather
    than outlined (borderless, B7). The state pills (Draft/Declined/Required)

@@ -679,12 +679,19 @@ const CSS = `
   min-height: 0 !important;
 }
 /* GitHub sidebar sections: muted 12px semibold headings, sections parted
-   by 32px of air alone — GitHub's 1px rule between them is gone
-   (borderless, B2; was D66). Icons keep their own size. */
+   by 24px of air alone (32px until 2026-11-02, user: "reduce those gaps")
+   — GitHub's 1px rule between them is gone (borderless, B2; was D66).
+   Icons keep their own size. */
 .work-item-form-right .work-item-form-group:not(.adofix-wi-group-absorb, .adofix-wi-group-hide) {
-  padding-bottom: 16px !important;
-  margin-bottom: 16px !important;
+  padding-bottom: 0 !important;
+  margin-bottom: 24px !important;
   border-bottom: var(--borderWidth-default) solid transparent !important;
+}
+/* ADO's 16px row gap on the rail stacked on those margins, and also
+   spaced out the zero-height section holding only absorbed stubs (it must
+   stay rendered for the teleport, so the gap goes instead). */
+.work-item-form-right {
+  row-gap: 0 !important;
 }
 .work-item-form-right .work-item-form-group:last-child {
   border-bottom: none !important;
@@ -769,6 +776,16 @@ ${commentCss({
 }
 .work-item-header-command-bar .bolt-button:not(.disabled, :disabled):active {
   background-color: var(--control-transparent-bgColor-active) !important;
+}
+/* The header scrolls away with the page (user 2026-11-02): natively only
+   the section container below it scrolls, pinning header + metadata row.
+   The page is already a scroll container, so the inner one stops being
+   one. The absolute State field and command bar live inside the page, so
+   they scroll with it. */
+.work-item-form-page > .work-item-form-expanded-section-container {
+  overflow: visible !important;
+  height: auto !important;
+  flex-shrink: 0 !important;
 }
 /* Section headers out: Discussion always (Description via text-matched
    class — Repro Steps etc. keep theirs). ADO's 1px divider lives ON the
@@ -1111,9 +1128,9 @@ ${stubHide(`.work-item-form-subheader > :not([class*="wif-tabbar"]),
 ${stubHide(".adofix-wi-group-absorb")}
 /* The adofix "Details" group at the top of the rail. */
 #adofix-wi-details {
-  padding: 0 0 16px;
+  padding: 0;
   border-bottom: var(--borderWidth-default) solid transparent;
-  margin-bottom: 16px;
+  margin-bottom: 24px;
 }
 /* The tab strip goes (Details is the only content tab left — Attachments
    and History are proxied into the header command bar, Links is gone), and
@@ -1200,7 +1217,7 @@ ${stubHide(".adofix-wi-group-absorb")}
 }
 .adofix-wi-kv--block .adofix-wi-kv-label {
   display: block;
-  margin-bottom: 6px;
+  margin-bottom: 10px; /* 6px read as cramped under "Tags" (user 2026-11-02) */
 }
 .adofix-wi-kv--block .adofix-wi-kv-value {
   display: flex;

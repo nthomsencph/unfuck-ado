@@ -2,13 +2,13 @@ import { describe, expect, it } from "vitest";
 import { formatCreatedDate, groupAction, leaf, planningKey, updatedText } from "./fields";
 
 describe("groupAction", () => {
-  it("hides Development/Implementation/System Info", () => {
-    expect(groupAction("Development")).toBe("hide");
+  it("hides Implementation/System Info, keeps Development (its only way in)", () => {
+    expect(groupAction("Development")).toBeNull();
     expect(groupAction("Implementation")).toBe("hide");
     expect(groupAction("System Info")).toBe("hide");
   });
 
-  it("marks Related Work for the has-links toggle", () => {
+  it("marks Related Work for its header "+"", () => {
     expect(groupAction("Related Work")).toBe("relwork");
   });
 
@@ -19,7 +19,7 @@ describe("groupAction", () => {
   });
 
   it("matches by prefix (headers may carry counts/suffixes)", () => {
-    expect(groupAction("Development (2)")).toBe("hide");
+    expect(groupAction("Implementation (2)")).toBe("hide");
     expect(groupAction("Related Work (3)")).toBe("relwork");
   });
 

@@ -65,3 +65,5 @@ tools
 versions
 check-circle-fill
 x-circle-fill
+history
+calendar

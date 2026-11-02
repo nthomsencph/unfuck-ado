@@ -178,12 +178,9 @@ function classifyRailGroups(): HTMLElement[] {
         group.classList.add("adofix-wi-group-hide");
         break;
       case "relwork":
-        // Related Work only earns its place with actual links (user 2026-08-18).
+        // Shown even without links: its "+" is the only way to add one
+        // (2026-11-02; it used to hide until a link existed).
         group.classList.add("adofix-wi-relwork");
-        group.classList.toggle(
-          "adofix-wi-group-hide",
-          !group.querySelector(".compact-links-list a")
-        );
         break;
       case "absorb":
         group.classList.add("adofix-wi-group-absorb");
@@ -274,54 +271,64 @@ function collectRows(colA: HTMLElement, colB: HTMLElement, absorbed: HTMLElement
 }
 
 /**
- * The tab strip is hidden (Details is the only content tab left), so the
- * Attachments tab gets an icon proxy in the header command bar. Clicking
- * toggles Attachments <-> Details via the native (hidden, still clickable)
- * tabs. Rebuilt whenever a re-mount drops it; the count label refreshes on
- * every pass.
+ * The tab strip is hidden, so the content tabs other than Details get icon
+ * proxies in the header command bar (Attachments since 2026-08-18; History
+ * back on 2026-11-02, after it had been hidden with no way in). Clicking
+ * toggles tab <-> Details via the native (hidden, still clickable) tabs.
+ * Rebuilt whenever a re-mount drops them; the label (and Attachments'
+ * count) refreshes on every pass.
  */
-function ensureAttachmentsProxy(): void {
+const TAB_PROXIES = [
+  { field: "System_History", label: "History", icon: "history", counted: false },
+  { field: "System_Attachments", label: "Attachments", icon: "paperclip", counted: true },
+] as const;
+
+function ensureTabProxies(): void {
   const bar = document.querySelector<HTMLElement>(".work-item-header-command-bar");
-  const attachTab = document.querySelector<HTMLElement>('[id$="-System_Attachments"]');
-  if (!bar || !attachTab) return;
-  let btn = bar.querySelector<HTMLButtonElement>(".adofix-wi-attach-proxy");
-  if (!btn) {
-    btn = document.createElement("button");
-    btn.type = "button";
-    // GitHub's invisible button, like makeToolbarButton's (D47).
-    btn.className = "adofix-wi-attach-proxy gh-btn gh-btn-invisible";
-    btn.addEventListener("click", () => {
-      const attach = document.querySelector<HTMLElement>('[id$="-System_Attachments"]');
-      if (!attach) return;
-      if (attach.classList.contains("selected")) {
-        document
-          .querySelector<HTMLElement>('.wif-tabbar [aria-label="Details"]')
-          ?.click();
-      } else {
-        attach.click();
-      }
-    });
-    bar.append(btn);
-    log(FEATURE_ID, "attachments proxy injected");
-  }
-  const count = attachTab.textContent?.trim() ?? "";
-  const label = `Attachments${count ? ` (${count})` : ""}`;
-  btn.title = label;
-  btn.setAttribute("aria-label", label);
-  // Paperclip octicon + a Counter (GitHub's button-with-count), rebuilt
-  // only when the count changes — this runs on every settle.
-  if (btn.dataset["count"] !== count || !btn.querySelector(".octicon")) {
-    btn.dataset["count"] = count;
-    btn.textContent = "";
-    btn.append(octicon("paperclip"));
-    if (count) {
-      const counter = document.createElement("span");
-      counter.className = "gh-Counter";
-      counter.textContent = count;
-      btn.append(counter);
+  if (!bar) return;
+  for (const tab of TAB_PROXIES) {
+    const native = document.querySelector<HTMLElement>(`[id$="-${tab.field}"]`);
+    if (!native) continue;
+    let btn = bar.querySelector<HTMLButtonElement>(`.adofix-wi-tab-proxy[data-tab="${tab.field}"]`);
+    if (!btn) {
+      btn = document.createElement("button");
+      btn.type = "button";
+      // GitHub's invisible button, like makeToolbarButton's (D47).
+      btn.className = "adofix-wi-tab-proxy gh-btn gh-btn-invisible";
+      btn.dataset["tab"] = tab.field;
+      btn.addEventListener("click", () => {
+        const current = document.querySelector<HTMLElement>(`[id$="-${tab.field}"]`);
+        if (!current) return;
+        if (current.classList.contains("selected")) {
+          document
+            .querySelector<HTMLElement>('.wif-tabbar [aria-label="Details"]')
+            ?.click();
+        } else {
+          current.click();
+        }
+      });
+      bar.append(btn);
+      log(FEATURE_ID, `${tab.label} proxy injected`);
     }
+    const count = tab.counted ? (native.textContent?.trim() ?? "") : "";
+    const label = `${tab.label}${count ? ` (${count})` : ""}`;
+    btn.title = label;
+    btn.setAttribute("aria-label", label);
+    // Octicon + a Counter (GitHub's button-with-count), rebuilt only when
+    // the count changes — this runs on every settle.
+    if (btn.dataset["count"] !== count || !btn.querySelector(".octicon")) {
+      btn.dataset["count"] = count;
+      btn.textContent = "";
+      btn.append(octicon(tab.icon));
+      if (count) {
+        const counter = document.createElement("span");
+        counter.className = "gh-Counter";
+        counter.textContent = count;
+        btn.append(counter);
+      }
+    }
+    btn.classList.toggle("adofix-wi-tab-active", native.classList.contains("selected"));
   }
-  btn.classList.toggle("adofix-wi-attach-active", attachTab.classList.contains("selected"));
 }
 
 /**
@@ -402,7 +409,7 @@ function hideDescriptionHeader(): void {
 function enhance(ref: ProjectRef | null): void {
   // Before the rail check: on the Attachments view the rail is unmounted,
   // but the proxy's count/active state still needs refreshing.
-  ensureAttachmentsProxy();
+  ensureTabProxies();
   placeHeaderControls();
   placeStateField();
   trimCommentCount();
@@ -654,11 +661,13 @@ const CSS = `
   right: 8px;
   z-index: 6;
 }
+/* Title room for the absolute command bar: 447px wide since Follow and the
+   History proxy came back (D67, measured live 2026-11-02; was 400/470). */
 .work-item-form-header > :nth-child(2) {
-  padding-right: 400px !important;
+  padding-right: 460px !important;
 }
 .work-item-form-dialog .work-item-form-header > :nth-child(2) {
-  padding-right: 470px !important;
+  padding-right: 530px !important;
 }
 /* Assignee row makes room at its left for the promoted State field.
    NOT position:relative — that would become the absolute command bar's
@@ -736,16 +745,27 @@ const CSS = `
   -webkit-mask: ${octiconMask("plus")} center / 16px no-repeat;
   mask: ${octiconMask("plus")} center / 16px no-repeat;
 }
-/* Header noise out (user 2026-08-18): Follow, the History and Links tabs
-   (Created by/Created live in the rail; Related Work keeps Add link), and
-   every per-section Maximize toggle. The comment-count link STAYS —
+/* Header noise out (user 2026-08-18): the Links tab (Related Work keeps
+   Add link, shown even with no links since 2026-11-02) and every
+   per-section Maximize toggle. Follow and History came back 2026-11-02
+   (they were the only way to follow an item or see its history; History
+   is a header proxy, see ensureTabProxies). The comment-count link STAYS —
    compacted to icon + integer (its text is trimmed in enhance();
    2026-08-18 second thoughts). */
-.work-item-form-header .bolt-split-button:has(> #__bolt-follow),
-.wif-tabbar [id$="-System_History"],
 .wif-tabbar [id$="-System_Links"],
 button.work-item-form-toggle[aria-label^="Maximize"] {
   display: none !important;
+}
+/* Follow, icon-only like the rest of the command bar (its label made the
+   bar wide enough to run into the title, live 2026-11-02). The label is
+   visually hidden, not display:none, so it stays the accessible name. */
+#__bolt-follow .bolt-button-text {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 /* The native State/Reason and Area/Iteration columns and the header tag
    picker become zero-size stubs — NOT display:none: the teleport trick
@@ -769,7 +789,7 @@ ${stubHide(`.work-item-form-subheader > :not([class*="wif-tabbar"]),
   min-width: 0 !important;
 }
 /* Groups removed or absorbed by header text (set from enhance()):
-   Development / Implementation / System Info go entirely; Planning is a
+   Implementation / System Info go entirely; Planning is a
    zero-size stub — its controls stay renderable for the teleport trick
    while its rows render in the adofix Details list. */
 .adofix-wi-group-hide {
@@ -783,7 +803,7 @@ ${stubHide(".adofix-wi-group-absorb")}
   margin-bottom: 16px;
 }
 /* The tab strip goes (Details is the only content tab left — Attachments
-   is proxied into the header command bar and History/Links are gone), and
+   and History are proxied into the header command bar, Links is gone), and
    with it the "Updated by …" line (now an Updated row in the KV list).
    The native tabs stay mounted: display:none elements still take .click()
    for the proxy toggling. The subheader row then collapses to nothing. */
@@ -796,12 +816,12 @@ ${stubHide(".adofix-wi-group-absorb")}
   padding-bottom: 0 !important;
   min-height: 0 !important;
 }
-.adofix-wi-attach-proxy {
+.adofix-wi-tab-proxy {
   white-space: nowrap;
   gap: 4px;
 }
-.adofix-wi-attach-active,
-.adofix-wi-attach-active .octicon {
+.adofix-wi-tab-active,
+.adofix-wi-tab-active .octicon {
   color: var(--fgColor-accent) !important;
 }
 /* While teleported, the control's own label hides — the adofix row's key

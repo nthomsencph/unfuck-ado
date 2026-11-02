@@ -9,13 +9,14 @@
 export type GroupAction = "hide" | "relwork" | "absorb" | null;
 
 /**
- * Development and Implementation (bugs name it "System Info") disappear
- * outright; Related Work only earns its place with actual links; Planning /
+ * Implementation (bugs name it "System Info") disappears outright;
+ * Development (create branch / link PR) stays since 2026-11-02 — it was
+ * the only way in; Related Work is marked for its header "+"; Planning /
  * Classification / Effort are absorbed — their fields join the adofix
  * Details list row-by-row and the native group becomes a zero-size stub.
  */
 export function groupAction(label: string): GroupAction {
-  if (/^(Development|Implementation|System Info)/.test(label)) return "hide";
+  if (/^(Implementation|System Info)/.test(label)) return "hide";
   if (/^Related Work/.test(label)) return "relwork";
   if (/^(Planning|Classification|Effort)/.test(label)) return "absorb";
   return null;

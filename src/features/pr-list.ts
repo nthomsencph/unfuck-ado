@@ -292,6 +292,18 @@ const CSS = `
   padding-top: 18px !important;
   padding-bottom: 18px !important;
 }
+/* Title line: labels keep 12px from the title (ADO: 4px before Draft, 8px
+   before the tag group); Draft → tags 8px. The meta line sits 6px below
+   the title (natively flush). User 2026-11-02. */
+.repos-pr-list .bolt-table-two-line-cell-item > .font-weight-semibold + * {
+  margin-left: 12px !important;
+}
+.repos-pr-list .bolt-table-two-line-cell-item > .repos-pr-list-draft-pill + .bolt-pill-group {
+  margin-left: 8px !important;
+}
+.repos-pr-list .bolt-table-two-line-cell .bolt-table-two-line-cell-item + .bolt-table-two-line-cell-item {
+  margin-top: 6px !important;
+}
 /* Row diffstat: GitHub's green adds / red dels, semibold (D45). */
 .adofix-pr-diffstat .adofix-adds,
 .adofix-pr-diffstat .adofix-dels {

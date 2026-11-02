@@ -123,3 +123,9 @@ in review.
   user preference (`verticalMenuExpanded`). The CSS is written for both.
 - Real-pointer hover could not be exercised (the harness synthesizes only
   `mousemove`); the hover plate was checked via the open-menu state.
+
+## F13 — Light pass (coordinator)
+- ADO theme switched to Light, PR list header + rail checked (full-zoom
+  screenshot), switched back to Dark (2026-11-02). Header/rail on
+  `--bgColor-inset` with a hairline read as GitHub's light header — F5/F6
+  confirmed; no change.

@@ -1,6 +1,6 @@
 import type { Feature } from "../core/registry";
 import type { Route } from "../core/router";
-import { ACCENT, injectStyleOnce } from "../core/dom";
+import { injectStyleOnce } from "../core/dom";
 import { fetchCurrentUserId } from "./pr/reviewer-api";
 import { fetchActivePrs, ownershipMap, type Ownership } from "./pr/list-api";
 
@@ -31,13 +31,16 @@ export const prList: Feature = {
     if (shouldRedirectToActive(location.search))
       document.querySelector<HTMLElement>("#__bolt-tab-active")?.click();
     sweepMetaLines(document);
-    tintOwnership(route);
+    tagOwnership(route);
   },
 };
 
 /*
- * "Mine" tinting, the Mine view's replacement: rows the user authored or
- * reviews get an accent wash (author stronger than reviewer). One fetch per
+ * "Mine" tagging, the Mine view's replacement: rows the user authored or
+ * reviews carry data-adofix-mine="author"|"reviewer". The accent wash that
+ * used to paint them is retired (GitHub's list has no equivalent, spec
+ * 2026-11-02); the tags stay as the hook for a GitHub-style signal in
+ * stage 3 (D40). One fetch per
  * repo per page load, success and failure both cached until reload (the
  * pr-checks precedent); the fetch targets active PRs, so Completed/
  * Abandoned rows simply never match. Rows are tagged with a data attribute
@@ -49,7 +52,7 @@ let ownershipSlot: {
   pending: boolean;
 } | null = null;
 
-function tintOwnership(route: Route): void {
+function tagOwnership(route: Route): void {
   const { org, project, repo } = route;
   if (!org || !project || !repo) return;
   const key = `${org}/${project}/${repo}`;
@@ -139,35 +142,34 @@ export function sweepMetaLines(root: ParentNode): void {
 }
 
 const CSS = `
-/* Card material — the pr-overview card recipe, so list and overview read as
-   one theme (the list card is natively a flat full-width slab). Also covers
-   the Mine tab's two section cards. */
+/* The list card as GitHub's PR-list Box: flat page-colored container, 1px
+   default border, 6px corners, no shadow (the heavy-shadow card is retired,
+   spec 2026-11-02). Also covers the Mine tab's two section cards. */
 .repos-pr-section-card.bolt-card {
-  background: var(--adofix-card) !important;
-  border-radius: var(--adofix-radius) !important;
-  box-shadow:
-    0 8px 24px rgba(0, 0, 0, 0.6),
-    0 1px 4px rgba(0, 0, 0, 0.5) !important;
+  background: var(--bgColor-default) !important;
+  border: var(--borderWidth-default) solid var(--borderColor-default) !important;
+  border-radius: var(--borderRadius-medium) !important;
+  box-shadow: none !important;
 }
 /* Filter bar: depth-8 shadow off, flat against the page. */
 .repos-pr-listing-filterbar {
   background: transparent !important;
   box-shadow: none !important;
 }
-/* Row hairlines: bolt-table-show-lines draws cell top borders — soften to a
-   GitHub-quiet line. */
+/* Row hairlines: bolt-table-show-lines draws cell top borders — GitHub's
+   Box-row separator. */
 .repos-pr-list .bolt-table-cell {
-  border-top-color: rgba(128, 128, 128, 0.12) !important;
+  border-top-color: var(--borderColor-muted) !important;
 }
-/* Subtle hover tint (rows are <a> elements). */
+/* Box-row hover (rows are <a> elements). */
 .repos-pr-list a.bolt-table-row:hover {
-  background: rgba(128, 128, 128, 0.06) !important;
+  background: var(--bgColor-muted) !important;
 }
-/* "New activity" left edge in our accent instead of ADO blue. Verified live
-   2026-08-20: the marker is a 2px border-left on the row's FIRST spacer cell
-   (rgb(82,143,217)) — not on the row, not a pseudo-element. */
+/* "New activity" left edge in GitHub's accent instead of ADO blue. Verified
+   live 2026-08-20: the marker is a 2px border-left on the row's FIRST spacer
+   cell — not on the row, not a pseudo-element. */
 .repos-pr-list .bolt-list-row-marked > .bolt-table-spacer-cell:first-child {
-  border-left-color: ${ACCENT} !important;
+  border-left-color: var(--borderColor-accent-emphasis) !important;
 }
 /* Author coin 32 → 20px, centered on the title line (title top 11px, height
    17.5px in a 56px row — flex-start + 10px lines the centers up). size32
@@ -183,22 +185,42 @@ const CSS = `
 .repos-pr-list .bolt-coin.size32 {
   margin-top: 10px !important;
 }
-/* Pills: the state pills (Draft/Declined/Required) are natively "outlined"
-   with semantic colors and stay untouched; only the filled "standard" tag
-   pills (white 8% slabs) go GitHub-outline. */
+/* Pills as gh-Label: GitHub's 20px outline pill, 12px medium text. The
+   state pills (Draft/Declined/Required) are natively "outlined" in ADO's
+   semantic colors and keep them; only their geometry changes. The filled
+   "standard" tag pills (8% slabs) also go outline-only, in the default
+   border. ADO renders these in React, so the look is applied by CSS rather
+   than by adding gh- classes React would strip. */
+.repos-pr-list .bolt-pill {
+  box-sizing: border-box !important;
+  height: 20px !important;
+  min-height: 0 !important;
+  padding: 0 7px !important;
+  border-radius: var(--borderRadius-full) !important;
+  font-size: var(--text-body-size-small) !important;
+  font-weight: var(--base-text-weight-medium) !important;
+  line-height: 18px !important;
+}
 .repos-pr-list .bolt-pill.standard {
+  color: var(--fgColor-default) !important;
   background: transparent !important;
-  border: 1px solid var(--border-subtle-color, rgba(128, 128, 128, 0.35)) !important;
+  border: var(--borderWidth-default) solid var(--borderColor-default) !important;
+}
+/* GitHub's muted meta line ("!id · Author · into branch", rewritten below).
+   Same selector sweepMetaLines targets. */
+.repos-pr-list a[href*="/pullrequest/"] .secondary-text.body-s {
+  color: var(--fgColor-muted) !important;
+  font-size: var(--text-body-size-small) !important;
 }
 /* Updated column muted — "Updated " is a bare text node in a classless div
    around the <time> span (same shape on notice rows), so the div is the
    muting target. The "n new push/comments" notice line sits above it in the
    .repos-pr-list-updates cell and pops in accent instead. */
 .repos-pr-list div:has(> span.text-ellipsis > time.bolt-time-item) {
-  color: var(--text-secondary-color, #a19f9d) !important;
+  color: var(--fgColor-muted) !important;
 }
 .repos-pr-list .repos-pr-list-updates .font-weight-semibold {
-  color: color-mix(in srgb, ${ACCENT} 70%, var(--text-primary-color, #fff)) !important;
+  color: var(--fgColor-accent) !important;
 }
 
 /*
@@ -259,21 +281,5 @@ const CSS = `
 }
 [${ATTR}] .repos-pr-listing-filterbar .vss-FilterBar--item-keyword-container {
   max-width: 215px !important;
-}
-
-/* "Mine" tinting (the Mine view's replacement): authored rows wash stronger
-   than reviewer-assigned ones; hover variants keep the hover feedback
-   (these land after the generic hover rule, so they need their own). */
-[${ATTR}] a.bolt-table-row[data-adofix-mine="author"] {
-  background: color-mix(in srgb, ${ACCENT} 10%, transparent) !important;
-}
-[${ATTR}] a.bolt-table-row[data-adofix-mine="author"]:hover {
-  background: color-mix(in srgb, ${ACCENT} 14%, transparent) !important;
-}
-[${ATTR}] a.bolt-table-row[data-adofix-mine="reviewer"] {
-  background: color-mix(in srgb, ${ACCENT} 5%, transparent) !important;
-}
-[${ATTR}] a.bolt-table-row[data-adofix-mine="reviewer"]:hover {
-  background: color-mix(in srgb, ${ACCENT} 9%, transparent) !important;
 }
 `;

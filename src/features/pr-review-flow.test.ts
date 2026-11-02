@@ -4,6 +4,7 @@ import {
   nextUnreviewedPath,
   parseChangedFiles,
   reviewButtonLabel,
+  setIconLabel,
 } from "./pr-review-flow";
 
 describe("parseChangedFiles", () => {
@@ -82,5 +83,28 @@ describe("counterLabel", () => {
   it("degrades while counts are unknown", () => {
     expect(counterLabel(null, 40)).toBe("…/40 files reviewed");
     expect(counterLabel(3, null)).toBe("3/… files reviewed");
+  });
+});
+
+describe("setIconLabel", () => {
+  it("turns a trailing or leading status glyph into an octicon", () => {
+    const btn = document.createElement("button");
+    setIconLabel(btn, "Approved ✓");
+    expect(btn.textContent).toBe("Approved");
+    expect(btn.querySelector(".octicon-check")).not.toBeNull();
+    setIconLabel(btn, "✓ Reviewed · next");
+    expect(btn.textContent).toBe("Reviewed · next");
+    setIconLabel(btn, "Rejected ✕");
+    expect(btn.querySelector(".octicon-x")).not.toBeNull();
+  });
+
+  it("leaves plain labels as text and skips unchanged writes", () => {
+    const btn = document.createElement("button");
+    setIconLabel(btn, "Reviewing · 3/40");
+    expect(btn.textContent).toBe("Reviewing · 3/40");
+    expect(btn.querySelector("svg")).toBeNull();
+    const node = btn.firstChild;
+    setIconLabel(btn, "Reviewing · 3/40");
+    expect(btn.firstChild).toBe(node);
   });
 });

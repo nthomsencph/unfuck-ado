@@ -1,8 +1,9 @@
 import type { Feature } from "../core/registry";
 import type { Route } from "../core/router";
-import { ACCENT, flashOutline, injectStyleOnce, safeQuery, safeQueryAll, showToast } from "../core/dom";
+import { flashOutline, injectStyleOnce, safeQuery, safeQueryAll, showToast } from "../core/dom";
 import { waitFor } from "../core/observe";
 import { log } from "../core/log";
+import { octicon } from "../core/primer/icons";
 import { createThread, prRefFromRoute, type PrRef } from "./pr/threads-api";
 import { draftKey, loadDrafts, newDraftId, saveDrafts, type Draft } from "./pr/drafts-store";
 import { currentFilePath, DIFF_SELECTORS, sectionFilePath } from "./pr/diff";
@@ -48,65 +49,35 @@ const FEATURE_ID = "pr-drafts";
 const CARD_ID_ATTR = "data-adofix-draft-id";
 
 /*
- * Design language (worked out live against ADO dark, 2026-08-01): every
- * surface is native ADO material — its own CSS variables for background,
- * hairlines and text, so both themes work — and the accent is confined to
- * one motif: a 3px left "unsent ink" spine plus small purple markers.
- * --adofix-ink mixes the accent toward the theme's text color so accent
- * TEXT stays readable on both dark and light surfaces.
+ * Design language: GitHub's pending review. Drafts are GitHub's "Pending"
+ * comments — an attention Label on a flat bordered comment box, the
+ * attention color marking drafted lines in the tree and gutter — and the
+ * drafts panel is the "Finish your review" overlay with its green submit.
+ * Buttons are gh-btn variants; .adofix-draft-btn / .adofix-primary stay as
+ * hooks only (core's focus-ring rule names them).
  */
 const DRAFTS_CSS = `
-/* The panel gets --adofix-ink from .adofix-surface; these are inline (non-
-   surface) hosts that need it too. */
-.adofix-draft-card, .adofix-draft-capture, .adofix-file-comment, .adofix-tree-draft-item {
-  --adofix-ink: color-mix(in srgb, ${ACCENT} 62%, var(--text-primary-color, #201f1e));
-}
-
 /* -- "Comment on file" icon button in the per-file header ----------------- */
-.adofix-file-comment {
-  border: none; background: transparent;
-  color: var(--text-secondary-color, rgba(0, 0, 0, 0.7));
-  font-size: 14px; padding: 4px 8px; border-radius: 2px;
-  margin-right: 8px; cursor: pointer; line-height: 1;
-  display: inline-flex; align-items: center;
-}
-.adofix-file-comment:hover {
-  background: var(--palette-black-alpha-4, rgba(0, 0, 0, 0.05));
-  color: var(--adofix-ink);
-}
+.adofix-file-comment { margin-right: 8px; }
 
 /* file-level draft cards sit inside the section, under its header row */
-.adofix-file-draft { margin: 4px 12px 6px; }
+.adofix-file-draft { margin: 4px 12px 8px; }
 
-/* -- "Comment as draft" button inside ADO's composer footer -------------- */
-.adofix-draft-capture {
-  border: none; background: rgba(130, 80, 223, 0.15); color: var(--adofix-ink);
-  font-weight: 600; font-size: 14px; padding: 6px 14px; border-radius: 2px;
-  margin-right: 8px; cursor: pointer; font-family: inherit;
-}
-.adofix-draft-capture:hover { background: rgba(130, 80, 223, 0.28); }
+/* -- "Comment as draft" (GitHub's "Start a review") in ADO's composer ---- */
+.adofix-draft-capture { margin-right: 8px; }
 
 /* -- inline cards (stacked view only) ----------------------------------- */
 .adofix-draft-card {
-  display: block; max-width: 640px; margin: 6px 0;
+  display: block; max-width: 640px; margin: 8px 0;
   position: relative; z-index: 1; /* above the row's own decorations */
-  background: var(--callout-background-color, #fff);
-  border: 1px solid var(--border-subtle-color, rgba(0, 0, 0, 0.08));
-  border-left: 3px solid ${ACCENT};
-  border-radius: 4px; padding: 8px 12px 10px;
-  font-family: "Segoe UI", system-ui, sans-serif;
-  font-size: 13px; line-height: 1.45; white-space: normal;
-  color: var(--text-primary-color, #201f1e);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+  padding: 8px 16px;
+  font-family: var(--fontStack-sansSerif);
+  font-size: var(--text-body-size-medium); line-height: 1.5; white-space: normal;
 }
-.adofix-draft-head { display: flex; align-items: baseline; gap: 8px; }
-.adofix-draft-chip {
-  font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
-  color: var(--adofix-ink); text-transform: uppercase;
-}
+.adofix-draft-head { display: flex; align-items: center; gap: 8px; min-height: 28px; }
 .adofix-draft-loc {
-  font-family: ui-monospace, Consolas, monospace; font-size: 11px;
-  color: var(--text-secondary-color, rgba(0, 0, 0, 0.7));
+  font-family: var(--fontStack-monospace); font-size: var(--text-body-size-small);
+  color: var(--fgColor-muted);
 }
 .adofix-draft-card .adofix-draft-actions { opacity: 0; transition: opacity 0.12s; }
 .adofix-draft-card:hover .adofix-draft-actions,
@@ -115,99 +86,91 @@ const DRAFTS_CSS = `
 .adofix-draft-item:has(.adofix-draft-inline-ta) .adofix-draft-actions { opacity: 1; }
 .adofix-draft-card-content { white-space: pre-wrap; margin-top: 4px; }
 
-/* -- quiet + primary buttons --------------------------------------------- */
-.adofix-draft-actions { display: flex; gap: 2px; align-items: center; margin-left: auto; }
-.adofix-draft-btn {
-  border: none; background: transparent;
-  color: var(--text-secondary-color, rgba(0, 0, 0, 0.7));
-  border-radius: 2px; padding: 2px 8px; font-size: 12px; font-weight: 600;
-  cursor: pointer; font-family: inherit;
-}
-.adofix-draft-btn:hover {
-  background: var(--palette-black-alpha-4, rgba(0, 0, 0, 0.05));
-  color: var(--adofix-ink);
-}
-.adofix-draft-btn.adofix-primary { background: ${ACCENT}; color: #fff; padding: 4px 12px; }
-.adofix-draft-btn.adofix-primary:hover { background: #9161ea; color: #fff; }
+/* -- button row ------------------------------------------------------------ */
+.adofix-draft-actions { display: flex; gap: 4px; align-items: center; margin-left: auto; }
+
+/* Primer's form-control textarea. */
 .adofix-draft-inline-ta {
-  width: 100%; min-height: 70px; box-sizing: border-box;
-  font-family: inherit; font-size: 13px; line-height: 1.45;
-  margin-top: 6px; border: 1px solid var(--palette-black-alpha-10, rgba(0, 0, 0, 0.2));
-  border-radius: 2px; padding: 6px 8px;
-  background: rgba(0, 0, 0, 0.18); color: var(--text-primary-color, inherit);
+  display: block; width: 100%; min-height: 70px; box-sizing: border-box;
+  margin-top: 8px; padding: 5px 12px;
+  font-family: var(--fontStack-sansSerif);
+  font-size: var(--text-body-size-medium); line-height: 20px;
+  color: var(--fgColor-default);
+  background-color: var(--bgColor-default);
+  border: var(--borderWidth-default) solid var(--control-borderColor-rest);
+  border-radius: var(--borderRadius-medium);
+  box-shadow: var(--shadow-inset);
+  resize: vertical;
 }
-.adofix-draft-inline-ta:focus { outline: none; border-color: ${ACCENT}; }
+.adofix-draft-inline-ta:focus,
+.adofix-draft-inline-ta:focus-visible {
+  outline: none !important;
+  border-color: var(--focus-outlineColor);
+  box-shadow: inset 0 0 0 1px var(--focus-outlineColor);
+}
 
 /* -- drafts panel --------------------------------------------------------- */
-/* Surface material comes from .adofix-surface (core BASE_CSS). */
+/* Overlay material comes from .adofix-surface (core BASE_CSS). */
 .adofix-drafts-panel {
   position: fixed; top: 120px; right: 24px; width: 380px; max-height: 70vh;
   display: flex; flex-direction: column; overflow: hidden; z-index: 99999;
-  font-size: 13px;
+  font-size: var(--text-body-size-medium);
 }
 .adofix-drafts-panel-head {
-  display: flex; align-items: center; gap: 8px; padding: 10px 10px 10px 14px;
-  font-size: 14px; font-weight: 600;
-  border-bottom: 1px solid var(--border-subtle-color, rgba(0, 0, 0, 0.08));
+  display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 16px;
+  font-size: var(--text-body-size-medium); font-weight: var(--base-text-weight-semibold);
+  border-bottom: var(--borderWidth-default) solid var(--borderColor-muted);
 }
-.adofix-count-pill {
-  background: rgba(130, 80, 223, 0.22); color: var(--adofix-ink);
-  font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 10px;
-}
-.adofix-panel-close { margin-left: auto; font-size: 14px; padding: 2px 7px; }
+.adofix-panel-close { margin-left: auto; }
 .adofix-drafts-panel-body { overflow-y: auto; flex: 1; }
-.adofix-draft-item { padding: 9px 14px 11px 11px; border-left: 3px solid transparent; }
+.adofix-draft-item { padding: 8px 16px; }
 .adofix-draft-item + .adofix-draft-item {
-  border-top: 1px solid var(--border-subtle-color, rgba(0, 0, 0, 0.08));
+  border-top: var(--borderWidth-default) solid var(--borderColor-muted);
 }
-.adofix-draft-item:hover {
-  background: var(--palette-black-alpha-4, rgba(0, 0, 0, 0.04));
-  border-left-color: ${ACCENT};
-}
-.adofix-draft-item-name { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.adofix-draft-item:hover { background-color: var(--bgColor-muted); }
+.adofix-draft-item-name { display: flex; align-items: center; gap: 8px; min-width: 0; min-height: 28px; }
 .adofix-draft-file {
-  font-weight: 600; font-size: 12.5px;
+  font-weight: var(--base-text-weight-semibold);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .adofix-draft-lines {
-  font-family: ui-monospace, Consolas, monospace; font-size: 11px;
-  color: var(--adofix-ink); flex-shrink: 0;
+  font-family: var(--fontStack-monospace); font-size: var(--text-body-size-small);
+  color: var(--fgColor-muted); flex-shrink: 0;
 }
 .adofix-draft-item-name .adofix-draft-actions { opacity: 0; transition: opacity 0.12s; }
 .adofix-draft-item:hover .adofix-draft-actions,
 .adofix-draft-item:focus-within .adofix-draft-actions { opacity: 1; }
 .adofix-draft-dir {
-  font-size: 11px; color: var(--text-secondary-color, rgba(0, 0, 0, 0.6)); opacity: 0.75;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px;
+  font-size: var(--text-body-size-small); color: var(--fgColor-muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .adofix-draft-item-text {
-  white-space: pre-wrap; margin-top: 5px; font-size: 12.5px; line-height: 1.5;
-  color: var(--text-secondary-color, rgba(0, 0, 0, 0.75));
+  white-space: pre-wrap; margin-top: 4px; line-height: 1.5;
+  color: var(--fgColor-default);
   display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
 }
 .adofix-drafts-panel-foot {
-  padding: 10px 12px;
-  border-top: 1px solid var(--border-subtle-color, rgba(0, 0, 0, 0.08));
+  display: flex; justify-content: flex-end; padding: 8px 16px;
+  border-top: var(--borderWidth-default) solid var(--borderColor-muted);
 }
-.adofix-send { width: 100%; padding: 7px 12px; font-size: 13px; }
 
 /* -- view-zone cards (single-file Monaco view) --------------------------- */
 /* Zones render under .view-lines without a z-index (verified 2026-08-19). */
 .adofix-zone-wrap { z-index: 10; }
-.adofix-zone-card { margin: 3px 12px 3px 4px; }
+.adofix-zone-card { margin: 4px 12px 4px 4px; }
 
 /* -- draft rows in the file tree ----------------------------------------- */
 .adofix-tree-draft { cursor: pointer; }
-.adofix-tree-draft:hover { background: var(--palette-black-alpha-4, rgba(0, 0, 0, 0.05)); }
+.adofix-tree-draft:hover { background-color: var(--control-transparent-bgColor-hover); }
 .adofix-tree-draft-item { gap: 4px; }
-.adofix-tree-draft-icon { color: var(--adofix-ink); font-size: 12px; flex-shrink: 0; }
-.adofix-tree-draft-text {
-  font-size: 12px;
-  color: var(--text-secondary-color, rgba(0, 0, 0, 0.7));
-}
+.adofix-tree-draft-icon { color: var(--fgColor-attention); flex-shrink: 0; }
+.adofix-tree-draft-text { font-size: var(--text-body-size-small); color: var(--fgColor-muted); }
 
 /* -- drafted-line gutter markers (Monaco view) --------------------------- */
-.line-numbers.adofix-has-draft { color: ${ACCENT} !important; font-weight: 700; }
+.line-numbers.adofix-has-draft {
+  color: var(--fgColor-attention) !important;
+  font-weight: var(--base-text-weight-semibold);
+}
 .line-numbers.adofix-has-draft::after {
   content: "\\25CF"; font-size: 7px; margin-left: 2px; vertical-align: middle;
 }
@@ -595,11 +558,8 @@ function adornFileHeaders(): number {
     if (!host || host.querySelector(".adofix-file-comment")) continue;
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.className = "adofix-file-comment";
-    const icon = document.createElement("span");
-    icon.className = "fabric-icon ms-Icon--CommentAdd";
-    icon.setAttribute("aria-hidden", "true");
-    btn.appendChild(icon);
+    btn.className = "adofix-file-comment gh-btn gh-btn-sm gh-btn-invisible";
+    btn.appendChild(octicon("comment"));
     btn.setAttribute("aria-label", "Comment on file");
     btn.title = "Comment on the whole file (ado-unfuck)";
     btn.addEventListener("click", (e) => {
@@ -624,7 +584,7 @@ function adornComposers(): number {
     if (footer.querySelector(".adofix-draft-capture")) continue;
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.className = "adofix-draft-btn adofix-draft-capture";
+    btn.className = "adofix-draft-btn adofix-draft-capture gh-btn gh-btn-primary";
     btn.textContent = "Comment as draft";
     btn.title = 'Save locally — nothing is posted until "Submit all" (ado-unfuck)';
     btn.addEventListener("click", (e) => {
@@ -694,13 +654,13 @@ function startInlineEdit(host: HTMLElement, draft: Draft): void {
 
   const saveBtn = document.createElement("button");
   saveBtn.type = "button";
-  saveBtn.className = "adofix-draft-btn adofix-primary";
+  saveBtn.className = "adofix-draft-btn adofix-primary gh-btn gh-btn-sm gh-btn-primary";
   saveBtn.textContent = "Save";
   saveBtn.addEventListener("click", save);
 
   const cancelBtn = document.createElement("button");
   cancelBtn.type = "button";
-  cancelBtn.className = "adofix-draft-btn";
+  cancelBtn.className = "adofix-draft-btn gh-btn gh-btn-sm";
   cancelBtn.textContent = "Cancel";
   cancelBtn.addEventListener("click", rerender);
 
@@ -712,7 +672,7 @@ function startInlineEdit(host: HTMLElement, draft: Draft): void {
 function quietButton(label: string, onClick: () => void): HTMLButtonElement {
   const btn = document.createElement("button");
   btn.type = "button";
-  btn.className = "adofix-draft-btn";
+  btn.className = "adofix-draft-btn gh-btn gh-btn-sm gh-btn-invisible";
   btn.textContent = label;
   btn.addEventListener("click", onClick);
   return btn;
@@ -730,14 +690,14 @@ function actionsFor(host: HTMLElement, draft: Draft): HTMLElement {
 
 function buildCard(draft: Draft): HTMLElement {
   const card = document.createElement("div");
-  card.className = "adofix-draft-card";
+  card.className = "adofix-draft-card gh-Box";
   card.setAttribute(CARD_ID_ATTR, draft.id);
 
   const head = document.createElement("div");
   head.className = "adofix-draft-head";
 
   const chip = document.createElement("span");
-  chip.className = "adofix-draft-chip";
+  chip.className = "adofix-draft-chip gh-Label gh-Label--attention";
   chip.textContent = "Draft";
 
   const loc = document.createElement("span");
@@ -984,9 +944,8 @@ function buildTreeDraftRow(draft: Draft, fileRow: HTMLElement): HTMLElement {
     : 96;
   const spacer = document.createElement("span");
   spacer.style.cssText = `width:${Math.round(indent)}px;flex-shrink:0`;
-  const icon = document.createElement("span");
-  icon.className = "fabric-icon ms-Icon--Comment adofix-tree-draft-icon";
-  icon.setAttribute("aria-hidden", "true");
+  const icon = octicon("comment", 12);
+  icon.classList.add("adofix-tree-draft-icon");
   const label = document.createElement("div");
   label.className = "flex-grow text-ellipsis adofix-tree-draft-text";
   label.textContent = treeDraftLabel(draft);
@@ -1149,11 +1108,13 @@ function renderPanel(): void {
   head.className = "adofix-drafts-panel-head";
   head.append("Drafts");
   const pill = document.createElement("span");
-  pill.className = "adofix-count-pill";
+  pill.className = "adofix-count-pill gh-Counter";
   pill.textContent = String(drafts.length);
-  const close = quietButton("✕", closePanel);
+  const close = quietButton("", closePanel);
   close.classList.add("adofix-panel-close");
+  close.appendChild(octicon("x"));
   close.title = "Close";
+  close.setAttribute("aria-label", "Close");
   head.append(pill, close);
   panel.appendChild(head);
 
@@ -1195,7 +1156,7 @@ function renderPanel(): void {
   const n = drafts.length;
   const submit = document.createElement("button");
   submit.type = "button";
-  submit.className = "adofix-draft-btn adofix-primary adofix-send";
+  submit.className = "adofix-draft-btn adofix-primary adofix-send gh-btn gh-btn-primary";
   submit.textContent = confirmArmed
     ? `Click again to send ${n}`
     : `Send ${n} comment${n === 1 ? "" : "s"}`;

@@ -1,7 +1,13 @@
 import type { Feature } from "../core/registry";
 import type { Route } from "../core/router";
-import { getWorkItem, getWorkItemTypeStates, setWorkItemState } from "../core/api";
+import {
+  getWorkItem,
+  getWorkItemTypeStates,
+  setWorkItemState,
+  type WorkItemTypeState,
+} from "../core/api";
 import { ADOFIX_ATTR, injectStyleOnce, showToast } from "../core/dom";
+import { octicon } from "../core/primer";
 import { log } from "../core/log";
 
 const FEATURE_ID = "workitem-state";
@@ -11,48 +17,51 @@ const PICKER_CSS = `
 .adofix-picker-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.35);
+  background: var(--overlay-backdrop-bgColor);
   z-index: 100000;
   display: flex;
   align-items: flex-start;
   justify-content: center;
   padding-top: 18vh;
 }
-/* Surface material comes from .adofix-surface (core BASE_CSS) — this block
-   was the one light-hardcoded surface in the repo and rendered as a white
-   box on ADO dark. */
+/* Material and items come from the gh-menu component (GitHub's
+   SelectMenu); only the header and the state dots are ours. */
 .adofix-picker {
   min-width: 280px;
   overflow: hidden;
 }
 .adofix-picker-title {
-  padding: 10px 14px;
-  font-weight: 600;
-  font-size: 13px;
-  border-bottom: 1px solid var(--border-subtle-color, rgba(128, 128, 128, 0.25));
+  padding: 8px 16px;
+  margin-bottom: 8px;
+  font-weight: var(--base-text-weight-semibold);
+  font-size: var(--text-body-size-medium);
+  border-bottom: var(--borderWidth-default) solid var(--borderColor-muted);
 }
-.adofix-picker button {
-  display: block;
-  width: 100%;
-  text-align: left;
-  padding: 8px 14px;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
+/* Fixed-width slot for the selected check so names stay aligned. */
+.adofix-picker-check {
+  display: inline-flex;
+  width: 16px;
+  flex-shrink: 0;
 }
-.adofix-picker button:hover { background: rgba(128, 128, 128, 0.12); }
-.adofix-picker button.adofix-selected { background: rgba(130, 80, 223, 0.22); }
+.gh-menu-item .adofix-picker-check .octicon {
+  color: var(--fgColor-default);
+}
+/* State dots in GitHub Projects' default status colours (D60). */
+.gh-menu-item .adofix-state-dot { color: var(--fgColor-muted); }
+.gh-menu-item .adofix-state-dot[data-category="Proposed"] { color: var(--fgColor-success); }
+.gh-menu-item .adofix-state-dot[data-category="InProgress"] { color: var(--fgColor-attention); }
+.gh-menu-item .adofix-state-dot[data-category="Resolved"] { color: var(--fgColor-accent); }
+.gh-menu-item .adofix-state-dot[data-category="Completed"] { color: var(--fgColor-done); }
 `;
 
 function renderPicker(
-  states: string[],
+  entries: WorkItemTypeState[],
   current: string,
   onPick: (state: string) => Promise<void>
 ): void {
   if (document.querySelector(`[${ADOFIX_ATTR}="${PICKER_ID}"]`)) return;
   injectStyleOnce(PICKER_ID, PICKER_CSS);
+  const states = entries.map((s) => s.name);
 
   const overlay = document.createElement("div");
   overlay.setAttribute(ADOFIX_ATTR, PICKER_ID);
@@ -62,7 +71,8 @@ function renderPicker(
   overlay.tabIndex = -1;
 
   const box = document.createElement("div");
-  box.className = "adofix-picker adofix-surface";
+  box.className = "adofix-picker gh-menu";
+  box.setAttribute("role", "menu");
   const title = document.createElement("div");
   title.className = "adofix-picker-title";
   title.textContent = "Set state";
@@ -77,17 +87,32 @@ function renderPicker(
     void onPick(state);
   };
 
-  for (const state of states) {
+  for (const { name: state, stateCategory } of entries) {
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.textContent = state === current ? `${state} (current)` : state;
+    btn.className = "gh-menu-item";
+    btn.setAttribute("role", "menuitemradio");
+    btn.setAttribute("aria-checked", String(state === current));
+    // GitHub marks the current choice with a leading check, not a suffix.
+    const check = document.createElement("span");
+    check.className = "adofix-picker-check";
+    if (state === current) check.append(octicon("check"));
+    const dot = octicon("dot-fill");
+    dot.classList.add("adofix-state-dot");
+    if (stateCategory) dot.dataset["category"] = stateCategory;
+    const label = document.createElement("span");
+    label.textContent = state;
+    btn.append(check, dot, label);
     btn.addEventListener("click", () => pick(state));
     buttons.push(btn);
     box.appendChild(btn);
   }
 
   const highlight = (): void =>
-    buttons.forEach((b, i) => b.classList.toggle("adofix-selected", i === selected));
+    buttons.forEach((b, i) => {
+      b.classList.toggle("adofix-selected", i === selected);
+      b.classList.toggle("gh-menu-item--active", i === selected);
+    });
   highlight();
 
   overlay.addEventListener("keydown", (e) => {
@@ -139,13 +164,13 @@ async function openPicker(route: Route): Promise<void> {
     showToast(`adofix: failed to load states (${states.error.message})`);
     return;
   }
-  const names = states.value.value.map((s) => s.name);
-  if (names.length === 0) {
+  const entries = states.value.value;
+  if (entries.length === 0) {
     showToast(`adofix: no states found for type "${type}"`);
     return;
   }
 
-  renderPicker(names, currentState, async (state) => {
+  renderPicker(entries, currentState, async (state) => {
     const res = await setWorkItemState(ref, id, state);
     if (!res.ok) {
       showToast(`adofix: state change failed (${res.error.message})`);

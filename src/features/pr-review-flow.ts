@@ -1,7 +1,6 @@
 import type { Feature } from "../core/registry";
 import type { Route } from "../core/router";
 import {
-  ACCENT,
   flashOutline,
   injectStyleOnce,
   safeQuery,
@@ -9,6 +8,7 @@ import {
   showToast,
 } from "../core/dom";
 import { log } from "../core/log";
+import { octicon } from "../core/primer/icons";
 import { waitFor } from "../core/observe";
 import { getValue, setValue } from "../core/storage";
 import { currentFilePath, DIFF_SELECTORS, sectionFilePath } from "./pr/diff";
@@ -37,35 +37,43 @@ const FLOW_SELECTORS = {
   stackedScroller: ".repos-changes-viewer",
 };
 
+/*
+ * GitHub's PR header "Review changes" button: green primary while there is
+ * reviewing to do, a default button once done or voted. The toolbar
+ * counter and mark-and-next are small invisible buttons, like the controls
+ * in github.com's Files-changed toolbar.
+ */
 const CSS = `
-.adofix-review-btn, .adofix-review-progress, .adofix-review-mark {
-  --adofix-ink: color-mix(in srgb, ${ACCENT} 62%, var(--text-primary-color, #201f1e));
-}
 .adofix-review-btn {
-  background: ${ACCENT}; color: #fff; border: none; border-radius: 2px;
-  font-weight: 600; font-size: 13px; padding: 0 14px; margin-right: 8px;
-  cursor: pointer; font-family: inherit; white-space: nowrap;
+  margin-right: 8px; align-self: center;
   /* Match the Approve split-button (32px, measured live 2026-08-19). */
-  height: 32px; box-sizing: border-box; align-self: center;
+  height: 32px;
 }
-.adofix-review-btn:hover { background: #9161ea; }
-/* Quiet permutation: review done, or a vote already cast. */
-.adofix-review-btn.adofix-done { background: rgba(130, 80, 223, 0.22); color: var(--adofix-ink); }
+.adofix-review-btn .octicon-check { color: var(--fgColor-success); }
+.adofix-review-btn .octicon-x { color: var(--fgColor-danger); }
+.adofix-review-btn.gh-btn-primary .octicon { color: var(--button-primary-iconColor-rest); }
 
-.adofix-review-progress, .adofix-review-mark {
-  border: none; background: transparent; border-radius: 2px;
-  font-weight: 600; font-size: 12px; padding: 4px 10px; margin-left: 8px;
-  cursor: pointer; font-family: inherit; white-space: nowrap;
-  color: var(--text-secondary-color, rgba(0, 0, 0, 0.7));
-}
-.adofix-review-progress:hover, .adofix-review-mark:hover {
-  background: var(--palette-black-alpha-4, rgba(0, 0, 0, 0.05));
-  color: var(--adofix-ink);
-}
+.adofix-review-progress, .adofix-review-mark { margin-left: 8px; }
+.adofix-review-progress { color: var(--fgColor-muted); font-weight: var(--base-text-weight-normal); }
 
 /* Our counter replaces ADO's native header progress while a review is on. */
 html[data-adofix-reviewing] ${FLOW_SELECTORS.nativeProgress} { display: none !important; }
 `;
+
+/**
+ * Label strings keep their text status glyphs (tests, voteLabel); on screen
+ * a leading/trailing ✓ or ✕ becomes the matching octicon. Skips the DOM
+ * write when the button already shows `label` (apply() runs every settle).
+ */
+export function setIconLabel(btn: HTMLElement, label: string): void {
+  if (btn.dataset["label"] === label) return;
+  btn.dataset["label"] = label;
+  const match = /^(?:([✓✕])\s+)?(.*?)(?:\s+([✓✕]))?$/u.exec(label);
+  const glyph = match?.[1] ?? match?.[3];
+  const text = match?.[2] ?? label;
+  btn.replaceChildren(text);
+  if (glyph) btn.prepend(octicon(glyph === "✓" ? "check" : "x"));
+}
 
 interface FlowState {
   started: boolean;
@@ -270,7 +278,7 @@ function completeRereview(ref: PrRef): void {
   if (flow.seenVote !== undefined) next.seenVote = flow.seenVote;
   next.votedIteration = snapshot?.key === key ? snapshot.latestIteration : flow.rereview.base;
   writeFlow(key, next);
-  showToast("Caught up — all new changes re-reviewed ✓");
+  showToast("Caught up — all new changes re-reviewed");
   reapply();
 }
 
@@ -290,7 +298,7 @@ async function jumpNext(ref: PrRef): Promise<void> {
     const target = nextUnreviewedPath(plan.order, plan.done, inMonaco ? currentFilePath() : null);
     if (!target) {
       if (readFlow(key).rereview) completeRereview(ref);
-      else showToast("All files reviewed 🎉");
+      else showToast("All files reviewed");
       return;
     }
     if (inMonaco) {
@@ -488,7 +496,7 @@ export const prReviewFlow: Feature = {
       if (!btn) {
         btn = document.createElement("button");
         btn.type = "button";
-        btn.className = "adofix-review-btn";
+        btn.className = "adofix-review-btn gh-btn";
         btn.setAttribute("data-adofix", `${FEATURE_ID}-start`);
         btn.addEventListener("click", (e) => {
           e.stopPropagation();
@@ -529,10 +537,11 @@ export const prReviewFlow: Feature = {
           : reviewButtonLabel(n, m, flow.started);
         quiet = flow.started && reviewDone;
       }
-      if (btn.textContent !== label) btn.textContent = label;
+      setIconLabel(btn, label);
       if (btn.title !== title) btn.title = title;
       btn.dataset["action"] = action;
       btn.classList.toggle("adofix-done", quiet);
+      btn.classList.toggle("gh-btn-primary", !quiet);
     }
 
     // Files-toolbar counter + mark-and-next (only while reviewing).
@@ -549,7 +558,7 @@ export const prReviewFlow: Feature = {
     if (!counterBtn) {
       counterBtn = document.createElement("button");
       counterBtn.type = "button";
-      counterBtn.className = "adofix-review-progress";
+      counterBtn.className = "adofix-review-progress gh-btn gh-btn-sm gh-btn-invisible";
       counterBtn.setAttribute("data-adofix", `${FEATURE_ID}-progress`);
       counterBtn.title = "Click to jump to the next unreviewed file (ado-unfuck)";
       counterBtn.addEventListener("click", (e) => {
@@ -561,7 +570,7 @@ export const prReviewFlow: Feature = {
     const counterText = flow.rereview
       ? `${rereviewDone}/${rereviewQueue?.size ?? "…"} re-reviewed`
       : counterLabel(n, m);
-    if (counterBtn.textContent !== counterText) counterBtn.textContent = counterText;
+    setIconLabel(counterBtn, counterText);
 
     const inMonaco = safeQuery(DIFF_SELECTORS.monacoRoot) !== null;
     if (!inMonaco) {
@@ -571,9 +580,9 @@ export const prReviewFlow: Feature = {
     if (!mark) {
       const markBtn = document.createElement("button");
       markBtn.type = "button";
-      markBtn.className = "adofix-review-mark";
+      markBtn.className = "adofix-review-mark gh-btn gh-btn-sm gh-btn-invisible";
       markBtn.setAttribute("data-adofix", `${FEATURE_ID}-mark`);
-      markBtn.textContent = "✓ Reviewed · next";
+      setIconLabel(markBtn, "✓ Reviewed · next");
       markBtn.title =
         "Mark this file reviewed (ADO's own checkbox) and open the next unreviewed file (ado-unfuck)";
       markBtn.addEventListener("click", (e) => {

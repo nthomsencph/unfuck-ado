@@ -12,7 +12,7 @@
  */
 
 /* Card shell: the dense-era margin (4px 8px 0, 2026-08-01) left stacked
-   cards touching once the layered material shipped — cards now separate
+   cards touching — cards now separate
    with a real 12px gap below each (user 2026-08-18). Body padding is owned
    by the card material below (.wit-card .card-content). */
 .wit-card {
@@ -47,27 +47,31 @@
 }
 
 /*
- * Kanban board surfaces (verified live 2026-08-18): lane surfaces on
- * columns, card material on every wit-card — which covers the sprint
- * taskboard's cards too (.taskboard-card is a .wit-card); overflow clips
- * their state stripes to the rounded corners. The canvas behind the board
- * is the Primer bridge's.
+ * Kanban board surfaces as GitHub Projects' board view (stage 1 of the
+ * GitHub makeover retired the canvas < lane < card layering, 2026-11-02):
+ * the canvas is the Primer bridge's --bgColor-default, columns are
+ * --bgColor-muted with a 1px border and 6px corners, and cards are flat
+ * --bgColor-default boxes with a 1px border — no shadows. .wit-card covers
+ * the sprint taskboard's cards too (.taskboard-card is a .wit-card);
+ * overflow clips their state stripes to the rounded corners. Selectors
+ * verified live 2026-08-18.
  */
 .kanban-board-column {
-  background: var(--adofix-lane) !important;
+  background: var(--bgColor-muted) !important;
+  border: var(--borderWidth-default) solid var(--borderColor-default) !important;
+  border-radius: var(--borderRadius-medium) !important;
 }
 .wit-card {
-  background: var(--adofix-card) !important;
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.45),
-    0 2px 10px rgba(0, 0, 0, 0.25) !important;
-  border-radius: var(--adofix-radius) !important;
+  background: var(--bgColor-default) !important;
+  border: var(--borderWidth-default) solid var(--borderColor-default) !important;
+  box-shadow: none !important;
+  border-radius: var(--borderRadius-medium) !important;
   overflow: hidden;
 }
-/* ADO frames the content in a 1px #605e5c border (top/right/bottom; the
-   state flag covers the left) — the card material IS the boundary, so the
-   frame goes, and the freed edge becomes vertical breathing room (native
-   padding is 12px all round). Covers kanban .boards-card and sprint
+/* ADO frames the content in its own 1px border (top/right/bottom; the
+   state flag covers the left) — the card's border IS the boundary, so the
+   inner frame goes, and the freed edge becomes vertical breathing room
+   (native padding is 12px all round). Covers kanban .boards-card and sprint
    .taskboard-card alike (user request 2026-08-18: borders + colors). */
 .wit-card .card-content {
   border: none !important;

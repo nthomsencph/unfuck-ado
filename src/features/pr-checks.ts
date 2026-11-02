@@ -2,6 +2,7 @@ import type { Feature } from "../core/registry";
 import type { Route } from "../core/router";
 import { injectStyleOnce, safeQuery } from "../core/dom";
 import { log } from "../core/log";
+import { octicon, type OcticonName } from "../core/primer";
 import {
   fetchPolicyEvaluations,
   selectInlineChecks,
@@ -35,10 +36,15 @@ const CSS = `
   display: flex; align-items: center; gap: 8px;
   /* 18px left puts our icon pixel-identical to the native row's (measured
      live 2026-08-17); with the 8px gap the labels line up like ADO's. */
-  padding: 5px 16px 5px 18px; font-size: 14px;
+  padding: 5px 16px 5px 18px; font-size: var(--text-body-size-medium);
 }
-.adofix-check-row svg { flex-shrink: 0; }
-.adofix-check-status { color: var(--text-secondary-color, #a19f9d); }
+.adofix-check-row .octicon { flex-shrink: 0; }
+/* GitHub's checks list: icon colored by outcome, status text muted. */
+.adofix-check-row[data-tone="success"] .octicon { color: var(--fgColor-success); }
+.adofix-check-row[data-tone="danger"] .octicon { color: var(--fgColor-danger); }
+.adofix-check-row[data-tone="attention"] .octicon { color: var(--fgColor-attention); }
+.adofix-check-row[data-tone="muted"] .octicon { color: var(--fgColor-muted); }
+.adofix-check-status { color: var(--fgColor-muted); font-size: var(--text-body-size-small); }
 /* Once every check is inline the "View n checks" row is redundant (Re-queue
    lives on the build row itself). Class is added only after rows render.
    The hidden row also carried the box's bottom breathing room — restore it. */
@@ -47,24 +53,17 @@ const CSS = `
 `;
 
 /**
- * ADO's own bolt-status geometry and palette, copied verbatim from the live
- * DOM (2026-08-17) so our rows are indistinguishable from native ones.
+ * GitHub's checks-list icons per evaluation status. Queued/running are
+ * GitHub's pending dot; broken (or any unknown status) a muted dot — the
+ * status text carries the meaning.
  */
-const ICONS: Record<string, string> = {
-  approved:
-    '<svg width="16" height="16" viewBox="0 0 32 32" aria-hidden="true">' +
-    '<circle cx="16" cy="16" r="16" fill="#55a362"></circle>' +
-    '<path fill="#fff" d="M12.799 20.83l-.005-.003L9.94 17.97a1.5 1.5 0 1 1 2.121-2.12l1.8 1.798 6.209-6.21a1.5 1.5 0 1 1 2.12 2.122l-7.264 7.264-.005.006a1.5 1.5 0 0 1-2.121 0z"></path></svg>',
-  rejected:
-    '<svg width="16" height="16" viewBox="0 0 12 12" aria-hidden="true">' +
-    '<circle cx="6" cy="6" r="6" fill="#cd4a45"></circle>' +
-    '<path fill="#fff" d="M3.64 3.64a.75.75 0 0 1 1.06 0l1.294 1.294L7.288 3.64a.75.75 0 0 1 1.06 1.06L7.056 5.994l1.292 1.292a.75.75 0 0 1-1.06 1.06l-1.295-1.29-1.291 1.291a.75.75 0 1 1-1.06-1.06l1.292-1.293L3.64 4.7a.75.75 0 0 1 0-1.06z"></path></svg>',
+const ICONS: Record<string, { name: OcticonName; tone: string }> = {
+  approved: { name: "check-circle", tone: "success" },
+  rejected: { name: "x-circle", tone: "danger" },
+  queued: { name: "dot-fill", tone: "attention" },
+  running: { name: "dot-fill", tone: "attention" },
 };
-// Queued/running/broken have no sampled geometry — a neutral dot; the status
-// text carries the meaning.
-const NEUTRAL_ICON =
-  '<svg width="16" height="16" viewBox="0 0 12 12" aria-hidden="true">' +
-  '<circle cx="6" cy="6" r="6" fill="#8a8886"></circle></svg>';
+const NEUTRAL_ICON = { name: "dot-fill", tone: "muted" } as const;
 
 // Latching (the default) is load-bearing here: see core/fetch-cache.ts.
 const rowsByPr = createFetchCache<string, CheckRow[]>();
@@ -82,7 +81,9 @@ function render(rows: CheckRow[]): void {
   for (const row of rows) {
     const el = document.createElement("div");
     el.className = "adofix-check-row";
-    el.innerHTML = ICONS[row.status] ?? NEUTRAL_ICON;
+    const icon = ICONS[row.status] ?? NEUTRAL_ICON;
+    el.dataset["tone"] = icon.tone;
+    el.appendChild(octicon(icon.name));
     const name = document.createElement("span");
     name.textContent = row.label;
     const status = document.createElement("span");

@@ -17,24 +17,25 @@ export const prOverview: Feature = {
 
 const CSS = `
 /*
- * PR Overview: unified card theme (verified live 2026-08-14 on PR 6982).
- * ADO paints every overview card (#323130 dark) with a light depth-8 shadow,
- * 4px corners, and slices them with separator hairlines and 1px-outlined
- * nested boxes. Simplified: cards join the page surface (the theme variable
- * keeps light theme sane), a heavier shadow does the lifting, chrome dividers
- * go — icons, author rows and spacing already group content — and nested
- * boxes become soft raised surfaces instead of outlined ones.
+ * PR Overview: unified card theme (selectors verified live 2026-08-14 on PR
+ * 6982). ADO paints every overview card with a depth-8 shadow and 4px
+ * corners, and slices them with separator hairlines and 1px-outlined nested
+ * boxes. Restyled as GitHub's Conversation-tab boxes: page-colored gh-Box
+ * material (1px default border, 6px corners, no shadow — the heavy-shadow
+ * cards are retired, spec 2026-11-02); chrome dividers go — icons, author
+ * rows and spacing already group content — and nested boxes become muted
+ * wells. ADO renders these cards in React, so the gh-Box look is applied by
+ * CSS rather than by adding classes React would strip.
  * Scope: .shadow-padding is the Overview content column and exists ONLY
  * there — the Files view has none (verified live 2026-08-14), so the tuned
  * diff cards are untouched. Markdown-authored borders inside comments (<hr>,
  * tables) carry no bolt-* classes and are deliberately left alone.
  */
 .repos-pr-details-page .shadow-padding .bolt-card {
-  background: var(--adofix-card) !important;
-  box-shadow:
-    0 8px 24px rgba(0, 0, 0, 0.6),
-    0 1px 4px rgba(0, 0, 0, 0.5) !important;
-  border-radius: var(--adofix-radius) !important;
+  background: var(--bgColor-default) !important;
+  border: var(--borderWidth-default) solid var(--borderColor-default) !important;
+  box-shadow: none !important;
+  border-radius: var(--borderRadius-medium) !important;
 }
 .repos-pr-details-page .shadow-padding .separator-line-bottom {
   border-bottom-color: transparent !important;
@@ -51,22 +52,25 @@ const CSS = `
   border-top-color: transparent !important;
 }
 /* File-anchored comment cards (verified live 2026-08-17 on PR 7033): the
-   code preview is fenced by .comment-file-diff-container's top border and
-   .comment-file-header's bottom border. Both go — the snippet's own diff
-   coloring separates it. The blue .diff-comment underline marking the
+   file-path header becomes GitHub's review-thread Box-header — muted fill,
+   default-border bottom edge, top corners following the card's. The code
+   preview's own top border (.comment-file-diff-container) goes: the header
+   edge already fences it. The blue .diff-comment underline marking the
    commented span is functional and stays. */
 .repos-pr-details-page .shadow-padding .comment-file-header {
-  border-bottom-color: transparent !important;
+  background: var(--bgColor-muted) !important;
+  border-bottom: var(--borderWidth-default) solid var(--borderColor-default) !important;
+  border-radius: var(--borderRadius-medium) var(--borderRadius-medium) 0 0 !important;
 }
 .repos-pr-details-page .shadow-padding .comment-file-diff-container {
   border-top-color: transparent !important;
 }
-/* Grey overlay (not white) so the raised tint works in both themes. Inner
-   radius is deliberately tighter than --adofix-radius: nested corners. */
+/* Nested boxes (checks, merge commit) as GitHub's muted wells: the
+   --bgColor-muted fill with a muted hairline, 6px like every Box. */
 .repos-pr-details-page .shadow-padding .status-details-container {
-  border: none !important;
-  background: rgba(128, 128, 128, 0.08) !important;
-  border-radius: 6px !important;
+  border: var(--borderWidth-default) solid var(--borderColor-muted) !important;
+  background: var(--bgColor-muted) !important;
+  border-radius: var(--borderRadius-medium) !important;
 }
 /*
  * The right sidebar's sections (Reviewers, Tags, Work items) stay ADO's
@@ -120,8 +124,8 @@ const CSS = `
 }
 .pr-required-reviewers-section .repos-reviewer > .flex-column:not(:has(> .body-s.secondary-text))::after,
 .pr-optional-reviewers-section .repos-reviewer > .flex-column:not(:has(> .body-s.secondary-text))::after {
-  font-size: 12px;
-  color: var(--text-secondary-color, #a19f9d);
+  font-size: var(--text-body-size-small);
+  color: var(--fgColor-muted);
 }
 .pr-required-reviewers-section .repos-reviewer > .flex-column:not(:has(> .body-s.secondary-text))::after {
   content: "Required";

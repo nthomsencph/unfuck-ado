@@ -39,9 +39,19 @@ describe("headerName", () => {
     th.textContent = "New";
     const span = document.createElement("span");
     span.className = "adofix-col-count";
-    span.textContent = " (7)";
+    span.textContent = "7";
     th.appendChild(span);
     expect(headerName(th)).toBe("New");
+  });
+
+  it("strips only the trailing count when the name holds the same digits", () => {
+    const th = document.createElement("th");
+    th.textContent = "Q7";
+    const span = document.createElement("span");
+    span.className = "adofix-col-count";
+    span.textContent = "7";
+    th.appendChild(span);
+    expect(headerName(th)).toBe("Q7");
   });
 
   it("passes untouched headers through", () => {

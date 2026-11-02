@@ -1,12 +1,6 @@
-export const ADOFIX_ATTR = "data-adofix";
+import { octicon } from "./primer/icons";
 
-/**
- * TEMPORARY alias (D6) while features migrate to Primer tokens: GitHub's
- * accent text color. Every importer interpolates it into CSS (plain values,
- * color-mix(), borders), where a var() works; the old "#8250df" purple is
- * retired. Deleted once no feature imports it.
- */
-export const ACCENT = "var(--fgColor-accent)";
+export const ADOFIX_ATTR = "data-adofix";
 
 export function safeQuery<T extends Element = HTMLElement>(
   selector: string,
@@ -30,23 +24,40 @@ export function safeQueryAll<T extends Element = HTMLElement>(
   }
 }
 
+/*
+ * GitHub's invisible IconButton geometry: gh-btn is sized for text (12px
+ * side padding), an icon-only button is a 32px square. The icon may be a
+ * cloned ADO font glyph (makeCommandProxy), not an octicon, so the muted
+ * icon color is set on any child, not just .octicon.
+ */
+const ICON_BTN_CSS = `
+.adofix-icon-btn {
+  width: var(--control-medium-size);
+  padding: 0;
+}
+.adofix-icon-btn > * {
+  color: var(--button-invisible-iconColor-rest);
+}
+.adofix-icon-btn:hover:not(:disabled) > * {
+  color: var(--button-invisible-iconColor-hover);
+}
+`;
+
 /**
- * Bolt-styled subtle icon-only toolbar button: a fresh button carrying
- * bolt's classes (fixed list, not a clone, so no transient state — active
- * highlight, aria-expanded — leaks in from a template). `className` is the
- * caller's own marker class — each feature keeps its own so existence
- * guards next to the shared #__bolt-filter row never collide.
+ * GitHub invisible icon-only toolbar button (gh-btn gh-btn-invisible, 32px
+ * square), a fresh element each time so no transient state leaks in.
+ * `className` is the caller's own marker class — each feature keeps its own
+ * so existence guards next to the shared #__bolt-filter row never collide.
  */
 export function makeToolbarButton(
   label: string,
   icon: Node,
   className = "adofix-toolbar-btn"
 ): HTMLButtonElement {
+  injectStyleOnce("adofix-icon-btn", ICON_BTN_CSS);
   const btn = document.createElement("button");
   btn.type = "button";
-  btn.className =
-    `${className} bolt-header-command-item-button bolt-button ` +
-    "bolt-icon-button enabled subtle icon-only bolt-focus-treatment";
+  btn.className = `${className} adofix-icon-btn gh-btn gh-btn-invisible`;
   btn.setAttribute("aria-label", label);
   btn.title = label;
   btn.appendChild(icon);
@@ -165,23 +176,10 @@ export function setStyle(featureId: string, css: string): void {
  */
 const BASE_CSS = `
 /*
- * TEMPORARY aliases (D6) onto Primer tokens while features migrate; the
- * layered #141414 canvas < lane < card look and the 10px radius are
- * retired (GitHub: flat canvas, muted columns, 6px corners). Deleted once
- * no feature reads them.
- */
-:root {
-  --adofix-radius: var(--borderRadius-medium);
-  --adofix-bg: var(--bgColor-default);
-  --adofix-lane: var(--bgColor-muted);
-  --adofix-card: var(--bgColor-default);
-}
-/*
  * One recipe for every floating adofix panel (toast, menus, pickers, the
  * drafts panel): GitHub's overlay.
  */
 .adofix-surface {
-  --adofix-ink: var(--fgColor-accent);
   background: var(--overlay-bgColor);
   color: var(--fgColor-default);
   border: var(--borderWidth-default) solid var(--borderColor-default);
@@ -219,17 +217,36 @@ export function injectBaseStyle(): void {
   injectStyleOnce("adofix-base", BASE_CSS);
 }
 
-/* Surface material comes from .adofix-surface; the accent spine is ours. */
+/*
+ * GitHub's Toast (Primer CSS .Toast): overlay box with a 1px border ring and
+ * floating shadow (.adofix-surface), an accent-emphasis icon block on the
+ * left and 16px-padded content. Bottom-centered as before.
+ */
 const TOAST_CSS = `
 .adofix-toast {
   position: fixed;
   bottom: 24px;
   left: 50%;
   transform: translateX(-50%);
-  border-left: 3px solid ${ACCENT};
-  padding: 9px 16px;
+  display: flex;
+  max-width: min(560px, calc(100vw - 32px));
   z-index: 100000;
-  font-size: 13px;
+  font-size: var(--text-body-size-medium);
+  line-height: 1.5;
+}
+.adofix-toast-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 48px;
+  color: var(--fgColor-onEmphasis);
+  background: var(--bgColor-accent-emphasis);
+  border-top-left-radius: inherit;
+  border-bottom-left-radius: inherit;
+}
+.adofix-toast-content {
+  padding: 16px;
 }
 `;
 
@@ -239,7 +256,13 @@ export function showToast(message: string, ms = 2500): void {
   const el = document.createElement("div");
   el.setAttribute(ADOFIX_ATTR, "toast-item");
   el.className = "adofix-toast adofix-surface";
-  el.textContent = message;
+  const icon = document.createElement("span");
+  icon.className = "adofix-toast-icon";
+  icon.appendChild(octicon("info"));
+  const content = document.createElement("span");
+  content.className = "adofix-toast-content";
+  content.textContent = message;
+  el.append(icon, content);
   document.body.appendChild(el);
   setTimeout(() => el.remove(), ms);
 }

@@ -12,7 +12,7 @@ import { prRefFromRoute, refKey } from "./pr/threads-api";
 import { createFetchCache } from "../core/fetch-cache";
 
 /**
- * Whole-PR "-dels +adds" next to the toolbar's "n changed files" label —
+ * Whole-PR "+adds −dels" (GitHub's diffstat) next to the toolbar's "n changed files" label —
  * the number ADO computes per file but never sums. Totals are for ALL
  * changes (compareTo base), independent of the iteration dropdown.
  */
@@ -27,8 +27,16 @@ const FEATURE_ID = "pr-diff-totals";
 const LABEL_ROW_SELECTOR =
   ".repos-compare-toolbar .flex-column > span.flex-row.rhythm-horizontal-8";
 
+/* GitHub's diffstat: green additions first, then red deletions, semibold.
+   The DOM keeps ADO's removed-then-added order (render() indexes it);
+   flex order flips it visually. */
 const CSS = `
-.adofix-diff-totals { white-space: nowrap; display: inline-flex; gap: 6px; }
+.adofix-diff-totals {
+  white-space: nowrap; display: inline-flex; gap: 4px;
+  font-weight: var(--base-text-weight-semibold);
+}
+.adofix-diff-totals .repos-compare-added-lines { order: -1; color: var(--fgColor-success); }
+.adofix-diff-totals .repos-compare-removed-lines { color: var(--fgColor-danger); }
 `;
 
 // One fetch per PR per page lifetime: totals only move on a new iteration,
@@ -62,10 +70,10 @@ function render(totals: DiffTotals): void {
   const scope = currentScope();
   const sums = scopedTotals(totals.files, scope);
   el.title = scope
-    ? `Lines removed / added under ${scope} (ado-unfuck)`
-    : "Lines removed / added across all changes (ado-unfuck)";
+    ? `Lines added / removed under ${scope} (ado-unfuck)`
+    : "Lines added / removed across all changes (ado-unfuck)";
   const [removed, added] = el.children as unknown as [HTMLElement, HTMLElement];
-  removed.textContent = `-${formatLineCount(sums.dels)}`;
+  removed.textContent = `\u2212${formatLineCount(sums.dels)}`;
   added.textContent = `+${formatLineCount(sums.adds)}`;
 }
 

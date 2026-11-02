@@ -1,5 +1,6 @@
 import type { Feature } from "../core/registry";
-import { ACCENT, injectStyleOnce, safeQuery, safeQueryAll } from "../core/dom";
+import { injectStyleOnce, safeQuery, safeQueryAll } from "../core/dom";
+import { octicon } from "../core/primer/icons";
 import { getValue, setValue } from "../core/storage";
 import { getThreadElements, getThreadStatus, isThreadExpanded } from "./pr/threads";
 
@@ -9,20 +10,16 @@ const REVEALED_ATTR = "data-adofix-revealed";
 
 const FILTER_CSS = `
 [${HIDDEN_ATTR}="${FEATURE_ID}"] > :not(.adofix-thread-marker) { display: none !important; }
+/* A secondary gh-Label carrying the comment-discussion octicon. */
 .adofix-thread-marker {
-  display: inline-flex;
-  align-items: center;
-  font-size: 11px;
-  line-height: 1;
-  color: ${ACCENT};
-  border: 1px solid rgba(130, 80, 223, 0.4);
-  border-radius: 10px;
-  padding: 0 8px;
-  height: 18px;
-  background: transparent;
+  gap: 4px;
+  font-family: inherit;
   cursor: pointer;
 }
-.adofix-thread-marker:hover { background: rgba(130, 80, 223, 0.08); }
+.adofix-thread-marker:hover {
+  color: var(--fgColor-default);
+  background-color: var(--control-transparent-bgColor-hover);
+}
 /*
  * Overview feed variant: there the thread sits in a timeline card, and the
  * compact chip collapsed the card to a sliver, misaligned with the rail's
@@ -38,13 +35,14 @@ const FILTER_CSS = `
   border: none;
   border-radius: inherit;
   gap: 10px;
-  font-size: 14px;
+  font-size: var(--text-body-size-medium);
   justify-content: flex-start;
 }
 .bolt-timeline-cell .adofix-thread-marker::after {
   content: "Resolved comment thread — click to show";
-  font-size: 13px;
-  color: var(--text-secondary-color, #a19f9d);
+  font-size: var(--text-body-size-medium);
+  font-weight: var(--base-text-weight-normal);
+  color: var(--fgColor-muted);
 }
 `;
 
@@ -87,9 +85,9 @@ function hideThread(el: HTMLElement): void {
   if (markerIn(el)) return;
   const marker = document.createElement("button");
   marker.type = "button";
-  marker.className = "adofix-thread-marker";
+  marker.className = "adofix-thread-marker gh-Label gh-Label--secondary";
   marker.setAttribute("data-adofix", FEATURE_ID);
-  marker.textContent = "💬";
+  marker.appendChild(octicon("comment-discussion"));
   marker.title = "Hidden resolved thread — click to show (ado-unfuck)";
   marker.addEventListener("click", (e) => {
     e.stopPropagation();

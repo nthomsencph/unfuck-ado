@@ -160,8 +160,8 @@ html[${ATTR}] .sprints-tabbar-header .bolt-tabbar {
 }
 .${STATUS_CLASS} {
   margin-left: 16px;
-  font-size: 13px;
-  color: var(--text-primary-color, #fff);
+  font-size: var(--text-body-size-medium);
+  color: var(--fgColor-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

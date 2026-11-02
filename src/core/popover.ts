@@ -1,4 +1,5 @@
 import { ADOFIX_ATTR, injectStyleOnce, safeQuery } from "./dom";
+import { octicon } from "./primer/icons";
 
 /**
  * Light-dismiss popover shared by every adofix dropdown menu. One popover is
@@ -10,12 +11,14 @@ import { ADOFIX_ATTR, injectStyleOnce, safeQuery } from "./dom";
  * speaks the same surface language.
  */
 
+/*
+ * Material and items come from the gh-menu component (GitHub's ActionList
+ * overlay); this sheet adds only placement and the adofix-specific slots.
+ */
 const POPOVER_CSS = `
 .adofix-menu {
   position: fixed;
   z-index: 100000;
-  padding: 4px 0;
-  font-size: 13px;
   outline: none;
 }
 /* Item rules are scoped under .adofix-menu: pr-actions tags FOREIGN (cloned
@@ -23,34 +26,24 @@ const POPOVER_CSS = `
    bare class selectors here would restyle those rows the moment any popover
    injects this sheet. */
 .adofix-menu .adofix-menu-status {
-  padding: 8px 14px 6px;
-  font-size: 12px;
-  color: var(--text-secondary-color, #a19f9d);
+  padding: 6px 16px;
+  font-size: var(--text-body-size-small);
+  font-weight: var(--base-text-weight-semibold);
+  color: var(--fgColor-muted);
 }
-.adofix-menu .adofix-menu-item {
-  display: flex; align-items: center; gap: 10px; width: 100%;
-  padding: 8px 14px; border: none; background: transparent; cursor: pointer;
-  font: inherit; color: inherit; text-align: left;
-}
-.adofix-menu .adofix-menu-item:hover,
+/* Keyboard roving focus lands on the item: show it as GitHub's active row. */
 .adofix-menu .adofix-menu-item:focus-visible {
-  background: rgba(128, 128, 128, 0.12);
-  outline: none;
+  background-color: var(--control-transparent-bgColor-hover);
 }
-.adofix-menu .adofix-menu-item[disabled] { cursor: default; opacity: 0.55; }
-.adofix-menu .adofix-menu-item[disabled]:hover { background: transparent; }
+/* Leading check slot, always reserved so labels align (single-select
+   ActionList). */
 .adofix-menu .adofix-menu-check {
-  width: 14px; text-align: center; flex-shrink: 0;
-  color: var(--adofix-ink); font-weight: 700;
+  display: inline-flex;
+  width: 16px;
+  flex-shrink: 0;
 }
 .adofix-menu .adofix-menu-count {
-  margin-left: auto; font-size: 11px; font-weight: 700;
-  background: rgba(130, 80, 223, 0.22); color: var(--adofix-ink);
-  padding: 1px 8px; border-radius: 10px;
-}
-.adofix-menu .adofix-menu-divider {
-  height: 1px; margin: 4px 0;
-  background: var(--border-subtle-color, rgba(128, 128, 128, 0.25));
+  margin-left: auto;
 }
 `;
 
@@ -67,14 +60,14 @@ export function menuItem(
 ): HTMLButtonElement {
   const item = document.createElement("button");
   item.type = "button";
-  item.className = "adofix-menu-item";
+  item.className = "adofix-menu-item gh-menu-item";
   const check = document.createElement("span");
   check.className = "adofix-menu-check";
-  check.textContent = opts.checked ? "✓" : "";
+  if (opts.checked) check.appendChild(octicon("check"));
   item.append(check, label);
   if (opts.count !== undefined) {
     const pill = document.createElement("span");
-    pill.className = "adofix-menu-count";
+    pill.className = "adofix-menu-count gh-Counter";
     pill.textContent = String(opts.count);
     item.appendChild(pill);
   }
@@ -97,7 +90,7 @@ export function menuStatus(text: string): HTMLDivElement {
 
 export function menuDivider(): HTMLDivElement {
   const divider = document.createElement("div");
-  divider.className = "adofix-menu-divider";
+  divider.className = "adofix-menu-divider gh-menu-divider";
   return divider;
 }
 
@@ -136,7 +129,7 @@ export function openPopover(spec: PopoverSpec): void {
   const menu = document.createElement("div");
   menu.setAttribute(ADOFIX_ATTR, spec.id);
   menu.setAttribute("data-adofix-modal", "");
-  menu.className = `adofix-menu adofix-surface${spec.className ? ` ${spec.className}` : ""}`;
+  menu.className = `adofix-menu gh-menu${spec.className ? ` ${spec.className}` : ""}`;
   menu.tabIndex = -1;
 
   const close = (): void => {

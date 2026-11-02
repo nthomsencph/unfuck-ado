@@ -36,14 +36,14 @@ const STATUS_CLASS = "adofix-backlog-status";
 const CSS = `
 .${STATUS_CLASS} {
   margin-left: 16px;
-  font-size: 13px;
-  color: var(--text-primary-color, #fff);
+  font-size: var(--text-body-size-medium);
+  color: var(--fgColor-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   flex-shrink: 1;
   min-width: 0;
-  /* the title row is flex-baseline — a 13px baseline against the 16px title
+  /* the title row is flex-baseline — a 14px baseline against the 16px title
      reads too low; center on the row's height instead */
   align-self: center;
 }

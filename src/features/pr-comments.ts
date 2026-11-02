@@ -1,5 +1,6 @@
 import type { Feature } from "../core/registry";
-import { ACCENT, injectStyleOnce, safeQuery } from "../core/dom";
+import { injectStyleOnce, safeQuery } from "../core/dom";
+import { octicon } from "../core/primer/icons";
 import {
   closePopover,
   isPopoverOpen,
@@ -30,22 +31,13 @@ const RESOLVED_TEXT_SELECTOR = ".pr-header-resolved-comments";
 const NATIVE_FILTER_SELECTOR = ".repos-compare-filter";
 
 const CSS = `
-/* Filled-accent toolbar button (inherited from the retired standalone toggles). */
-.adofix-toggle {
-  background: ${ACCENT} !important; color: #fff !important;
-  margin-left: 8px; border-radius: 2px;
-  /* flex + gap so the icon glyph and the count text can never overlap */
-  display: inline-flex; align-items: center; gap: 6px;
-}
-.adofix-toggle:hover { background: #9161ea !important; }
-.adofix-toggle[aria-pressed="true"] { background: #6b40ba !important; }
+/* GitHub small default button; the draft count rides in a gh-Counter. */
+.adofix-toggle { margin-left: 8px; }
 .repos-compare-toolbar > .adofix-toggle:last-child { margin-right: 12px; }
+.adofix-toggle .gh-Counter { margin-left: 2px; }
 
-/* Menu material + items come from core's .adofix-surface / .adofix-menu-*. */
+/* Menu material + items come from core/popover (gh-menu) and .adofix-menu-* hooks. */
 .adofix-comments-menu { width: 260px; overflow: hidden; }
-
-/* ADO's own fluent icon font (glyph classes verified live 2026-08-19). */
-.adofix-comments-icon { font-size: 14px; line-height: 1; flex-shrink: 0; }
 `;
 
 /** "0/2 comments resolved" → { resolved: 0, total: 2 }; anything else → null. */
@@ -61,25 +53,25 @@ function resolvedCounts(): { resolved: number; total: number } | null {
   return parseResolvedText(safeQuery<HTMLElement>(RESOLVED_TEXT_SELECTOR)?.textContent);
 }
 
-/** Fluent comment glyph + "n/m" for native comments, "· k" local drafts. */
+/** Comment octicon + "n/m" for native comments, a Counter for local drafts. */
 function renderButtonLabel(btn: HTMLButtonElement): void {
   const counts = resolvedCounts();
   const drafts = draftsCount();
-  const text = [
-    counts ? `${counts.resolved}/${counts.total}` : "",
-    drafts > 0 ? `· ${drafts}` : "",
-  ]
-    .filter(Boolean)
-    .join(" ");
-  const icon = document.createElement("span");
-  icon.className = "fabric-icon ms-Icon--Comment adofix-comments-icon";
-  icon.setAttribute("aria-hidden", "true");
-  btn.replaceChildren(icon);
-  if (text) btn.append(text);
-  btn.title =
+  const text = counts ? `${counts.resolved}/${counts.total}` : "";
+  const parts: (Node | string)[] = [octicon("comment")];
+  if (text) parts.push(text);
+  if (drafts > 0) {
+    const counter = document.createElement("span");
+    counter.className = "gh-Counter";
+    counter.textContent = String(drafts);
+    parts.push(counter);
+  }
+  btn.replaceChildren(...parts);
+  const title =
     "Comments — resolved count, filters and drafts" +
     (drafts > 0 ? `; ${drafts} local draft${drafts === 1 ? "" : "s"}` : "") +
     " (ado-unfuck)";
+  btn.title = title;
 }
 
 function openMenu(anchor: HTMLElement): void {

@@ -59,7 +59,7 @@ export function teleport(native: HTMLElement, row: HTMLElement): void {
   s.setProperty("opacity", "1", "important");
   s.setProperty("visibility", "visible", "important");
   s.setProperty("overflow", "visible", "important");
-  s.setProperty("background", "var(--adofix-bg, #141414)", "important");
+  s.setProperty("background", "var(--bgColor-default)", "important");
   s.setProperty("z-index", "2000", "important");
   s.setProperty("pointer-events", "auto", "important");
 

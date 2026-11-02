@@ -1,6 +1,6 @@
 import type { Feature } from "../core/registry";
 import type { Route } from "../core/router";
-import { ACCENT, ensureText, injectStyleOnce, makeToolbarButton, setStyle } from "../core/dom";
+import { ensureText, injectStyleOnce, makeToolbarButton, setStyle } from "../core/dom";
 import {
   closePopover,
   isPopoverOpen,
@@ -10,6 +10,7 @@ import {
   openPopover,
 } from "../core/popover";
 import { log } from "../core/log";
+import { octicon } from "../core/primer";
 import { observeResize } from "../core/observe";
 import { getValue, setValue } from "../core/storage";
 import { sprintTab, taskboardTeamKey } from "./boards/paths";
@@ -59,7 +60,7 @@ const CSS = `
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: ${ACCENT};
+  background: var(--bgColor-accent-emphasis);
 }
 html[${TWO_UP_ATTR}] .taskboard-expanded-cell .flex-row.flex-wrap > .taskboard-card {
   flex: 1 1 150px;
@@ -76,25 +77,30 @@ html[${TWO_UP_ATTR}] .taskboard-expanded-cell .flex-row.flex-wrap > .taskboard-c
   display: block;
   margin: 4px 0 0 !important;
 }
-/* Lane surfaces with canvas gutters between them: transparent side borders
-   + padding-box clip make the near-black canvas shine through WITHOUT
-   touching the fixed-table geometry, and the show-lines cell borders go
-   invisible. Card material lives in density.css (.wit-card covers these). */
+/* GitHub Projects columns (D62): each cell is a --bgColor-muted box with a
+   1px border and 6px corners, the canvas showing through 4px transparent
+   gutters. Transparent borders + padding-box clip keep the gutters out of
+   the fixed-table geometry; the visible 1px border is an inset shadow
+   (drawn inside the padding box, so the gutter border stays clear), and the
+   radius adds the 4px gutter so the PADDING edge rounds at 6px. The
+   show-lines cell borders go invisible. Card material lives in density.css
+   (.wit-card covers these). */
 .taskboard-expanded-cell {
-  background: var(--adofix-lane, #1d1c1b) !important;
-  border-left: 4px solid transparent !important;
-  border-right: 4px solid transparent !important;
+  background: var(--bgColor-muted) !important;
+  border: 4px solid transparent !important;
+  border-radius: calc(var(--borderRadius-medium) + 4px);
+  box-shadow: inset 0 0 0 var(--borderWidth-default) var(--borderColor-default);
   background-clip: padding-box !important;
 }
 table:has(td.taskboard-expanded-cell) td,
 table:has(td.taskboard-expanded-cell) th {
   border-color: transparent !important;
 }
-/* Collapsed assignee rows are one full-width td painted ADO-grey #323130 —
-   they sit flat on the canvas (user 2026-08-18: lane #1d1c1b still read as
-   a grey band; the collapsed strip is chrome, not a lane). */
+/* Collapsed assignee rows are one full-width td painted ADO grey — they
+   sit flat on the canvas (user 2026-08-18: a lane-coloured strip still
+   read as a grey band; the collapsed strip is chrome, not a lane). */
 td.taskboard-collapsed-row {
-  background: var(--adofix-bg, #141414) !important;
+  background: var(--bgColor-default) !important;
 }
 /* Assignee name centered on the chevron's 30px line. ADO's margin-top-8 on
    .identity-view bottom-parks it: in a collapsed row's flex-center strip the
@@ -120,12 +126,12 @@ th:has(> .adofix-col-count) {
   position: relative;
   padding-right: 40px !important;
 }
+/* GitHub Projects' column count: a Counter beside the column name. */
 .adofix-col-count {
   position: absolute;
   right: 12px;
   top: 50%;
   transform: translateY(-50%);
-  color: var(--text-secondary-color, #a19f9d);
   white-space: nowrap;
 }
 /* The assignment/parent column is capped (PARENT_MAX in colTargets) — let
@@ -136,7 +142,7 @@ th:has(> .adofix-col-count) {
 .taskboard-parent-cell .identity-display-name {
   white-space: normal !important;
 }
-/* Menu material + items come from core's .adofix-surface / .adofix-menu-*. */
+/* Menu material + items come from core/popover (gh-menu) and .adofix-menu-* hooks. */
 .adofix-columns-menu { min-width: 240px; }
 `;
 
@@ -234,11 +240,12 @@ function prefs(key: string): Prefs {
 
 const COUNT_CLASS = "adofix-col-count";
 
-/** The header's own name, with our appended " (n)" count stripped back out. */
+/** The header's own name, with our appended count stripped back out (as a
+    SUFFIX: the bare-number Counter text may also occur inside the name). */
 export function headerName(th: Element): string {
-  const count = th.querySelector(`.${COUNT_CLASS}`);
+  const count = th.querySelector(`.${COUNT_CLASS}`)?.textContent;
   const full = th.textContent ?? "";
-  return count?.textContent ? full.replace(count.textContent, "") : full;
+  return count && full.endsWith(count) ? full.slice(0, -count.length) : full;
 }
 
 function boardHeaders(): string[] {
@@ -247,7 +254,7 @@ function boardHeaders(): string[] {
   return Array.from(table.querySelectorAll("th")).map(headerName);
 }
 
-/** "New (7)" — card count per state column, appended as an adofix span. */
+/** "New [7]" — card count per state column, appended as an adofix Counter. */
 function applyCounts(): void {
   const table = document.querySelector(TABLE);
   if (!table) return;
@@ -258,7 +265,8 @@ function applyCounts(): void {
     // Hidden cells stay in the DOM (display:none), so the original nth
     // mapping counts correctly for hidden columns too.
     const n = table.querySelectorAll(`tbody tr > td:nth-child(${col.nth}) .taskboard-card`).length;
-    ensureText(th, COUNT_CLASS, ` (${n})`);
+    ensureText(th, COUNT_CLASS, String(n));
+    th.querySelector(`.${COUNT_CLASS}`)?.classList.add("gh-Counter");
   }
 }
 
@@ -392,37 +400,13 @@ function openMenu(anchor: HTMLElement, key: string): void {
   });
 }
 
-/** Columns glyph, currentColor so it follows bolt's subtle-button styling. */
-function columnsIcon(): SVGSVGElement {
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.setAttribute("width", "16");
-  svg.setAttribute("height", "16");
-  svg.setAttribute("viewBox", "0 0 16 16");
-  svg.setAttribute("fill", "currentColor");
-  for (const [x, opacity] of [
-    [1, "1"],
-    [6, "1"],
-    [11, "0.45"],
-  ] as const) {
-    const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-    rect.setAttribute("x", String(x));
-    rect.setAttribute("y", "2");
-    rect.setAttribute("width", "4");
-    rect.setAttribute("height", "12");
-    rect.setAttribute("rx", "1");
-    rect.setAttribute("opacity", opacity);
-    svg.appendChild(rect);
-  }
-  return svg;
-}
-
 function ensureButton(key: string): void {
   const filter = document.getElementById("__bolt-filter");
   const bar = filter?.parentElement;
   if (!filter || !bar || bar.querySelector(`.${BTN_CLASS}`)) return;
   // Own marker class (not adofix-toolbar-btn): sprint-header's proxy guard
   // scans the same filter row and must not mistake this button for its own.
-  const btn = makeToolbarButton("Show or hide board columns", columnsIcon(), BTN_CLASS);
+  const btn = makeToolbarButton("Show or hide board columns", octicon("columns"), BTN_CLASS);
   btn.title = "Show/hide board columns (ado-unfuck)";
   btn.addEventListener("click", (e) => {
     e.preventDefault();

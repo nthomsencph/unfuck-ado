@@ -4,6 +4,7 @@ import { getWorkItem, type ProjectRef } from "../core/api";
 import { injectStyleOnce, stubHide } from "../core/dom";
 import { createFetchCache } from "../core/fetch-cache";
 import { log } from "../core/log";
+import { octicon, type OcticonName } from "../core/primer";
 import {
   DESCRIPTION_HEADER_RE,
   formatCreatedDate,
@@ -38,7 +39,7 @@ import { teleport } from "./workitem/teleport";
  *  - noise removed: the Deployment group (Releases are unused) and the
  *    Development "link a commit" zero-state hint box — GH sidebars list,
  *    they don't teach. Hidden fields stay editable via Customize/other
- *    views; comment cards join the card material.
+ *    views; comments render as GitHub comment boxes.
  *
  * Second pass (user request 2026-08-18, "not far enough"): Follow button,
  * comment-count link, History/Links tabs and the per-section Maximize
@@ -285,8 +286,8 @@ function ensureAttachmentsProxy(): void {
   if (!btn) {
     btn = document.createElement("button");
     btn.type = "button";
-    btn.className =
-      "adofix-wi-attach-proxy bolt-button bolt-icon-button enabled subtle";
+    // GitHub's invisible button, like makeToolbarButton's (D47).
+    btn.className = "adofix-wi-attach-proxy gh-btn gh-btn-invisible";
     btn.addEventListener("click", () => {
       const attach = document.querySelector<HTMLElement>('[id$="-System_Attachments"]');
       if (!attach) return;
@@ -305,7 +306,19 @@ function ensureAttachmentsProxy(): void {
   const label = `Attachments${count ? ` (${count})` : ""}`;
   btn.title = label;
   btn.setAttribute("aria-label", label);
-  btn.textContent = `📎 ${count}`.trim();
+  // Paperclip octicon + a Counter (GitHub's button-with-count), rebuilt
+  // only when the count changes — this runs on every settle.
+  if (btn.dataset["count"] !== count || !btn.querySelector(".octicon")) {
+    btn.dataset["count"] = count;
+    btn.textContent = "";
+    btn.append(octicon("paperclip"));
+    if (count) {
+      const counter = document.createElement("span");
+      counter.className = "gh-Counter";
+      counter.textContent = count;
+      btn.append(counter);
+    }
+  }
   btn.classList.toggle("adofix-wi-attach-active", attachTab.classList.contains("selected"));
 }
 
@@ -434,7 +447,7 @@ function enhance(ref: ProjectRef | null): void {
       if (row.tags.length === 0) value.append(document.createTextNode("—"));
       for (const tag of row.tags) {
         const pill = document.createElement("span");
-        pill.className = "adofix-wi-tag";
+        pill.className = "adofix-wi-tag gh-Label gh-Label--secondary";
         pill.textContent = tag;
         value.append(pill);
       }
@@ -449,6 +462,16 @@ function enhance(ref: ProjectRef | null): void {
     }
     host.append(el);
   }
+}
+
+/** An octicon as a CSS mask image — for pseudo-elements on React-owned
+    native buttons, where appending an <svg> child would not survive (or
+    would confuse) React's reconciliation. Painted with currentColor via
+    background, so it follows the button's text color like a real icon. */
+function octiconMask(name: OcticonName): string {
+  const svg = octicon(name);
+  svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+  return `url("data:image/svg+xml,${encodeURIComponent(svg.outerHTML)}")`;
 }
 
 const CSS = `
@@ -529,6 +552,26 @@ const CSS = `
   height: auto !important;
   min-height: 0 !important;
 }
+/* GitHub sidebar sections: muted 12px semibold headings, each section
+   closed by a 1px muted rule with 16px of air (D66). Icons keep their
+   own size. */
+.work-item-form-right .work-item-form-group:not(.adofix-wi-group-absorb, .adofix-wi-group-hide) {
+  padding-bottom: 16px !important;
+  margin-bottom: 16px !important;
+  border-bottom: var(--borderWidth-default) solid var(--borderColor-muted) !important;
+}
+.work-item-form-right .work-item-form-group:last-child {
+  border-bottom: none !important;
+}
+.work-item-form-right .work-item-form-collapsible-header,
+.work-item-form-right .work-item-form-collapsible-header :not([class*="icon" i]) {
+  font-size: var(--text-body-size-small) !important;
+  font-weight: var(--base-text-weight-semibold) !important;
+  color: var(--fgColor-muted) !important;
+}
+.work-item-form-right .work-item-form-collapsible-header {
+  border-bottom: none !important;
+}
 /* Rail noise out. */
 .work-item-form-group:has([class*="deployments"]) {
   display: none !important;
@@ -536,17 +579,23 @@ const CSS = `
 .links-control-zero-state {
   display: none !important;
 }
-/* Discussion GH-style: comments oldest-first, composer at the bottom. */
+/* Discussion GH-style: comments oldest-first, composer at the bottom;
+   GitHub's 16px timeline gap between comment boxes. */
 .work-item-form-discussion .work-item-form-collapsible-section-content {
   display: flex;
   flex-direction: column-reverse;
-  gap: 12px;
+  gap: 16px;
 }
-/* Comments sit flat on the canvas (user 2026-08-18); the composer's text
-   field carries the card color instead — see the form-surface rules below. */
+/* Comments as GitHub timeline comments: a gh-Box (1px border, 6px
+   corners, canvas fill, no shadow). CSS rather than the gh-Box class —
+   the comment nodes are React-owned and re-rendered, and a class added
+   from enhance() would flicker off and back on (D41). */
 .comment-item.displayed-comment {
-  background: transparent !important;
+  background: var(--bgColor-default) !important;
+  border: var(--borderWidth-default) solid var(--borderColor-default) !important;
+  border-radius: var(--borderRadius-medium) !important;
   box-shadow: none !important;
+  padding: 8px 16px !important;
 }
 /* Section headers out: Discussion always (Description via text-matched
    class — Repro Steps etc. keep theirs). The 1px divider lives ON the
@@ -555,7 +604,7 @@ const CSS = `
 .adofix-wi-header-hide {
   display: none !important;
 }
-/* Header: the Save/refresh/undo/⋮/📎 command bar and the dialog's
+/* Header: the Save/refresh/undo/⋮/paperclip command bar and the dialog's
    Fullscreen/Close all sit ON the title row, right-aligned. Horizontal
    offsets are CSS; vertical tops are MEASURED per pass in enhance()
    against the title row's live rect (fixed offsets drift — absoluting
@@ -568,6 +617,19 @@ const CSS = `
      measure AFTER this applies, so the overlaid controls follow the
      shifted rows automatically */
   padding-top: 32px !important;
+  /* GitHub's issue header: a 1px rule between the title block and the
+     body, 16px of air above it (D65). */
+  padding-bottom: 16px !important;
+  border-bottom: var(--borderWidth-default) solid var(--borderColor-default) !important;
+}
+/* Issue title type: GitHub's large title (32px, regular weight) on the
+   title row's text field (D65, PROVISIONAL — selector is the title row
+   established above, the input's own box not yet verified live). */
+.work-item-form-header > :nth-child(2) input {
+  font-size: var(--text-title-size-large) !important;
+  font-weight: var(--base-text-weight-normal) !important;
+  line-height: var(--text-title-lineHeight-large) !important;
+  height: auto !important;
 }
 /* TWO nested elements carry this class — position only the outer (the
    row's direct child); absoluting both collapses the outer to 4px. */
@@ -669,9 +731,13 @@ const CSS = `
   padding: 2px 10px !important;
 }
 .adofix-wi-relwork .bolt-expandable-button .bolt-button::before {
-  content: "+";
-  font-size: 18px;
-  line-height: 1.2;
+  content: "";
+  display: block;
+  width: 16px;
+  height: 16px;
+  background-color: currentColor;
+  -webkit-mask: ${octiconMask("plus")} center / 16px no-repeat;
+  mask: ${octiconMask("plus")} center / 16px no-repeat;
 }
 /* Header noise out (user 2026-08-18): Follow, the History and Links tabs
    (Created by/Created live in the rail; Related Work keeps Add link), and
@@ -715,9 +781,9 @@ ${stubHide(`.work-item-form-subheader > :not([class*="wif-tabbar"]),
 ${stubHide(".adofix-wi-group-absorb")}
 /* The adofix "Details" group at the top of the rail. */
 #adofix-wi-details {
-  padding: 0 0 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  margin-bottom: 12px;
+  padding: 0 0 16px;
+  border-bottom: var(--borderWidth-default) solid var(--borderColor-muted);
+  margin-bottom: 16px;
 }
 /* The tab strip goes (Details is the only content tab left — Attachments
    is proxied into the header command bar and History/Links are gone), and
@@ -735,9 +801,11 @@ ${stubHide(".adofix-wi-group-absorb")}
 }
 .adofix-wi-attach-proxy {
   white-space: nowrap;
+  gap: 4px;
 }
-.adofix-wi-attach-active {
-  color: var(--communication-foreground, #4fa3ff) !important;
+.adofix-wi-attach-active,
+.adofix-wi-attach-active .octicon {
+  color: var(--fgColor-accent) !important;
 }
 /* While teleported, the control's own label hides — the adofix row's key
    is replaced by the live control across the full row. */
@@ -763,11 +831,11 @@ ${stubHide(".adofix-wi-group-absorb")}
   /* Tall enough that a teleported bolt input (~30px) fits INSIDE the row's
      own box instead of covering the row below. */
   min-height: 32px;
-  font-size: 13px;
+  font-size: var(--text-body-size-small);
 }
 .adofix-wi-kv-label {
   flex: 0 0 45%;
-  color: var(--text-secondary-color, #a19f9d);
+  color: var(--fgColor-muted);
 }
 .adofix-wi-kv-value {
   flex: 1 1 auto;
@@ -783,10 +851,10 @@ ${stubHide(".adofix-wi-group-absorb")}
 }
 .adofix-wi-kv-editable {
   cursor: pointer;
-  border-radius: 4px;
+  border-radius: var(--borderRadius-medium);
 }
 .adofix-wi-kv-editable:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--control-transparent-bgColor-hover);
 }
 .adofix-wi-kv-dot {
   width: 10px;
@@ -811,12 +879,7 @@ ${stubHide(".adofix-wi-group-absorb")}
   white-space: normal;
   overflow: visible;
 }
-.adofix-wi-tag {
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
-  padding: 2px 10px;
-  font-size: 12px;
-}
+/* Tag pills are gh-Label (secondary) — no rules of their own. */
 
 /*
  * Work item form (dialog and full page, verified live 2026-08-18): the
@@ -836,7 +899,7 @@ ${stubHide(".adofix-wi-group-absorb")}
 .work-item-form-page .html-editor,
 .work-item-form-page .rooster-editor,
 .work-item-form-page .ms-CommandBar {
-  background: var(--adofix-bg) !important;
+  background: var(--bgColor-default) !important;
 }
 /* The description editor's visible surface CANNOT be painted directly:
    ADO's dark-theme sanitizer (.work-item-form-section-dark-theme-override
@@ -846,14 +909,14 @@ ${stubHide(".adofix-wi-group-absorb")}
    Redefining the token in the editor's scope turns ADO's own hammer into
    the paintbrush. */
 .work-item-form-page .html-editor {
-  --background-color: var(--adofix-bg);
+  --background-color: var(--bgColor-default);
 }
 .work-item-form-page .html-command-bar-button:not(:hover):not(.is-checked) {
   background: transparent !important;
 }
-/* Discussion composer: flat on the canvas — the card color moved onto the
-   text field itself (user 2026-08-18; was the inverse). The zero-data
-   hint boxes keep card material. */
+/* Discussion composer: flat on the canvas, the text field itself a
+   GitHub comment-box (1px border, 6px corners) — user 2026-08-18 put the
+   material on the field, not the composer. */
 .discussion-new-comment {
   background: transparent !important;
   box-shadow: none !important;
@@ -861,8 +924,11 @@ ${stubHide(".adofix-wi-group-absorb")}
 .discussion-new-comment .markdown-editor,
 .discussion-new-comment .bolt-textfield,
 .discussion-new-comment .bolt-textfield-input {
-  background: var(--adofix-card) !important;
-  border-radius: var(--adofix-radius) !important;
+  background: var(--bgColor-default) !important;
+  border-radius: var(--borderRadius-medium) !important;
+}
+.discussion-new-comment .markdown-editor {
+  border: var(--borderWidth-default) solid var(--borderColor-default) !important;
 }
 /* (.deployments-zero-data / .links-control-zero-state card styling removed:
    workitem-layout hides both containers outright, so the rules were dead.) */

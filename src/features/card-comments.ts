@@ -2,13 +2,15 @@ import type { Feature } from "../core/registry";
 import type { Route } from "../core/router";
 import { getWorkItems, type ProjectRef } from "../core/api";
 import { injectStyleOnce } from "../core/dom";
+import { octicon } from "../core/primer";
 import { createFetchCache } from "../core/fetch-cache";
 import { log } from "../core/log";
 
 /**
  * Comment counts on board cards (user request 2026-08-18): every .wit-card
  * (sprint taskboard + kanban) whose first line carries a numeric id gets a
- * "💬-icon n" chip right-aligned on that line — only when n > 0.
+ * comment-octicon + count chip right-aligned on that line — only when n > 0
+ * (GitHub Projects' card comment indicator: muted icon, Counter count).
  *
  * ADO renders no comment info on cards, so counts come from REST:
  * `_apis/wit/workitems?ids=…&fields=System.CommentCount` (batched, the
@@ -18,8 +20,7 @@ import { log } from "../core/log";
  * 2026-08-18): first line `.flex-row.full-width` >
  * [`.rhythm-horizontal-8` (type icon, id span
  * `.font-weight-semibold.selectable-text`, title link),
- * `.card-context-menu`] — the chip inserts before the context menu. The
- * icon reuses ADO's own fabric comment glyph.
+ * `.card-context-menu`] — the chip inserts before the context menu.
  */
 export const cardComments: Feature = {
   id: "card-comments",
@@ -82,9 +83,9 @@ function render(): void {
     if (!chip) {
       chip = document.createElement("span");
       chip.className = CHIP_CLASS;
-      const icon = document.createElement("span");
-      icon.className = "fabric-icon ms-Icon--Comment";
-      chip.append(icon, document.createElement("span"));
+      const num = document.createElement("span");
+      num.className = "gh-Counter";
+      chip.append(octicon("comment"), num);
       // Upper right CORNER of the card (user 2026-08-18, third take):
       // absolutely anchored — flex-end placement stopped short of the
       // corner because the hover-only ⋮ menu reserves it. The chip
@@ -116,18 +117,16 @@ const CSS = `
 .${CHIP_CLASS} {
   position: absolute;
   /* aligned with the ID line: .wit-card .card-content pads 20px 14px
-     (density.css), +2px optically centers the 16px chip on the ~19px id
-     text (user screenshot 2026-08-18: top:10px floated above the line) */
-  top: 22px;
+     (density.css); the 20px Counter centers on the ~19px id text as-is
+     (the old 16px glyph chip needed +2px — user screenshot 2026-08-18:
+     top:10px floated above the line) */
+  top: 20px;
   right: 14px;
   display: inline-flex;
   align-items: center;
-  gap: 3px;
-  color: var(--text-secondary-color, #a19f9d);
-  font-size: 12px;
-}
-.${CHIP_CLASS} .fabric-icon {
-  font-size: 12px;
+  gap: 4px;
+  color: var(--fgColor-muted);
+  font-size: var(--text-body-size-small);
 }
 /* The hover-only ⋮ menu owns the corner while the pointer is on the card. */
 .wit-card:hover .${CHIP_CLASS} {

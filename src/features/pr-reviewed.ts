@@ -2,6 +2,7 @@ import type { Feature } from "../core/registry";
 import type { Route } from "../core/router";
 import { injectStyleOnce, safeQuery, safeQueryAll, showToast } from "../core/dom";
 import { log } from "../core/log";
+import { octicon } from "../core/primer/icons";
 import { DIFF_SELECTORS, sectionFilePath } from "./pr/diff";
 import { prRefFromRoute, refKey, type PrRef } from "./pr/threads-api";
 import { patchViewed, viewedState } from "./pr/reviewed-data";
@@ -21,40 +22,39 @@ import { clickTreeCheckbox, mapTreeFiles } from "./pr/reviewed-tree";
 const FEATURE_ID = "pr-reviewed";
 
 /*
- * Native material on purpose: this mirrors an ADO-owned state, so it wears
- * ADO's checkbox blue (--communication-background), not the adofix accent.
- * Revealed on header-row hover like the tree's own, and stays visible once
- * checked. ADO palette vars are R,G,B triplets — hence rgba(var(...)).
+ * GitHub's "Viewed" toggle from the Files-changed file header: a small
+ * default button holding a checkbox, which turns accent-tinted once
+ * checked. Revealed on header-row hover like the tree's own checkbox, and
+ * stays visible once checked.
  */
 const CSS = `
 .adofix-reviewed {
-  display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
-  border: none; background: transparent; cursor: pointer;
-  padding: 2px 6px; margin-right: 6px; border-radius: 2px;
-  font-family: inherit; opacity: 0; transition: opacity 0.12s;
+  margin-right: 8px; flex-shrink: 0;
+  opacity: 0; transition: opacity 0.12s;
 }
 .repos-summary-header > .flex-row:hover .adofix-reviewed,
 .adofix-reviewed:focus-visible,
 .adofix-reviewed[aria-checked="true"],
 html[data-adofix-reviewing] .adofix-reviewed { opacity: 1; }
+.adofix-reviewed[aria-checked="true"],
+.adofix-reviewed[aria-checked="true"]:hover:not(:disabled) {
+  background-color: var(--bgColor-accent-muted);
+  border-color: var(--borderColor-accent-muted);
+}
 .adofix-reviewed-box {
   width: 16px; height: 16px; box-sizing: border-box; flex-shrink: 0;
   display: inline-flex; align-items: center; justify-content: center;
-  border: 1px solid rgba(var(--palette-neutral-20, 200, 198, 196), 1);
-  border-radius: 2px; font-size: 11px; line-height: 1; color: transparent;
+  background: var(--bgColor-default);
+  border: var(--borderWidth-default) solid var(--control-borderColor-emphasis);
+  border-radius: var(--borderRadius-small);
 }
-.adofix-reviewed:hover .adofix-reviewed-box {
-  border-color: var(--communication-background, #0078d4);
-}
+.adofix-reviewed .adofix-reviewed-box .octicon { color: var(--control-checked-fgColor-rest); visibility: hidden; }
 .adofix-reviewed[aria-checked="true"] .adofix-reviewed-box {
-  background: var(--communication-background, #0078d4);
-  border-color: var(--communication-background, #0078d4);
-  color: #fff;
+  background: var(--control-checked-bgColor-rest);
+  border-color: var(--control-checked-borderColor-rest);
 }
-.adofix-reviewed-label {
-  font-size: 12px; font-weight: 600;
-  color: var(--text-secondary-color, rgba(0, 0, 0, 0.7));
-}
+.adofix-reviewed[aria-checked="true"] .adofix-reviewed-box .octicon { visibility: visible; }
+.adofix-reviewed-label { font-weight: var(--base-text-weight-normal); }
 .adofix-reviewed.adofix-busy { cursor: progress; opacity: 0.6; }
 `;
 
@@ -124,11 +124,11 @@ export const prReviewed: Feature = {
       if (!box) {
         box = document.createElement("button");
         box.type = "button";
-        box.className = "adofix-reviewed";
+        box.className = "adofix-reviewed gh-btn gh-btn-sm";
         box.setAttribute("role", "checkbox");
         const inner = document.createElement("span");
         inner.className = "adofix-reviewed-box";
-        inner.textContent = "✓";
+        inner.appendChild(octicon("check", 12));
         const labelEl = document.createElement("span");
         labelEl.className = "adofix-reviewed-label";
         labelEl.textContent = "Reviewed";

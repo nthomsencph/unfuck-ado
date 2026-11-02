@@ -8,7 +8,7 @@
  */
 
 /* Canvas colors are the Primer bridge's (core/primer) — the near-black
-   #141414 canvas overrides that lived here (page containers, banner, project
+   canvas overrides that lived here (page containers, banner, project
    header, sticky grid headers, PR page bands, the nav rail) were removed in
    stage 1 of the GitHub makeover. */
 
@@ -144,7 +144,7 @@ div.padding-vertical-16:has(> .vss-FilterBar) {
   order: 1;
   font-size: 13px !important;
   font-weight: 600;
-  color: var(--text-primary-color) !important;
+  color: var(--fgColor-default) !important;
 }
 /* "-20+13" reads as one token — space the two counts */
 .repos-summary-header .repos-compare-removed-lines {
@@ -305,7 +305,7 @@ div.padding-vertical-16:has(> .vss-FilterBar) {
 /*
  * Filter bars are chrome, not cards — flat on the page (2026-08-18), same
  * language as the flattened backlog pane. bolt-filterbar-white carries a
- * dark-theme #323130 surface plus a depth-8 shadow.
+ * dark-theme grey surface plus a depth-8 shadow.
  */
 .vss-FilterBar {
   background: transparent !important;

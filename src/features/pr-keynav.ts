@@ -31,7 +31,7 @@ const FOCUS_ATTR = "data-adofix-focus";
 
 const KEYNAV_CSS = `
 [${FOCUS_ATTR}] {
-  outline: 2px solid #0078d4 !important;
+  outline: var(--focus-outline-width) solid var(--focus-outlineColor) !important;
   outline-offset: 2px;
   scroll-margin-top: ${REF_OFFSET_PX}px;
 }

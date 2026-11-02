@@ -25,8 +25,12 @@ const CSS = `
 /* Stubbed, not display:none'd: zero-size, invisible, still clickable by
    proxy (core stubHide). */
 ${stubHide(SPLIT)}
-/* Cloned rows are outside bolt's hover/focus state — style hover ourselves. */
-.adofix-menu-item:hover { background: rgba(128, 128, 128, 0.12); cursor: pointer; }
+/* Cloned rows are outside bolt's hover/focus state — style hover ourselves,
+   with GitHub's ActionList hover fill. */
+.adofix-menu-item:hover {
+  background: var(--control-transparent-bgColor-hover);
+  cursor: pointer;
+}
 `;
 
 function splitButton(): HTMLElement | null {

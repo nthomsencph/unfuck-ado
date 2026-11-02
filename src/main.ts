@@ -2,7 +2,7 @@ import { injectBaseStyle } from "./core/dom";
 import { injectPrimer, syncPrimer } from "./core/primer";
 import { createRouter } from "./core/router";
 import { createHotkeys } from "./core/keys";
-import { createRegistry } from "./core/registry";
+import { createRegistry, type Feature } from "./core/registry";
 import { startObserver } from "./core/observe";
 import { info, log } from "./core/log";
 import { backlogGrid } from "./features/backlog-grid";
@@ -48,31 +48,35 @@ declare global {
   const hotkeys = createHotkeys(() => router.current());
   const registry = createRegistry(hotkeys, () => router.current());
 
-  registry.register(boardDensity);
-  registry.register(chromeDensity);
-  // After chromeDensity: the frame overrides its canvas pin on header and rail.
-  registry.register(githubFrame);
-  registry.register(workitemLayout);
-  registry.register(cardComments);
-  registry.register(backlogToolbar);
-  registry.register(backlogGrid);
-  registry.register(backlogStatus);
-  registry.register(sprintHeader);
-  registry.register(taskboardColumns);
-  registry.register(prKeynav);
-  registry.register(prOverview);
-  registry.register(prThreadFilter);
-  registry.register(prDrafts);
-  // After prDrafts: both adorn header .justify-end via insertBefore(firstChild),
-  // so later registration puts the reviewed checkbox left of "Comment on file".
-  registry.register(prReviewed);
-  registry.register(prDiffTotals);
-  registry.register(prComments);
-  registry.register(prChecks);
-  registry.register(prReviewFlow);
-  registry.register(prActions);
-  registry.register(prList);
-  registry.register(workitemState);
+  // Registration order is apply order (and sheet order on first inject).
+  const features: Feature[] = [
+    boardDensity,
+    chromeDensity,
+    // After chromeDensity: the frame overrides its canvas pin on header and rail.
+    githubFrame,
+    workitemLayout,
+    cardComments,
+    backlogToolbar,
+    backlogGrid,
+    backlogStatus,
+    sprintHeader,
+    taskboardColumns,
+    prKeynav,
+    prOverview,
+    prThreadFilter,
+    prDrafts,
+    // After prDrafts: both adorn header .justify-end via insertBefore(firstChild),
+    // so later registration puts the reviewed checkbox left of "Comment on file".
+    prReviewed,
+    prDiffTotals,
+    prComments,
+    prChecks,
+    prReviewFlow,
+    prActions,
+    prList,
+    workitemState,
+  ];
+  for (const feature of features) registry.register(feature);
 
   hotkeys.install();
   router.onChange((route) => {
@@ -94,6 +98,6 @@ declare global {
   // debugging). Detail logging: localStorage.setItem("adofix.debug", "1").
   info(
     `ado-unfuck v${__ADOFIX_VERSION__} active`,
-    "— features: board-density, chrome-density, github-frame, workitem-layout, card-comments, backlog-toolbar, backlog-grid, backlog-status, sprint-header, taskboard-columns, pr-keynav, pr-overview, pr-thread-filter, pr-drafts, pr-reviewed, pr-diff-totals, pr-comments, pr-checks, pr-actions, pr-list, workitem-state"
+    `— features: ${features.map((f) => f.id).join(", ")}`
   );
 })();

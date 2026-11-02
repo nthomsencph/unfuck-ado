@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "firefox:setup": "scripts/firefox-claude/setup.sh",
     "firefox": "scripts/firefox-claude/launch.sh",
-    "icons": "node scripts/icons.mjs"
+    "icons": "node scripts/icons.mjs",
+    "build:release": "ADOFIX_RELEASE=1 node build.mjs"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

@@ -3,8 +3,19 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const pkg = JSON.parse(readFileSync("package.json", "utf8"));
-const banner = readFileSync("src/banner.txt", "utf8").replace("__VERSION__", pkg.version);
 const watch = process.argv.includes("--watch");
+/*
+ * Only release builds carry @updateURL/@downloadURL. A local build installed
+ * with Violentmonkey's "Track external edits" would otherwise be replaced by
+ * the next GitHub release (auto-update), silently ending tracking — that
+ * happened on 2026-11-02. `pnpm build:release` (ADOFIX_RELEASE=1) keeps them.
+ */
+const release = process.env.ADOFIX_RELEASE === "1";
+const banner = readFileSync("src/banner.txt", "utf8")
+  .replace("__VERSION__", pkg.version)
+  .split("\n")
+  .filter((line) => release || !/^\/\/ @(updateURL|downloadURL)\b/.test(line))
+  .join("\n");
 
 /*
  * Primer foundation CSS, computed at build time and served to src/ as

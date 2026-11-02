@@ -75,11 +75,11 @@ Implementation notes, the selector verification ledger, and the architecture liv
 Every version is a git tag. A public release is that tag with the built script attached:
 
 ```sh
-pnpm build
+pnpm build:release
 gh release create vX.Y.Z dist/ado-unfuck.user.js --title vX.Y.Z --notes "see commit messages"
 ```
 
-The banner's `@updateURL`/`@downloadURL` point at `releases/latest/download/ado-unfuck.user.js`, so installed scripts follow the newest release on their own.
+Only `pnpm build:release` adds the banner's `@updateURL`/`@downloadURL` (pointing at `releases/latest/download/ado-unfuck.user.js`), so installed copies follow the newest release on their own. Plain `pnpm build` leaves them out, so a locally tracked install is never replaced by a release.
 
 ## Disable / uninstall
 

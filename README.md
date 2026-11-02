@@ -1,9 +1,9 @@
 # Unf*ck ADO
 
-[![Latest release](https://img.shields.io/github/v/release/nthomsencph/unfuck-ado?label=latest&color=8250df)](https://github.com/nthomsencph/unfuck-ado/releases/latest)
-[![Install](https://img.shields.io/badge/install-ado--unfuck.user.js-8250df)](https://github.com/nthomsencph/unfuck-ado/releases/latest/download/ado-unfuck.user.js)
+[![Latest release](https://img.shields.io/github/v/release/nthomsencph/unfuck-ado?label=latest&color=0969da)](https://github.com/nthomsencph/unfuck-ado/releases/latest)
+[![Install](https://img.shields.io/badge/install-ado--unfuck.user.js-0969da)](https://github.com/nthomsencph/unfuck-ado/releases/latest/download/ado-unfuck.user.js)
 
-A Violentmonkey userscript that unf*cks the devastatingly poor Azure DevOps web UI. Everything runs client-side against the same origin. No PAT, no background script. MIT licensed.
+A Violentmonkey userscript that unf*cks the devastatingly poor Azure DevOps web UI by making it look and work like GitHub. Everything runs client-side against the same origin. No PAT, no background script. MIT licensed.
 
 ## Install
 
@@ -15,8 +15,10 @@ The script updates itself from that URL, and all versions live on the [releases 
 
 ## What it does
 
-A bundle of small, independent fixes. The bulk of it targets pull request
-review, with a second set for boards and work items.
+Azure DevOps gets GitHub's colors, type, icons and components on every
+page, dark or light to match your ADO theme. On top of that sits a bundle of
+small, independent fixes. The bulk of it targets pull request review, with a
+second set for boards and work items.
 
 **Pull requests**
 
@@ -26,15 +28,15 @@ review, with a second set for boards and work items.
 - `Delightful review toolbar` — one toolbar button that holds the resolved count, your draft count, the thread filter, and ADO's advanced filters.
 - `PR thread filter` — resolved and closed threads collapse into small placeholders you can click to reveal.
 - `Visible PR checks` — every policy check shown directly on the Overview status card, failures first.
-- `PR UI improvements` — the Overview page restructured. Conversation becomes cards, reviewers merge into one list, the feed runs oldest first with the composer at the bottom, and the auto-complete and merge actions fold into the ⋮ menu.
-- `Diff totals` — whole-PR **−dels +adds** next to "n changed files".
+- `PR UI improvements` — the Overview page restructured. Conversation becomes GitHub-style boxes, reviewers merge into one list, the feed runs oldest first with the composer at the bottom, and the auto-complete and merge actions fold into the ⋮ menu.
+- `Diff totals` — whole-PR **+adds −dels** next to "n changed files".
 
 **Boards & work items**
 
 - `Layout for WI` — the work item form laid out like a GitHub issue, with one readable column and a compact details rail.
 - `Workitem state` — change a work item's state with a hotkey.
-- `Card comments` — 💬 comment counts on board cards.
-- `Board density` / `chrome density` — denser cards, lanes, and header chrome on a layered dark canvas.
+- `Card comments` — comment counts on board cards.
+- `Board density` / `chrome density` — denser cards, columns, and header chrome, with boards styled like GitHub Projects.
 - `Backlog & sprint cleanup` — compact toolbars, filtered-vs-total counts, and taskboard columns that actually fit.
 
 ### Hotkeys

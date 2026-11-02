@@ -2,7 +2,7 @@
 // @name        ado-unfuck
 // @namespace   https://github.com/nthomsencph/unfuck-ado
 // @version     __VERSION__
-// @description Unfuck the Azure DevOps web UI: batched draft review comments, a GitHub-style review flow, denser boards and PR views, keyboard nav, and fast work item state changes.
+// @description Unfuck the Azure DevOps web UI by making it look and work like GitHub: GitHub's colors, type and icons in dark and light, batched draft review comments, a GitHub-style review flow, denser boards and PR views, keyboard nav, and fast work item state changes.
 // @license     MIT
 // @homepageURL https://github.com/nthomsencph/unfuck-ado
 // @supportURL  https://github.com/nthomsencph/unfuck-ado/issues

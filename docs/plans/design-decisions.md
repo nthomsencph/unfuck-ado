@@ -343,3 +343,13 @@ Decisions made on the user's behalf while executing
   `gh-Label gh-Label--secondary`.
 - **Why:** this is GitHub's issue sidebar. KV rows keep their 32px
   min-height, which the teleport edit depends on.
+
+## D10a — Release held back: live verification not possible unattended
+- **Context:** the user authorised push + release "when the stage passes".
+  The pass requires live side-by-side checks; Violentmonkey in the user's
+  Firefox is running an installed copy (canvas still ADO's #202020), not the
+  tracked `dist/` build, and the Firefox add-on needs a manual
+  `about:debugging` reload for the read-only probes.
+- **Decision:** commit and tag locally (v0.53.0, v0.54.0, docs), do not push
+  or release until the live pass has run. Releasing would push an unverified
+  makeover to every installed copy.

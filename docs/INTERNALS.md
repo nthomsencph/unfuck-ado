@@ -10,34 +10,34 @@ matching entry here moves with it. The user-facing overview lives in the
 
 | Feature | What it does |
 |---|---|
-| `board-density` | Pure CSS: tighter headers and swimlanes on Kanban boards, the card-shell margin (12px gap below every stacked card), and the board card MATERIAL (moved here from chrome-density 2026-08-19): kanban `.boards-card` + sprint `.taskboard-card` (both `.wit-card`) get `--adofix-card` surface, soft shadow, ADO's 1px grey content frame removed, 3px state flag, 20px vertical padding; canvas behind the board, `--adofix-lane` columns. |
-| `chrome-density` | Pure CSS: compresses ADO's header chrome (title rows, filter bar) across hubs — ~58px reclaimed on a sprint taskboard. The top banner sits entirely on the canvas (`.region-header` AND its sibling `.region-header-menubar`, the top-right My Work/Marketplace/Help/avatar group, which natively paints its own #201f1e) with the site-wide search widget (`.expandable-search-header`) removed. Filter bars sit flat with the keyword box capped at 215px (natively it flex-grows across the whole bar) and the "Assigned to" / "Parent Work Item" filter items removed (aria-label prefix match, English-UI; an applied filter on a hidden item stays active — visible in the URL and status text). (The PR-Overview restructuring, work-item-form surfaces and board card material were carved out to `pr-overview`, `workitem-layout` and `board-density` on 2026-08-19 — this sheet is order-sensitive density chrome only.) |
-| `pr-overview` | Pure CSS, PR Overview restructuring (carved out of chrome-density 2026-08-19): conversation cards (status, Description, comment threads) get page-surface background, heavier shadow and `--adofix-radius` corners with chrome divider lines removed, while non-comment feed entries ("pushed n commits") and the Reviewers/Tags/Work items sidebar sit flat against the page (tag-picker input outline removed). Reviewers render as one merged list (required first, per-row "Required"/"Optional" subtitle tags) instead of two headed groups. The discussion feed runs oldest-first with the composer at the bottom, GitHub-style (Overview feed only — the Updates tab's feed is virtualized and cannot be safely mirrored). |
+| `board-density` | Pure CSS: tighter headers and swimlanes on Kanban boards, the card-shell margin (12px gap below every stacked card), and the board card MATERIAL (moved here from chrome-density 2026-08-19): kanban `.boards-card` + sprint `.taskboard-card` (both `.wit-card`) are GitHub Projects cards since stage 1 (2026-11-02) — flat `--bgColor-default` fill, 1px `--borderColor-default` border, 6px corners, no shadow — with ADO's inner 1px grey content frame removed, 3px state flag, 20px vertical padding; kanban columns are `--bgColor-muted` boxes with the same border and corners. The canvas behind them is the Primer bridge's (the canvas < lane < card layering is retired). |
+| `chrome-density` | Pure CSS: compresses ADO's header chrome (title rows, filter bar) across hubs — ~58px reclaimed on a sprint taskboard. The top banner loses its drop shadow and the site-wide search widget (`.expandable-search-header`). Page, banner, nav-rail and sticky-header canvas colors are no longer set here — the near-black overrides were removed in stage 1 and the Primer bridge colors them through ADO's own variables. Filter bars sit flat with the keyword box capped at 215px (natively it flex-grows across the whole bar) and the "Assigned to" / "Parent Work Item" filter items removed (aria-label prefix match, English-UI; an applied filter on a hidden item stays active — visible in the URL and status text). (The PR-Overview restructuring, work-item-form surfaces and board card material were carved out to `pr-overview`, `workitem-layout` and `board-density` on 2026-08-19 — this sheet is order-sensitive density chrome only.) |
+| `pr-overview` | Pure CSS, PR Overview restructuring (carved out of chrome-density 2026-08-19): conversation cards (status, Description, comment threads) get GitHub's Box look by CSS (D41: `--bgColor-default` fill, 1px default border, 6px corners, no shadow) with chrome divider lines removed; the nested checks/merge-commit boxes become `--bgColor-muted` wells and a file-anchored thread's path header becomes a muted Box-header, while non-comment feed entries ("pushed n commits") and the Reviewers/Tags/Work items sidebar sit flat against the page (tag-picker input outline removed). Reviewers render as one merged list (required first, per-row "Required"/"Optional" subtitle tags) instead of two headed groups. The discussion feed runs oldest-first with the composer at the bottom, GitHub-style (Overview feed only — the Updates tab's feed is virtualized and cannot be safely mirrored). |
 | `pr-keynav` | Keyboard navigation in the PR Files view (see hotkeys). |
-| `pr-thread-filter` | Hides resolved **and closed** threads (plus ADO's collapsed thread sites), leaving a placeholder per thread — click it to reveal that one. In the diff it is a compact 💬 chip; on the Overview feed it is a full-width "💬 Resolved comment thread — click to show" row sized to align with the timeline rail icon. Persisted via `GM_setValue`. Toggled from the `pr-comments` widget (its own toolbar button retired 2026-08-02). |
-| `workitem-layout` | Work item form restructured GitHub-issue-style (dialog and full page): one readable main column (Description + Discussion) and a 320px right rail, capped at 1250px and centered — header rows and the State/Area subheader join the same column (the 10px type-deco stripe is dropped; the type icon + eyebrow already carry it). ADO's body is already a 3-track CSS grid with exactly three children, so the restructure is pure CSS — regrid to `minmax(0,1fr) 320px`, stack `.work-item-form-right`'s two field columns vertically, reassign grid areas. GH idioms: discussion mirrored oldest-first with the composer last (the PR-Overview column-reverse trick — the comment list is flat, not virtualized), the Description expands to its content in view mode (ADO caps the editor at 460px with an inner scrollbar; editing keeps the cap), comment cards on the card material, and rail noise removed (Deployment group, Development zero-state hint box). Second pass: Follow button, comment-count link, History/Links tabs and per-section Maximize toggles removed; every rail property renders as a `key: value` row (the label natively stacks above the control); State/Reason/Area/Iteration/Tags live in an adofix-owned "Details" group at the top of the rail with Created by/Created fetched via REST (cached per id). The native subheader controls are NOT moved — React destroys reparented nodes on any tab re-mount without re-creating them (verified live; fields gone until reload) — they become zero-size stubs (not `display:none`) and clicking an adofix row **teleports** the stub to the row's rect (inline `position:fixed`, invisible, `pointer-events:none`) and clicks it, so ADO's own edit callout opens anchored at the row; stub styles restore on the next mousedown outside the control/callout. Third pass: the Development and Implementation ("System Info" on bugs) groups are removed and Planning is absorbed — its fields join the Details KV list (group matched by header text, English-UI; the native group becomes a stub). Teleports render VISIBLE (the live control replaces the row while editing — fields without a callout, e.g. Story Points, are typed into directly); stubs hide via `visibility: hidden`, never `opacity: 0`, because ancestor opacity renders even fixed-position descendants invisible while visibility is overridable per-descendant. Fourth pass: teleports anchor on the VALUE column with the control's own label hidden (`.adofix-wi-teleport`), so the row geometry never shifts; Classification absorbs like Planning; the "Details" list header is gone; the whole tab strip hides (display:none tabs still take `.click()`) with Attachments proxied as a 📎 toggle in the header command bar and the "Updated by …" line read live into an Updated KV row. Sixth pass: the comment-count link is back, compacted to ADO's own comment icon + the bare integer (`.wif-comment-count-link-text` trimmed each pass). Fifth pass: the command bar (Save/↻/↶/⋮/📎) overlays the FIRST header row next to the dialog's Fullscreen/Close (only the row's direct `.work-item-header-command-bar` child — the class appears twice, nested, and absoluting both collapses the outer to 4px; row 3 must NOT be positioned or it becomes the containing block); State is promoted out of its stub column to the header, left of the assignee (absolute against `.work-item-form-page`, top/left measured per pass from the assignee row's rect — fixed offsets drift when rows reflow — with a resize listener re-placing it); Effort absorbs into the KV list; the Description (text-matched — Repro Steps keeps its header) and Discussion section headers are gone (the 1px divider lives ON the header); comments sit flat with the card color moved onto the composer's text field; Related Work hides when it has no links (`.compact-links-list a`). The form's surface rules (shell/fields/editor to the canvas, composer text field as the card, the `--background-color` token override for the sanitizer) also live here since 2026-08-19 (carved out of chrome-density). |
-| `card-comments` | Comment counts on board cards (sprint taskboard + kanban, every `.wit-card` with a numeric id in `.font-weight-semibold.selectable-text`): a "💬 n" chip right-aligned on the id line, only when n > 0. Counts via REST `_apis/wit/workitems?ids=…&fields=System.CommentCount` (200-id batches), cached per session; failed chunks retry on a later settle, chips re-render after React re-mounts. |
-| `workitem-state` | Hotkey opens a state picker for the current work item; PATCHes via REST. |
+| `pr-thread-filter` | Hides resolved **and closed** threads (plus ADO's collapsed thread sites), leaving a placeholder per thread — click it to reveal that one. In the diff it is a compact secondary `gh-Label` with the comment-discussion octicon; on the Overview feed it is a full-width muted "Resolved comment thread — click to show" row sized to align with the timeline rail icon. Persisted via `GM_setValue`. Toggled from the `pr-comments` widget (its own toolbar button retired 2026-08-02). |
+| `workitem-layout` | Work item form restructured GitHub-issue-style (dialog and full page): one readable main column (Description + Discussion) and a 320px right rail, capped at 1250px and centered — header rows and the State/Area subheader join the same column (the 10px type-deco stripe is dropped; the type icon + eyebrow already carry it). ADO's body is already a 3-track CSS grid with exactly three children, so the restructure is pure CSS — regrid to `minmax(0,1fr) 320px`, stack `.work-item-form-right`'s two field columns vertically, reassign grid areas. GH idioms: discussion mirrored oldest-first with the composer last (the PR-Overview column-reverse trick — the comment list is flat, not virtualized), the Description expands to its content in view mode (ADO caps the editor at 460px with an inner scrollbar; editing keeps the cap), comments as GitHub comment boxes, and rail noise removed (Deployment group, Development zero-state hint box). Second pass: Follow button, comment-count link, History/Links tabs and per-section Maximize toggles removed; every rail property renders as a `key: value` row (the label natively stacks above the control); State/Reason/Area/Iteration/Tags live in an adofix-owned "Details" group at the top of the rail with Created by/Created fetched via REST (cached per id). The native subheader controls are NOT moved — React destroys reparented nodes on any tab re-mount without re-creating them (verified live; fields gone until reload) — they become zero-size stubs (not `display:none`) and clicking an adofix row **teleports** the stub to the row's rect (inline `position:fixed`, invisible, `pointer-events:none`) and clicks it, so ADO's own edit callout opens anchored at the row; stub styles restore on the next mousedown outside the control/callout. Third pass: the Development and Implementation ("System Info" on bugs) groups are removed and Planning is absorbed — its fields join the Details KV list (group matched by header text, English-UI; the native group becomes a stub). Teleports render VISIBLE (the live control replaces the row while editing — fields without a callout, e.g. Story Points, are typed into directly); stubs hide via `visibility: hidden`, never `opacity: 0`, because ancestor opacity renders even fixed-position descendants invisible while visibility is overridable per-descendant. Fourth pass: teleports anchor on the VALUE column with the control's own label hidden (`.adofix-wi-teleport`), so the row geometry never shifts; Classification absorbs like Planning; the "Details" list header is gone; the whole tab strip hides (display:none tabs still take `.click()`) with Attachments proxied as a paperclip-octicon toggle (`gh-btn-invisible` + `gh-Counter`) in the header command bar and the "Updated by …" line read live into an Updated KV row. Sixth pass: the comment-count link is back, compacted to ADO's own comment icon + the bare integer (`.wif-comment-count-link-text` trimmed each pass). Fifth pass: the command bar (Save/↻/↶/⋮/paperclip) overlays the FIRST header row next to the dialog's Fullscreen/Close (only the row's direct `.work-item-header-command-bar` child — the class appears twice, nested, and absoluting both collapses the outer to 4px; row 3 must NOT be positioned or it becomes the containing block); State is promoted out of its stub column to the header, left of the assignee (absolute against `.work-item-form-page`, top/left measured per pass from the assignee row's rect — fixed offsets drift when rows reflow — with a resize listener re-placing it); Effort absorbs into the KV list; the Description (text-matched — Repro Steps keeps its header) and Discussion section headers are gone (the 1px divider lives ON the header); comments are bordered 6px boxes on the canvas (gh-Box look by CSS, 16px timeline gap) and the composer's text field is the bordered box, not the composer; Related Work hides when it has no links (`.compact-links-list a`). Stage 1 (2026-11-02): GitHub's issue header (32px regular title, 1px rule below the header block), rail groups as GitHub sidebar sections (12px semibold muted headings, muted rule + 16px between groups; KV rows keep their 32px min-height for the teleport), tags as `gh-Label--secondary`, and Related Work's add-link `+` drawn as the `plus` octicon through a CSS mask (`octiconMask` — the button is React-owned, so no `<svg>` child). The form's surface rules (shell/fields/editor to `--bgColor-default`, composer text field boxed, the `--background-color` token override for the sanitizer) also live here since 2026-08-19 (carved out of chrome-density). |
+| `card-comments` | Comment counts on board cards (sprint taskboard + kanban, every `.wit-card` with a numeric id in `.font-weight-semibold.selectable-text`): a muted comment-octicon + `gh-Counter` chip (GitHub Projects' card indicator) right-aligned on the id line, only when n > 0. Counts via REST `_apis/wit/workitems?ids=…&fields=System.CommentCount` (200-id batches), cached per session; failed chunks retry on a later settle, chips re-render after React re-mounts. |
+| `workitem-state` | Hotkey opens a state picker (a `gh-menu`) for the current work item; PATCHes via REST. Each state carries a `dot-fill` octicon colored by ADO's `stateCategory` in GitHub Projects' status colors (Proposed success, InProgress attention, Resolved accent, Completed done, else muted); the current state gets a leading check and `menuitemradio` + `aria-checked`. |
 
 ## Features — pull requests
 
 | Feature | What it does |
 |---|---|
-| `pr-comments` | One comment-icon **n/m** button (ADO's fluent `ms-Icon--Comment` glyph) in the Files toolbar consolidating four scattered comment controls: the header's "n/m comments resolved" text (hidden, count shown on the button), the native **Filter** button (collapsed by CSS to an invisible stub; the menu's "Advanced filters…" clicks it by proxy — its callout anchors to the stub's position), pr-thread-filter's Hide-resolved toggle, and pr-drafts' panel access ("Drafts · N"). While local drafts exist the button label appends "· k" so drafts stay visible without opening the menu. |
+| `pr-comments` | One small `gh-btn` **n/m** button (comment octicon) in the Files toolbar consolidating four scattered comment controls: the header's "n/m comments resolved" text (hidden, count shown on the button), the native **Filter** button (collapsed by CSS to an invisible stub; the menu's "Advanced filters…" clicks it by proxy — its callout anchors to the stub's position), pr-thread-filter's Hide-resolved toggle, and pr-drafts' panel access ("Drafts · N"). While local drafts exist the button shows their count in a `gh-Counter` so drafts stay visible without opening the menu. The menu itself is core's popover (`gh-menu`). |
 | `pr-actions` | Folds the header's "Set auto-complete" split button into the ⋮ More-actions menu. The split button collapses to an invisible stub (kept for proxy clicks and callout anchoring); opening ⋮ injects two native-cloned rows at the top: the button's current primary action (label read live — it tracks state, e.g. "Cancel auto-complete") and "More merge actions…", which opens ADO's own chevron menu (Complete / Mark as draft / Abandon). Bolt's single-callout policy closes the ⋮ menu automatically when the chevron menu opens. |
-| `pr-checks` | All checks inline in the Overview status card. ADO's checks box shows only Build policies plus a "View n checks" link — failed optional checks ("Comments must be resolved", "Work items must be linked") are invisible until the panel opens. Fetches `_apis/policy/evaluations` (project GUID → `vstfs:///CodeReview/CodeReviewId/{guid}/{prId}` artifact) and renders the hidden evaluations as native-looking rows (ADO's own bolt-status icon geometry/palette) below the build rows, hiding the then-redundant "View n checks" link (Re-queue lives on the build row); failures sort first, each row tagged "· Required/Optional". Excludes policy types the card already shows (Build, reviewer counts, merge strategy). One fetch per PR per page load, success and failure both cached until reload. |
-| `pr-reviewed` | Mirrors the file tree's **"Mark as reviewed"** checkbox into every stacked per-file header as a labeled "Reviewed" checkbox (revealed on header hover; stays visible once checked, and always visible while a pr-review-flow review is on). Checking it collapses the file's card via ADO's own `.bolt-card-expand-button`; unchecking reopens it. Display state comes from the server's visit data provider (`ms.vss-code-web.pr-detail-visit-data-provider` — its `viewedState` keys are `1@HASH@/path`, and the 8-hex hash could not be reproduced client-side, so writes never forge keys). Toggling clicks ADO's real tree checkbox; when the row is virtualized away, a one-time sweep of the tree maps every path to its flat row index, the tree scrolls there, clicks, and scrolls back. |
-| `pr-diff-totals` | Whole-PR **`-dels +adds`** next to "n changed files" in the Files toolbar — the number ADO computes per file but never sums. Data: iterations → changes (`compareTo=0`) → `filediffs` REST (batched **10 per call, a server cap**; 4 concurrent workers; deletes send `originalPath` only — they have no `item.path`). One fetch per PR per page load, success and failure both cached until reload. |
+| `pr-checks` | All checks inline in the Overview status card. ADO's checks box shows only Build policies plus a "View n checks" link — failed optional checks ("Comments must be resolved", "Work items must be linked") are invisible until the panel opens. Fetches `_apis/policy/evaluations` (project GUID → `vstfs:///CodeReview/CodeReviewId/{guid}/{prId}` artifact) and renders the hidden evaluations as rows with GitHub's check octicons below the build rows (approved `check-circle` success, rejected `x-circle` danger, queued/running `dot-fill` attention, else `dot-fill` muted — colored via `data-tone` on `.adofix-check-row`; since stage 1 they no longer mimic ADO's bolt-status drawings, so they differ from the native build rows above until those are themed), hiding the then-redundant "View n checks" link (Re-queue lives on the build row); failures sort first, each row tagged "· Required/Optional". Excludes policy types the card already shows (Build, reviewer counts, merge strategy). One fetch per PR per page load, success and failure both cached until reload. |
+| `pr-reviewed` | Mirrors the file tree's **"Mark as reviewed"** checkbox into every stacked per-file header as GitHub's "Viewed"-style toggle: a `gh-btn-sm` labeled "Reviewed" holding a 16px checkbox drawn with `--control-checked-*` tokens and a check octicon, `--bgColor-accent-muted` when checked (revealed on header hover; stays visible once checked, and always visible while a pr-review-flow review is on). Checking it collapses the file's card via ADO's own `.bolt-card-expand-button`; unchecking reopens it. Display state comes from the server's visit data provider (`ms.vss-code-web.pr-detail-visit-data-provider` — its `viewedState` keys are `1@HASH@/path`, and the 8-hex hash could not be reproduced client-side, so writes never forge keys). Toggling clicks ADO's real tree checkbox; when the row is virtualized away, a one-time sweep of the tree maps every path to its flat row index, the tree scrolls there, clicks, and scrolls back. |
+| `pr-diff-totals` | Whole-PR diffstat next to "n changed files" in the Files toolbar — the number ADO computes per file but never sums. GitHub order and glyphs since stage 1: green `+adds` before red `−dels` (U+2212; flex `order` — the DOM keeps removed-then-added because `render()` indexes the children), semibold. Data: iterations → changes (`compareTo=0`) → `filediffs` REST (batched **10 per call, a server cap**; 4 concurrent workers; deletes send `originalPath` only — they have no `item.path`). One fetch per PR per page load, success and failure both cached until reload. |
 | `backlog-toolbar` | Backlogs page header cleanup: "New Work Item" removed; "View as Board" and "Column Options" become icon-only buttons in the tab row, inline with View options / Filter (icon-proxy buttons that click the stubbed natives by id at click time — the natives stay mounted because bolt's commandbar **removes** `display:none` commands from the DOM). Scoped to `_backlogs` routes via an `<html>` attribute since the same command ids exist on other Boards-hub pages. The Backlog/Analytics tab toggle is removed outright (Analytics unused), and the whole icon row lifts onto the title row inline with the ⋮ menu (PR-Files-toolbar-merge pattern: click-through container, -64px, ≥900px only — below that the title would collide with the icons and the row stays put). The title row's own commandbar natively parks the ⋮ 14px below the title's centerline (`align-items: flex-end` in a 50px row); it's pinned to the top so the ⋮, the lifted icons and the title text all share one centerline. The filter bar (`.page-content-top` mount, like the sprint Backlog tab) becomes a compact right-aligned row tight under the header. |
 | `backlog-grid` | Backlogs hierarchy grid fits the viewport: ADO's fixed-layout table carries absolute px `<col>` widths (h-scroll when they overflow; a `width:100%` filler col eats the slack when they underflow, so columns never grow). Rewrites col widths — Title takes all slack, data columns shrink proportionally when space is short (Title floors at 280px, data at half natural; beyond that scroll returns). Structural cols (≤80px or rem-width) untouched; external width changes (column drag, Column Options) are adopted as new naturals. Also flattens the grid pane (`.bolt-table-card` background + depth-8 shadow dropped). DOM-gated on `.backlogs-view table.backlog-tree`, so the sprint hub's Backlog tab gets the same treatment. |
-| `backlog-status` | Orientation text in the Backlogs title row, after the team name: "Showing 176 of 255 items in area \"AI Platform\" · State: Active, New +2" (the area folds into the sentence; other filters trail as segments; primary text color, centered on the row). Count from the treegrid's `aria-rowcount` (the grid is virtualized — DOM rows can't be counted; the count includes the header row, so items = count − 1), filters parsed from the query string (`System.*` params plus `text` for the keyword box; path values shortened to their leaf). Filtered views read "Showing n of m items": m is captured from the view itself whenever it renders unfiltered (aria-rowcount, stored per org/project/team/level via `GM_setValue`) — REST was measured and rejected (Σ backlog-level endpoints gave 197 where the unfiltered view holds 255+: the view includes Done items and off-area parents the endpoints exclude). m lags until the next unfiltered visit; a stale m < n is suppressed. |
+| `backlog-status` | Orientation text in the Backlogs title row, after the team name: "Showing 176 of 255 items in area \"AI Platform\" · State: Active, New +2" (the area folds into the sentence; other filters trail as segments; `--fgColor-muted` at 14px since stage 1 — GitHub's meta-beside-title, D63 provisional — centered on the row). Count from the treegrid's `aria-rowcount` (the grid is virtualized — DOM rows can't be counted; the count includes the header row, so items = count − 1), filters parsed from the query string (`System.*` params plus `text` for the keyword box; path values shortened to their leaf). Filtered views read "Showing n of m items": m is captured from the view itself whenever it renders unfiltered (aria-rowcount, stored per org/project/team/level via `GM_setValue`) — REST was measured and rejected (Σ backlog-level endpoints gave 197 where the unfiltered view holds 255+: the view includes Done items and off-area parents the endpoints exclude). m lags until the next unfiltered visit; a stale m < n is suppressed. |
 | `sprint-header` | Sprints hub header compressed to two rows (the Backlogs treatment transplanted): "New Work Item" and "Create Query" removed, "Column Options" proxied as an icon next to Filter (native ids differ per tab — `#__bolt-taskboard-*` on Taskboard, plain `#__bolt-*` on the sprint Backlog tab), Analytics and Capacity tabs hidden (the capacity page stays reachable by URL and keeps its Save/Revert row), icon commandbar lifted onto the title row (Taskboard/Backlog only — Capacity keeps Add user/Save/Revert there), sprint/person pickers right-aligned on the title row left of the icons (Capacity: into the tab row's middle instead — 300px left padding clears the tabs), burndown mini-widget and dates block dropped with the date range + days-remaining mirrored as title-row status text, and the inline filter cluster right-aligned in the shared tab row (Taskboard and Backlog tabs; the Backlog tab's bar mounts in `.page-content-top`, not the taskboard's `padding-vertical-16` wrapper, so it collapses -38px against the taskboard's -54). The status text leads with the backlog-status count/filter sentence ("Showing 89 of 120 items in area … · State: … · 1 August - 31 August · 10 work days remaining"): Taskboard counts `.taskboard-card` (NOT virtualized, parent cards excluded), the Backlog tab uses the grid's `aria-rowcount`; the unfiltered total is captured per decoded path (tab+team+iteration) in GM storage, transient zero-card loading states never recorded; Capacity shows dates only. Per-tab scoping via `data-adofix-sprints="<tab>"` on `<html>`; ≥900px for the lifts. |
-| `taskboard-columns` | Taskboard column chooser + multi-card rows (ADO offers neither). An adofix-owned icon button (accent dot when filtering) next to Filter opens a checklist of the board's state columns — unchecked columns disappear and the rest share the freed width; plus a "2-up cards" toggle that lets cards pack 2-up (or more) wherever a column is wide enough (single-file cards cap at 240px), card counts appended to every column header ("New (7)", live-updating), 8px vertical cell padding, the assignment column capped at 180px with wrapping names, assignee names centered on the chevron line (ADO's `margin-top-8` bottom-parks them), and collapsed assignee rows (`td.taskboard-collapsed-row`, natively ADO-grey) sitting flat on the canvas. Preferences persist per org/project/team via `GM_setValue`, stored by state NAME so board reconfiguration can't hide the wrong column; the last visible column can't be hidden. Hiding is generated per-nth-child CSS; load-bearing details in the selector ledger. |
-| `pr-drafts` | Batched review comments riding **ADO's own comment composer**. Each stacked per-file header also gets a comment-icon button (fluent `ms-Icon--CommentAdd`) for whole-file comments (natively buried in the file tree's ⋯ menu): it drives ADO's native chain — View → single-file view → tree menu → file-level composer — and the draft capture works there too, anchoring the thread to the file with no line positions: open a comment as usual (the native "Add comment" affordance on a diff line) and a purple **"Comment as draft"** button sits next to Cancel/Comment — it captures the text locally and closes the composer without posting, so ADO's markdown toolbar, @mentions and suggestions all work while drafting. For a line-range draft, select the lines in the diff first, then open the composer on a line inside the selection (Monaco: drag across lines, then open). Works in both diff renderers: the stacked "All changes" view (inline draft cards, edit-in-place) and the single-file Monaco view (purple gutter numbers on drafted lines, plus real Monaco **view-zone cards** below each drafted line — the diff editor's instance is fished out of React internals in `features/pr/monaco.ts`, and zones displace later lines like native threads, auto-spacing the original pane). Each draft also gets a lookalike child row in the file tree under its file (cloned from ADO's native thread rows; clicking it runs Show) — `TREE_SELECTORS.row` excludes these so the shared windowed-path math never sees them. Drafts persist locally per PR (`GM_setValue`); the toolbar "Drafts: N" button opens a panel with show/edit/delete (**Show** navigates to the draft — scrolls the stacked view to its card, or SPA-switches to the file via a virtualized-tree sweep-click and centers the line through the Monaco instance) and a two-stage "Submit all" that posts via the threads REST API — partial failure keeps failed drafts local, progress persists after every attempt, nothing double-posts. Removed-line drafts only in the stacked view. |
+| `taskboard-columns` | Taskboard column chooser + multi-card rows (ADO offers neither). An adofix-owned icon button (`columns` octicon, `gh-btn-invisible`; accent dot when filtering) next to Filter opens a checklist of the board's state columns — unchecked columns disappear and the rest share the freed width; plus a "2-up cards" toggle that lets cards pack 2-up (or more) wherever a column is wide enough (single-file cards cap at 240px), card counts appended to every column header as a `gh-Counter` (live-updating; `headerName()` strips it only as a suffix), state cells drawn as GitHub Projects column boxes (`--bgColor-muted`, 1px inset-shadow border, 6px corners inside 4px transparent gutters on all four sides — D61, provisional), 8px vertical cell padding, the assignment column capped at 180px with wrapping names, assignee names centered on the chevron line (ADO's `margin-top-8` bottom-parks them), and collapsed assignee rows (`td.taskboard-collapsed-row`, natively ADO-grey) sitting flat on the canvas. Preferences persist per org/project/team via `GM_setValue`, stored by state NAME so board reconfiguration can't hide the wrong column; the last visible column can't be hidden. Hiding is generated per-nth-child CSS; load-bearing details in the selector ledger. |
+| `pr-drafts` | Batched review comments riding **ADO's own comment composer**. Each stacked per-file header also gets an invisible small comment-octicon button for whole-file comments (natively buried in the file tree's ⋯ menu): it drives ADO's native chain — View → single-file view → tree menu → file-level composer — and the draft capture works there too, anchoring the thread to the file with no line positions: open a comment as usual (the native "Add comment" affordance on a diff line) and a green `gh-btn-primary` **"Comment as draft"** button (GitHub's "Start a review") sits next to Cancel/Comment — it captures the text locally and closes the composer without posting, so ADO's markdown toolbar, @mentions and suggestions all work while drafting. For a line-range draft, select the lines in the diff first, then open the composer on a line inside the selection (Monaco: drag across lines, then open). Works in both diff renderers: the stacked "All changes" view (inline draft cards, edit-in-place) and the single-file Monaco view (`--fgColor-attention` gutter numbers with a dot on drafted lines, plus real Monaco **view-zone cards** below each drafted line — the diff editor's instance is fished out of React internals in `features/pr/monaco.ts`, and zones displace later lines like native threads, auto-spacing the original pane). Each draft also gets a lookalike child row in the file tree under its file (cloned from ADO's native thread rows; clicking it runs Show) — `TREE_SELECTORS.row` excludes these so the shared windowed-path math never sees them. Drafts look like GitHub's pending review comments: flat `gh-Box` cards with a `gh-Label--attention` "Draft" chip, and every draft marker (tree icon, gutter) in `--fgColor-attention`. Drafts persist locally per PR (`GM_setValue`); the pr-comments widget's Drafts entry opens a panel styled as GitHub's "Finish your review" overlay (`gh-Counter` count, invisible `x` close, right-aligned `gh-btn-primary` submit) with show/edit/delete (**Show** navigates to the draft — scrolls the stacked view to its card, or SPA-switches to the file via a virtualized-tree sweep-click and centers the line through the Monaco instance) and a two-stage "Submit all" that posts via the threads REST API — partial failure keeps failed drafts local, progress persists after every attempt, nothing double-posts. Removed-line drafts only in the stacked view. |
 
-| `pr-review-flow` | GitHub-style review flow riding ADO's built-in per-file reviewed state. **Reviewer-gated**: the UI renders only when the signed-in user (via `_apis/connectionData`, cached per page) matches a non-container entry in the PR's `reviewers[]` (group/team membership alone does not match — known limit). After a vote the button turns quiet with the vote label (10 "Approved ✓", 5 "Approved · suggestions", -5 "Waiting for author", -10 "Rejected ✕"); the latest iteration id is stored per PR when a vote (change) is first seen, and when newer iterations land the button flips to accent **"Re-review · k new"** (k = files from `iterations/{latest}/changes?compareTo={votedIteration}`) — clicking it runs the review loop over just those files ("j/k re-reviewed" counter, done-list persisted per PR; finishing or re-voting re-baselines). The snapshot (reviewers + latest iteration) refetches on settle at most every 30s, plus a forced refetch ~2.5s after any native vote-button click. A **Review** button in the PR header (before Approve, all tabs) starts a per-PR review: lands on the Files tab and jumps to the first unreviewed file; its label tracks state (Review → "Reviewing · n/m" → "Reviewed ✓"). While reviewing, the Files toolbar shows an "n/m files reviewed" counter (click → next unreviewed; ADO's native `.pr-header-viewed-files` text is hidden meanwhile) and, in the single-file view, a "✓ Reviewed · next" action that clicks ADO's real tree checkbox for the open file and advances. Tree order and navigation come from the shared virtualized-tree index (`pr/reviewed-tree`); n comes from the shared viewed-state slot (`pr/reviewed-data`); m is parsed from the toolbar's "n changed files" text and remembered per PR. |
+| `pr-review-flow` | GitHub-style review flow riding ADO's built-in per-file reviewed state. **Reviewer-gated**: the UI renders only when the signed-in user (via `_apis/connectionData`, cached per page) matches a non-container entry in the PR's `reviewers[]` (group/team membership alone does not match — known limit). The button is GitHub's green `gh-btn-primary` while there is something to do and a default `gh-btn` once done or voted (no caret — it opens no menu); ✓/✕ in its labels render as check/x octicons (`setIconLabel`). After a vote the button turns quiet with the vote label (10 "Approved ✓", 5 "Approved · suggestions", -5 "Waiting for author", -10 "Rejected ✕"); the latest iteration id is stored per PR when a vote (change) is first seen, and when newer iterations land the button flips back to primary **"Re-review · k new"** (k = files from `iterations/{latest}/changes?compareTo={votedIteration}`) — clicking it runs the review loop over just those files ("j/k re-reviewed" counter, done-list persisted per PR; finishing or re-voting re-baselines). The snapshot (reviewers + latest iteration) refetches on settle at most every 30s, plus a forced refetch ~2.5s after any native vote-button click. A **Review** button in the PR header (before Approve, all tabs) starts a per-PR review: lands on the Files tab and jumps to the first unreviewed file; its label tracks state (Review → "Reviewing · n/m" → "Reviewed ✓"). While reviewing, the Files toolbar shows an "n/m files reviewed" counter (click → next unreviewed; ADO's native `.pr-header-viewed-files` text is hidden meanwhile) and, in the single-file view, a "✓ Reviewed · next" action that clicks ADO's real tree checkbox for the open file and advances. Tree order and navigation come from the shared virtualized-tree index (`pr/reviewed-tree`); n comes from the shared viewed-state slot (`pr/reviewed-data`); m is parsed from the toolbar's "n changed files" text and remembered per PR. |
 
-| `pr-list` | Pure CSS restyle of the PR list page (`…/_git/<repo>/pullrequests`), GitHub-flavored: the list card gets the adofix card recipe (`--adofix-card`, radius, heavy shadow — also the Mine tab's two section cards), the filter bar sits flat, row hairlines soften, rows get a hover tint, the new-activity edge turns accent, the 32px author coin shrinks to 20px centered on the title line, and the filled repo-tag pills go outline-style (the state pills — Draft/Declined/Required — are natively outlined with semantic colors and stay untouched). The updated column mutes with the "n new push/comments" notice line popping in accent. Selectors are list-page-only (`.repos-pr-list`, `.repos-pr-section-card`, `.repos-pr-listing-filterbar`), so the sheet is inert on PR detail routes. A `nodeValue`-only text sweep (list routes: `route.id === null`) rewrites each row's meta line "{Display Name} request !{id} into {branch}" → "!{id} · {FirstName} · into {branch}" — the meta span is discrete text nodes (verified live 2026-08-20), unknown shapes (localized UI, ADO update) are left alone, and the registry's settle re-apply repairs React re-renders. Header consolidated to ONE bar (tabs left; keyword + filter items right-packed; native filter toggle; New PR button) — the title text hides (breadcrumb carries it), and the tab bar + filter wrapper lift onto the title row as click-through overlays (pointer-events none on containers, auto on interactive children; z-index 4 out-stacks the header's flex-item z-index 3; the filter lift is ≥1400px — below that it stays a second row). The **Mine view is retired**: its tab hides and Mine/bare-URL landings auto-click the Active tab (`#__bolt-tab-active`; bolt tab ids are stable). Because the header rules target generic bolt chrome, they're gated on a `data-adofix-prlist` `<html>` attribute and the feature registers areas `*` so the attribute clears on every navigation (backlog-toolbar precedent). The Mine view's replacement is **"mine" tinting**: rows the user authored get an accent wash (10%, reviewer-assigned 5%; hover variants keep feedback) via `data-adofix-mine` row tags — identity from `pr/reviewer-api`'s connectionData slot, per-PR `createdBy`/`reviewers[]` from `pullrequests?searchCriteria.status=active` (`pr/list-api`, individual undeclined reviewer entries only), one fetch per repo per page load with success and failure both cached until reload (pr-checks precedent); the active-only fetch means Completed/Abandoned rows never match. |
+| `pr-list` | Pure CSS restyle of the PR list page (`…/_git/<repo>/pullrequests`), GitHub-flavored: the list card is GitHub's PR-list Box by CSS (D41: `--bgColor-default`, 1px default border, 6px corners, no shadow — also the Mine tab's two section cards), the filter bar sits flat, row hairlines are `--borderColor-muted` Box-row separators, rows hover `--bgColor-muted`, the new-activity edge is `--borderColor-accent-emphasis`, the 32px author coin shrinks to 20px centered on the title line, and every `.bolt-pill` takes `gh-Label` geometry (20px, full radius, 12px medium) — the filled repo-tag pills also go default-outline, the natively outlined state pills (Draft/Declined/Required) keep ADO's semantic colors (bridge-mapped). The meta line and updated column are `--fgColor-muted`, with the "n new push/comments" notice line in `--fgColor-accent`. Selectors are list-page-only (`.repos-pr-list`, `.repos-pr-section-card`, `.repos-pr-listing-filterbar`), so the sheet is inert on PR detail routes. A `nodeValue`-only text sweep (list routes: `route.id === null`) rewrites each row's meta line "{Display Name} request !{id} into {branch}" → "!{id} · {FirstName} · into {branch}" — the meta span is discrete text nodes (verified live 2026-08-20), unknown shapes (localized UI, ADO update) are left alone, and the registry's settle re-apply repairs React re-renders. Header consolidated to ONE bar (tabs left; keyword + filter items right-packed; native filter toggle; New PR button) — the title text hides (breadcrumb carries it), and the tab bar + filter wrapper lift onto the title row as click-through overlays (pointer-events none on containers, auto on interactive children; z-index 4 out-stacks the header's flex-item z-index 3; the filter lift is ≥1400px — below that it stays a second row). The **Mine view is retired**: its tab hides and Mine/bare-URL landings auto-click the Active tab (`#__bolt-tab-active`; bolt tab ids are stable). Because the header rules target generic bolt chrome, they're gated on a `data-adofix-prlist` `<html>` attribute and the feature registers areas `*` so the attribute clears on every navigation (backlog-toolbar precedent). The Mine view's replacement was an accent wash on authored/reviewing rows; stage 1 retired the wash (GitHub's list has no equivalent) but kept the **"mine" tagging** as the hook for a stage-3 GitHub-style signal (D8/D40, provisional): rows still get `data-adofix-mine="author"|"reviewer"`, which nothing styles now — identity from `pr/reviewer-api`'s connectionData slot, per-PR `createdBy`/`reviewers[]` from `pullrequests?searchCriteria.status=active` (`pr/list-api`, individual undeclined reviewer entries only), one fetch per repo per page load with success and failure both cached until reload (pr-checks precedent); the active-only fetch means Completed/Abandoned rows never match. |
 
 ### Hotkeys
 
@@ -305,6 +305,56 @@ throws). Key live findings baked into the code:
   bar keyword box is `.vss-FilterBar--item-keyword-container` and natively
   flex-grows across the whole bar (~867px on the sprints taskboard).
 
+- **GitHub makeover stage 1 — NOT yet verified live (stage 1, 2026-11-02).**
+  Live probes became unavailable mid-run (design-decisions D10a), so
+  everything below was written from code, `azure-devops-ui` sources and the
+  earlier ledger entries. Re-check in both ADO themes before trusting it:
+  - Theme signal (D3): `body.ms-vss-web-vsts-theme-dark` was observed in
+    the dark theme only; the light and high-contrast class names
+    (`…-theme-light`, `…-theme-hc-dark`/`-hc-light`) are inferred. No
+    theme class at all → luminance of ADO's own body background.
+  - Bridge variable list (D4): the 84 variables `azure-devops-ui@2.281.0`'s
+    CSS consumes, set on `html body` with `!important` (D5). ADO's own
+    non-bolt bundles may read more; check with a live dump. The
+    `--palette-*` formulas (D12) need the side-by-side look, especially
+    `--palette-black-alpha-*` in dark (ADO's dialog scrim uses
+    black-alpha-20, now a light veil).
+  - Canvas takeover: the explicit canvas rules on `.bolt-page`,
+    `.region-header`, `.region-header-menubar`, `.project-header`, the
+    sticky `th`s on taskboard/backlog grids, `.repos-pr-details-page`,
+    `.repos-changes-explorer-splitter`, `.repos-pr-details-page-tabbar`,
+    `.project-navigation`, `.kanban-board` and
+    `.kanban-board-column-header-container` were deleted — these now rely
+    on the bridge reaching them through ADO's variables. Any that paint a
+    hard-coded grey need a selector fallback in the bridge.
+  - Font override (D14): icon-font exemption by `[class*="icon" i]`
+    (`.fabric-icon`, `.ms-Icon--*`, `.bowtie-icon`), `.monospaced-*` and
+    `.monaco-editor`; confirm no glyph renders as a letter.
+  - PR list (D42): `.repos-pr-list .bolt-pill` gets gh-Label geometry on
+    every pill type (inner `.bolt-pill-content` padding unchecked); meta
+    line color via `.repos-pr-list a[href*="/pullrequest/"] .secondary-text.body-s`.
+  - PR overview (D43): `.comment-file-header` as a Box-header assumes it is
+    the card's first child (top-corner radius); `.status-details-container`
+    as muted wells. Plain comment cards have no verified header-row
+    selector yet, so they get no Box-header.
+  - Work item form (D65/D66): title `.work-item-form-header > :nth-child(2) input`
+    at 32px (a fixed-height bolt textfield may clip it); rail sections
+    `.work-item-form-right .work-item-form-group` and
+    `.work-item-form-collapsible-header`; comment boxes on
+    `.comment-item.displayed-comment` (padding unchecked); composer border on
+    `.discussion-new-comment .markdown-editor`.
+  - Boards (D61): kanban `.kanban-board-column` border + radius; taskboard
+    cells boxed on all four sides — `border-radius` is ignored if the table
+    collapses borders, and each parent row now reads as its own set of
+    column boxes (+8px per row).
+  - Card comments (D62): chip `top` 22px → 20px, centering the 20px
+    Counter on the id line.
+  - adofix buttons (D47/D26): toolbar buttons are `gh-btn` (32px square
+    icon buttons; Files-toolbar ones `gh-btn-sm`, 4px shorter than ADO's
+    32px controls); `makeCommandProxy`'s cloned ADO font icons lose bolt's
+    icon sizing rules. "Comment as draft" (green) sits next to ADO's blue
+    Comment button (D21).
+
 Remaining unverified (inert if wrong): swimlane header rules in `density.css`
 (`grep -rn "TODO(selector)" src/`). Footer-text status fallback assumes an
 English ADO UI.
@@ -314,15 +364,159 @@ After an ADO UI update breaks something: re-verify the constants in
 preferring `aria-label` / `role` / `data-*` / semantic class names — never
 generated class hashes — and update the date in the comment.
 
+## Primer foundation
+
+`src/core/primer/` makes ADO look like GitHub: GitHub's (Primer's) tokens,
+an ADO → Primer variable bridge, GitHub font families, `gh-` component
+classes and Octicons. Always on and owned by core, not a toggleable
+feature. Stage 1 of the GitHub makeover (spec
+`docs/specs/2026-11-02-github-foundation-design.md`, decisions in
+`docs/plans/design-decisions.md`). It replaced the old look: the `ACCENT`
+purple, the `--adofix-bg/-lane/-card/-radius/-ink` tokens, the `#141414`
+canvas with lane/card layering, and the heavy-shadow cards are all gone.
+Layout of ADO's own pages does not change in this stage.
+
+**Tokens are build-time.** `@primer/primitives` (devDependency, pinned
+exact) is read by `build.mjs`, which bundles `build-css.ts` on the fly and
+serves the result as text modules `virtual:primer/tokens` and
+`virtual:primer/bridge` (D10). Nothing loads at runtime. The size,
+typography and base-typography files ship whole, comments stripped
+(`viewport.css` is skipped: `@custom-media` only). The dark and light theme
+files are ~240 KB, as big as the whole script, so `prune.ts` cuts them to
+the custom properties `src/**` actually references (`var(--name)`, tests
+excluded) plus everything those alias in turn (Primer tokens chain:
+`--focus-outlineColor` → `--focus-outline-color` → a hex). Only each theme
+file's first rule is kept; the `@media (prefers-color-scheme)` copy for
+`data-color-mode="auto"` is dead weight because we always write an explicit
+mode. A referenced name with a Primer head (`fgColor`, `bgColor`, `text`,
+`focus`, … list in `prune.ts`) that Primer doesn't define fails the build —
+an undefined `var()` silently falls back to the property's initial value.
+The bridge's own ADO variables (`--text-primary-color`,
+`--focus-border-color`) are exempt (D11). Token names are Primer's own,
+unprefixed, so CSS copied from GitHub works as-is.
+
+**Theme sync** (`theme.ts`). GitHub Dark Default when ADO is dark, GitHub
+Light when it is light. Writes `data-color-mode="dark|light"`,
+`data-dark-theme="dark"`, `data-light-theme="light"` on `<html>` (what
+Primer's theme selectors key off) and `data-adofix-bridge` unless ADO is in
+high contrast. Runs at boot and on every settle, writing only changed
+attributes, so an ADO theme switch follows without a reload. Signal: ADO's
+body theme class (`ms-vss-web-vsts-theme-dark`; `/theme-(hc-)?dark/` →
+dark, `/theme-hc/` → high contrast — only the dark name is observed, D3).
+Without a theme class it falls back to the WCAG luminance of ADO's OWN body
+background (< 0.5 → dark), read with the bridge sheet briefly `disabled` —
+the bridge overrides `--background-color`, so reading through it would
+measure our canvas and never follow a switch to light. Unreadable →
+light (ADO's default).
+
+**High contrast.** Without `data-adofix-bridge` the bridge and the font
+override don't apply, so ADO's accessibility theme stays intact.
+`data-color-mode` is still set, so adofix's own UI keeps resolving its
+Primer tokens (features have no color fallbacks of their own).
+
+**ADO variable bridge** (`bridge.ts`, data emitted at build time). ADO's
+bolt components paint from CSS variables, so setting those recolors every
+page at once, including corners no feature touches. The list is the 84
+variables `azure-devops-ui@2.281.0`'s CSS consumes (D4, not yet checked
+against a live dump). Emitted on `html[data-adofix-bridge] body` with
+`!important` (D5: ADO's theme may set them inline on body). Two kinds:
+- semantic variables hold whole colors and map to `var(--primer-token)`,
+  so they follow `data-color-mode` by themselves: canvas →
+  `--bgColor-default`, callouts → `--overlay-bgColor`, text →
+  `--fgColor-default/-muted/-disabled`, borders → `--borderColor-*`, ADO's
+  "communication" blue → Primer accent, statuses → success / attention /
+  danger / accent families, grid hover/selection → control and accent-muted
+  tokens, focus → `--focus-outlineColor`;
+- `--palette-*` variables are bare `r, g, b` triples
+  (`rgba(var(--palette-neutral-8), 1)`), which a `var()` can't produce, so
+  the build computes them per theme from Primer's resolved hex values
+  (translucent tokens composited over the canvas) into one rule per
+  `data-color-mode`. With BG = canvas, FG = text, A = accent-emphasis:
+  neutral-N = BG→FG by N%; primary tints = A→BG; primary shades = A→FG
+  (toward the text color, not black, so shade-30 link-hover text stays
+  legible on the dark canvas); darkened-6/10 = A→black (button hover/press
+  under white text); accent3 = severe (orange); error = danger-emphasis
+  darkened 0/12/20%; black-alpha-N = FG at N% alpha (a light veil in dark);
+  callout/panel shadow colors from Primer's floating-small/-large shadows.
+  The percentages reproduce ADO's light defaults from its white canvas and
+  `#0078d4` (D12, provisional). The full table is the comment in `bridge.ts`.
+`--third-party-icon-filter` is deliberately unmapped (a filter, not a
+color, already right for ADO's theme).
+
+**Fonts** (`type.css`): families only. `--fontStack-sansSerif` (GitHub's
+stack) is forced with `!important` on body and every descendant, because
+ADO's legacy bundles declare fonts on their own elements. Exempt: anything
+with `icon` in a class, any case (FabricIcons, Fluent `ms-Icon--*`,
+`.bowtie-icon` — broad on purpose so glyphs never turn into letters), code,
+`.monospaced-*` and Monaco. Code/pre/kbd/samp and `.monospaced-*` get
+`--fontStack-monospace`; Monaco measures its own glyphs and is left alone.
+Sizes and line heights stay ADO's: they move rows and break the
+measured-size tricks (stub-hide, teleport). Later stages set GitHub's sizes
+per page.
+
+**Components** (`components.css`): Primer patterns with a `gh-` prefix so
+they never collide with ADO's or third-party classes — `gh-btn` (+
+`-sm`, `-primary` green, `-danger`, `-invisible`), `gh-Label` (+
+`--secondary/-accent/-success/-attention/-danger/-done`), `gh-Counter`,
+`gh-Box` / `gh-Box-header` / `gh-Box-row`, `gh-menu` / `gh-menu-item` /
+`gh-menu-divider` (ActionList overlay; core's popover is built on it),
+`gh-tooltipped` (+ `-n`, CSS-only from `aria-label`). gh- classes go only
+on elements adofix creates. React-owned ADO elements (PR-list card and
+pills, overview cards, work item comments) get the same look from feature
+CSS on their own selectors, because React overwrites `className` on
+re-render (D41). `.adofix-surface` (core/dom) is now GitHub's overlay:
+`--overlay-bgColor`, default border, 6px radius, floating-small shadow.
+
+**Octicons** (`icons.ts`, `icons.gen.ts`). `octicon(name, size = 16)` →
+an `aria-hidden` `<svg class="octicon octicon-NAME">` filled with
+`currentColor`, using the hand-tuned 24px drawing at 24px and up and the
+16px one below. `icons.gen.ts` is generated by `pnpm icons`
+(`scripts/icons.mjs`) from `@primer/octicons` (pinned exact) and holds only
+the names in `scripts/icons.txt`, because the package isn't
+tree-shakable. The generated file is committed; add a name to the list and
+rerun. Unknown names throw (the type catches literals, the throw catches
+strings).
+
+**Injection order** (`index.ts`). `injectPrimer()` at boot, before the
+base sheet and every feature sheet: tokens, bridge, type, components, then
+a theme sync. Feature rules must win equal-specificity ties against gh-
+classes. `syncPrimer()` on every settle syncs the theme and re-heals only
+the bridge and type sheets — they override ADO's declarations and must
+stay after ADO's lazy chunks; tokens and components are deliberately left
+ahead of the feature sheets (D13).
+
+**Guard test** (`no-raw-colors.test.ts`). Fails on any raw color
+(`#rgb[a]`/`#rrggbb[aa]` as a value, `rgb(a)(`, `hsl(a)(`) in
+`src/features/**`, `src/styles/**` or `src/core/*.ts`. Tests and
+`core/primer` are exempt. Colors live in the foundation, so the GitHub
+look and dark/light stay in one place.
+
+**vitest.** `vitest.config.ts` resolves `virtual:primer/*` to an empty
+string (D7): features import `octicon` from `core/primer`, whose index
+imports the esbuild-only virtual modules, and tests don't need the real
+sheets.
+
+**Known unthemed surfaces** (left for later stages):
+- the Monaco diff/code editor (own theme API) → stage 3 (stage 4 for file
+  view);
+- charts, analytics and dashboard widgets;
+- anything with inline `style` colors or canvas rendering;
+- ADO's icon-font glyphs: colors follow text, shapes stay ADO's → each
+  stage swaps the icons on its pages.
+
 ## Architecture
 
 Core modules are factories composed once in `main.ts`; tests construct fresh
 instances. (Feature files DO hold module-level session state — fetch caches,
 wiring flags — that lasts the page lifetime by design.)
 
-- `src/main.ts` — bootstrap: injects the base token/surface sheet, then
-  `createRouter()` + `createHotkeys()` + `createRegistry()`, registers
-  features, wires the observer.
+- `src/main.ts` — bootstrap: injects the Primer foundation
+  (`injectPrimer`) and then the base sheet, then `createRouter()` +
+  `createHotkeys()` + `createRegistry()`, registers features, wires the
+  observer (each settle runs `syncPrimer()` before the features).
+- `src/core/primer/` — the GitHub (Primer) foundation: build-time tokens
+  and pruning, theme sync, the ADO variable bridge, font families, `gh-`
+  components and `octicon()`. See "Primer foundation" above.
 - `src/core/router.ts` — `createRouter()`: patches
   `pushState`/`replaceState` + `popstate` behind a single update path that
   owns change-detection and notification. The observer calls `recheck()` on
@@ -336,10 +530,12 @@ wiring flags — that lasts the page lifetime by design.)
   injected nodes (`data-adofix` marks adofix stylesheets and singletons).
   `applyAll()` guards every feature — one broken feature never kills the rest.
 - `src/core/dom.ts` — `injectStyleOnce`/`setStyle` (self-healing re-append
-  when ADO's lazy-loaded sheets land after ours), the base token +
-  `.adofix-surface` sheet (`injectBaseStyle`), `stubHide` (the zero-size
-  visibility-hidden stub recipe), `makeToolbarButton`/`makeCommandProxy`,
-  `ensureText`, `safeQuery`, `showToast`.
+  when ADO's lazy-loaded sheets land after ours), the base sheet
+  (`injectBaseStyle`: `.adofix-surface` as GitHub's overlay, focus flash,
+  toast), `stubHide` (the zero-size visibility-hidden stub recipe),
+  `makeToolbarButton`/`makeCommandProxy` (`gh-btn gh-btn-invisible` 32px
+  icon buttons), `ensureText`, `safeQuery`, `showToast` (Primer's Toast:
+  accent icon block + content).
 - `src/core/api.ts` — typed same-origin REST wrappers, `api-version=7.1`,
   errors returned as values (Phase 2 needs partial-failure handling);
   `(org, project)` travels as a `ProjectRef`; `projectBase` is the one
@@ -349,7 +545,9 @@ wiring flags — that lasts the page lifetime by design.)
   failure policy per cache: latch (default) or retry.
 - `src/core/popover.ts` — the shared light-dismiss menu (outside-mousedown,
   Escape, arrow roving, `data-adofix-modal` hotkey suspension) with
-  `menuItem`/`menuStatus`/`menuDivider` building blocks.
+  `menuItem`/`menuStatus`/`menuDivider` building blocks, rendered as a
+  `gh-menu` (check octicon in an always-reserved slot, `gh-Counter` counts;
+  no `aria-checked` on toggle items — D46).
 - `src/core/storage.ts` — the only caller of `GM_getValue`/`GM_setValue`;
   namespaced keys (`adofix.<feature>.<key>`) with a schema version envelope.
 - `src/core/keys.ts` — `createHotkeys()`: single capture-phase keydown

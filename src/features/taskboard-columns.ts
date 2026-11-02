@@ -77,7 +77,7 @@ html[${TWO_UP_ATTR}] .taskboard-expanded-cell .flex-row.flex-wrap > .taskboard-c
   display: block;
   margin: 4px 0 0 !important;
 }
-/* GitHub Projects columns (D62): each cell is a --bgColor-muted box with a
+/* GitHub Projects columns (D61): each cell is a --bgColor-muted box with a
    1px border and 6px corners, the canvas showing through 4px transparent
    gutters. Transparent borders + padding-box clip keep the gutters out of
    the fixed-table geometry; the visible 1px border is an inset shadow

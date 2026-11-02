@@ -376,11 +376,16 @@ function placeStateField(): void {
   const ar = assignee.getBoundingClientRect();
   const r3 = row3.getBoundingClientRect();
   const pr = page.getBoundingClientRect();
+  // The page is the scroll container (the header scrolls away since
+  // v0.64.2), so its content origin moves by its scroll offset: a
+  // placement measured while scrolled must add it back, or State lands
+  // one scroll-distance off (user 2026-11-03: scroll down, click into an
+  // editor, scroll up — State gone).
   state.style.setProperty(
     "top",
-    `${Math.round(ar.top - pr.top + (ar.height - CONTROL_HEIGHT) / 2)}px`
+    `${Math.round(ar.top - pr.top + page.scrollTop + (ar.height - CONTROL_HEIGHT) / 2)}px`
   );
-  state.style.setProperty("left", `${Math.round(r3.left - pr.left + 8)}px`);
+  state.style.setProperty("left", `${Math.round(r3.left - pr.left + page.scrollLeft + 8)}px`);
   fitToText(page, "--adofix-wi-state-w", state, state.querySelector("input"));
   fitToText(
     page,

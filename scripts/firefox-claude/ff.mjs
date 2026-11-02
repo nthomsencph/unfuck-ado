@@ -18,6 +18,10 @@
 // group holds a user tab, ask the user to close it — the next run then opens
 // a fresh dedicated window.
 //
+// The dedicated window must stay at least partly VISIBLE: macOS reports fully
+// covered windows to Firefox, which then throttles their timers like background
+// tabs (a 7s setTimeout never fired in 12s on 2026-11-02).
+//
 // Env: SHOT=<prefix> saves screenshots as <prefix>-<n>.jpg; MAX=<n> truncates
 // printed results (default 1200). Probe results ("b64:…") are decoded.
 import { spawn } from "node:child_process";

@@ -285,12 +285,12 @@ const CSS = `
   border-top: 4px solid var(--bgColor-default) !important;
   border-bottom: 4px solid var(--bgColor-default) !important;
 }
-/* More air inside each tile (user 2026-11-02): every cell's content
-   padding 9px -> 14px top and bottom, so the title, author coin and the
-   right-hand columns all move together. */
+/* More air inside each tile (user 2026-11-02): every cell's content gets
+   18px top and bottom (native 9px). Symmetric on purpose — extra padding
+   below only made the tiles look bottom-heavy. */
 .repos-pr-list a.bolt-table-row .bolt-table-cell-content {
-  padding-top: 14px !important;
-  padding-bottom: 28px !important; /* more below than above (user 2026-11-02) */
+  padding-top: 18px !important;
+  padding-bottom: 18px !important;
 }
 /* Row diffstat: GitHub's green adds / red dels, semibold (D45). */
 .adofix-pr-diffstat .adofix-adds,
@@ -323,19 +323,22 @@ const CSS = `
   border-left-color: transparent !important;
   box-shadow: inset 2px 0 0 var(--borderColor-accent-emphasis) !important;
 }
-/* Author coin 32 → 20px, centered on the title line (title top 11px, height
-   17.5px in a 56px row — flex-start + 10px lines the centers up). size32
+/* Author coin 32 → 20px, centered vertically in the row like the other
+   columns (user 2026-11-02; it used to sit on the title line). size32
    appears only on the author cell; reviewer coins are size24 (verified). */
 .repos-pr-list .bolt-coin.size32,
 .repos-pr-list .bolt-coin.size32 .bolt-coin-content {
   width: 20px !important;
   height: 20px !important;
 }
+.repos-pr-list a.bolt-table-row > td:nth-child(2) {
+  vertical-align: middle !important;
+}
 .repos-pr-list a.bolt-table-row > td:nth-child(2) .bolt-table-cell-content {
-  align-items: flex-start !important;
+  align-items: center !important;
 }
 .repos-pr-list .bolt-coin.size32 {
-  margin-top: 10px !important;
+  margin-top: 0 !important;
 }
 /* Pills as gh-Label: GitHub's 20px pill, 12px medium text, filled rather
    than outlined (borderless, B7). The state pills (Draft/Declined/Required)

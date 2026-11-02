@@ -182,3 +182,17 @@ overlapping titles. **PROVISIONAL** entries first in review.
   ADO's `svg.bolt-status` drawings get the same octicon as a CSS mask
   (24px drawing for the 24px summary icons). Supersedes D44's outline
   icons.
+
+## B17 — Focused fields: a muted ring
+- **Context:** user, 2026-11-02: the thick blue focus border should stay
+  visible but be far more muted; the comment field needs room above its
+  toolbar.
+- **Decision:** focused `.bolt-textfield`s get a 1px border in a 40% wash
+  of `--borderColor-accent-emphasis`, with no glow and no pulse
+  (error/warning fields keep ADO's). PR comment composers get 8px below the
+  field.
+
+## B18 — Board cards drop the type flag
+- **Decision:** `.wit-card .card-flag` is hidden on Kanban and sprint
+  taskboard cards (user 2026-11-02); the type icon on the id line carries
+  the type.

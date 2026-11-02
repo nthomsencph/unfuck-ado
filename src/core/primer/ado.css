@@ -76,6 +76,22 @@ html[data-adofix-bridge] .bolt-formitem-message:has(> .markdown-text-container) 
   display: none !important;
 }
 
+/* Focused text fields: ADO draws a 1px accent border plus a 3px pulsing
+   accent glow — loud on a borderless page. Kept visible but muted (user
+   2026-11-02, B17): a 1px border in a 40% wash of the accent, no glow, no
+   pulse. Error/warning fields keep ADO's colored treatment. */
+html[data-adofix-bridge] .bolt-textfield.focused.focus-treatment:not(.bolt-textfield-error, .bolt-textfield-warning) {
+  border-color: color-mix(in srgb, var(--borderColor-accent-emphasis) 40%, transparent) !important;
+  box-shadow: none !important;
+  animation: none !important;
+}
+/* PR comment composers: room between the text field and the formatting
+   toolbar / Cancel·Comment row below it (the hidden hint used to supply
+   it, user 2026-11-02). */
+html[data-adofix-bridge] .repos-comment-editor-fit > .repos-attachments-drop-target {
+  margin-bottom: 8px;
+}
+
 /* Outlined pills: filled with a wash of their own (ADO-set) color (B7). */
 html[data-adofix-bridge] .bolt-pill.outlined {
   background-color: color-mix(in srgb, currentColor 15%, transparent) !important;

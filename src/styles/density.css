@@ -100,10 +100,11 @@
   border: none !important;
   padding: 20px 14px !important;
 }
-/* Work-item-type flag: a 3px accent, not a 4px full-saturation band. */
+/* Work-item-type flag: gone (user 2026-11-02 — the type icon on the id line
+   already carries it; was a 3px accent since 2026-08-18). Kanban and sprint
+   taskboard cards alike. */
 .wit-card .card-flag {
-  width: 3px !important;
-  opacity: 0.85;
+  display: none !important;
 }
 /* Tags row: ADO stacks 8px pill margin + 12px list margin under the last
    pill — 40px of slack with the card padding (measured live 2026-08-18).

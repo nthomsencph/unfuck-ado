@@ -23,13 +23,15 @@ import { createFetchCache } from "../core/fetch-cache";
 const FEATURE_ID = "pr-checks";
 
 /**
- * The checks box is the .status-details-container holding the
- * .preview-check-list table (verified live 2026-08-17 on PR 6970); the
- * "Merged PR …" commit box is a sibling container whose table is
- * .repos-commits-table instead.
+ * The checks box is the .status-details-container holding the "View n
+ * checks" row (.status-details-container-row). It holds a
+ * .preview-check-list table only when the PR has build policies — without
+ * them the box is just the link (PR 7339, live 2026-11-02), and anchoring
+ * on the table left those PRs with the link alone. The "Merged PR …"
+ * commit box is a sibling container holding .repos-commits-table instead.
  */
-const CHECK_LIST_SELECTOR =
-  ".repos-pr-details-page .shadow-padding .status-details-container > .preview-check-list";
+const CHECK_BOX_SELECTOR =
+  ".repos-pr-details-page .shadow-padding .status-details-container:has(> .status-details-container-row):not(:has(.repos-commits-table))";
 
 /**
  * Native ADO status drawings in the merge-status card (svg.bolt-status:
@@ -104,9 +106,7 @@ const NEUTRAL_ICON = { name: "dot-fill", tone: "muted" } as const;
 const rowsByPr = createFetchCache<string, CheckRow[]>();
 
 function render(rows: CheckRow[]): void {
-  const table = safeQuery<HTMLElement>(CHECK_LIST_SELECTOR);
-  if (!table) return;
-  const container = table.parentElement;
+  const container = safeQuery<HTMLElement>(CHECK_BOX_SELECTOR);
   if (!container) return;
   // React may rebuild the card between settles; re-render only when our rows
   // are missing.
@@ -137,7 +137,7 @@ export const prChecks: Feature = {
     injectStyleOnce(FEATURE_ID, (cssText ??= css()));
     const ref = prRefFromRoute(route);
     if (!ref) return;
-    if (!safeQuery(CHECK_LIST_SELECTOR)) return; // Overview checks box not up
+    if (!safeQuery(CHECK_BOX_SELECTOR)) return; // Overview checks box not up
     const key = refKey(ref);
     const cached = rowsByPr.get(key);
     if (cached) {

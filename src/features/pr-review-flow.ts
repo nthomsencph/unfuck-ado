@@ -50,6 +50,22 @@ const CSS = `
   height: 32px;
 }
 .adofix-review-btn .octicon-check { color: var(--fgColor-success); }
+/* Already approved by you (vote 10, or 5 "with suggestions"): our button
+   says "Approved", so ADO's Approve button beside it goes (user
+   2026-11-02). Its chevron stays, as a plain icon button, so the vote can
+   still be changed or reset from ADO's own menu. CSS only; the split
+   button is React-owned. */
+.repos-pr-header .adofix-review-btn:is([data-vote="10"], [data-vote="5"]) + .repos-pr-header-vote-button > :is(.bolt-split-button-main, .bolt-split-button-divider) {
+  display: none !important;
+}
+.repos-pr-header .adofix-review-btn:is([data-vote="10"], [data-vote="5"]) + .repos-pr-header-vote-button .bolt-split-button-option {
+  background: transparent !important;
+  color: var(--fgColor-muted) !important;
+  border-radius: var(--borderRadius-medium) !important;
+}
+.repos-pr-header .adofix-review-btn:is([data-vote="10"], [data-vote="5"]) + .repos-pr-header-vote-button .bolt-split-button-option:hover {
+  background: var(--control-transparent-bgColor-hover) !important;
+}
 .adofix-review-btn .octicon-x { color: var(--fgColor-danger); }
 .adofix-review-btn.gh-btn-primary .octicon { color: var(--button-primary-iconColor-rest); }
 
@@ -540,6 +556,7 @@ export const prReviewFlow: Feature = {
       setIconLabel(btn, label);
       if (btn.title !== title) btn.title = title;
       btn.dataset["action"] = action;
+      btn.dataset["vote"] = String(vote);
       btn.classList.toggle("adofix-done", quiet);
       btn.classList.toggle("gh-btn-primary", !quiet);
     }

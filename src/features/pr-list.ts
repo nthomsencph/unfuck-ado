@@ -260,6 +260,11 @@ const CSS = `
   position: relative !important;
   z-index: 4 !important;
   margin-top: -55px !important;
+  /* Lifting by the header's full height (55px with chrome-density's 20px
+     title padding) puts the 48px tab row's center 13px above the New PR
+     button's; the relative nudge centers it without moving the flow below
+     (measured live 2026-11-02). */
+  top: 13px;
   padding-right: 220px !important;
   pointer-events: none !important;
 }
@@ -273,6 +278,7 @@ const CSS = `
   [${ATTR}] .page-content-left.page-content-right.page-content-top {
     margin-top: -57px !important;
     position: relative !important;
+    top: 5px; /* filter row center onto the New PR button's (live 2026-11-02) */
     z-index: 4 !important;
     pointer-events: none !important;
   }

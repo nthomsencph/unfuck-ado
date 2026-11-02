@@ -254,6 +254,17 @@
   --adofix-overlay-bgColor: var(--overlay-bgColor);
 }
 
+/* Light theme: Primer's --bgColor-muted (#f6f8fa) is ~1.04:1 against the
+ * white canvas — fine next to a border, invisible without one. Borderless
+ * surfaces (B14, 2026-11-02, live light check: taskboard cells and cards
+ * merged) need a real step, so light muted goes to roughly GitHub's
+ * neutral-muted tint over white. Same selector as Primer's light block,
+ * injected later, so it wins. Dark's step (#0d1117 → #151b23) already reads.
+ */
+[data-color-mode="light"][data-light-theme="light"] {
+  --bgColor-muted: #eff1f3;
+}
+
 /* ---- Menu (SelectMenu / ActionList look) ---------------------------- */
 .gh-menu {
   min-width: 192px;

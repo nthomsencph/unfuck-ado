@@ -150,3 +150,10 @@ overlapping titles. **PROVISIONAL** entries first in review.
   Primer's two drop shadows without the ring; in dark, menus/overlays sit on
   `--bgColor-muted` (one step above the canvas) instead of Primer's darker
   `--overlay-bgColor`, so they separate by color. Light keeps Primer's overlay.
+
+## B14 (coordinator) — Stronger muted step in light
+- **Context:** live light check: taskboard cells (#f6f8fa) and white cards
+  were indistinguishable (≈1.04:1) once borders were gone.
+- **Decision:** in light only, `--bgColor-muted` is overridden to `#eff1f3`
+  (components.css, after Primer's block). Every borderless muted surface
+  (cells, columns, rows, comment boxes, header) gets a visible step.

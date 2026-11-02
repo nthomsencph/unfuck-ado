@@ -158,13 +158,14 @@ const CSS = `
   box-shadow: none !important;
 }
 /* Row tiles. bolt-table-show-lines gives every cell a 1px top border and
-   bolt a 1px transparent bottom one; both take the canvas color, so two
-   adjacent rows sit 2px apart without the 60px row geometry moving. The
-   tint goes on the cells: they paint over the row's own background. */
+   bolt a 1px transparent bottom one; both take the canvas color and are
+   widened to 4px (user 2026-11-02: more air between PRs), so two adjacent
+   rows sit 8px apart. The tint goes on the cells: they paint over the
+   row's own background. */
 .repos-pr-list a.bolt-table-row > .bolt-table-cell {
   background: var(--bgColor-muted) !important;
-  border-top-color: var(--bgColor-default) !important;
-  border-bottom-color: var(--bgColor-default) !important;
+  border-top: 4px solid var(--bgColor-default) !important;
+  border-bottom: 4px solid var(--bgColor-default) !important;
 }
 /* Hover: the transparent hover tint layered over the tile (rows are <a>). */
 .repos-pr-list a.bolt-table-row:hover > .bolt-table-cell {

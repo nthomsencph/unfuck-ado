@@ -2,7 +2,7 @@ import type { Feature } from "../core/registry";
 import type { Route } from "../core/router";
 import { injectStyleOnce } from "../core/dom";
 import { fetchCurrentUserId } from "./pr/reviewer-api";
-import { fetchActivePrs, ownershipMap, type Ownership } from "./pr/list-api";
+import { countPrs, fetchActivePrs, ownershipMap, type Ownership, type PrStatus } from "./pr/list-api";
 
 /**
  * GitHub-style restyle of the PR list page (spec:
@@ -32,8 +32,63 @@ export const prList: Feature = {
       document.querySelector<HTMLElement>("#__bolt-tab-active")?.click();
     sweepMetaLines(document);
     tagOwnership(route);
+    tabCounts(route);
   },
 };
+
+/*
+ * GitHub's "7 Open · 6,987 Closed": each status tab carries a gh-Counter
+ * with the repo's total for that status (user request 2026-11-02). Totals
+ * are unfiltered, like the tabs themselves. Counted once per repo per page
+ * load (list-api's countPrs: a parallel k-ary search over $top=1 probes,
+ * no count endpoint exists); a failed count simply shows no badge. The
+ * counter is appended inside the React-owned tab, so the settle re-apply
+ * re-adds it whenever React re-renders the tab.
+ */
+const TAB_STATUS: readonly (readonly [string, PrStatus])[] = [
+  ["#__bolt-tab-active", "active"],
+  ["#__bolt-tab-completed", "completed"],
+  ["#__bolt-tab-abandoned", "abandoned"],
+];
+
+let countSlot: { key: string; counts: Partial<Record<PrStatus, number>>; started: boolean } | null =
+  null;
+
+function tabCounts(route: Route): void {
+  const { org, project, repo } = route;
+  if (!org || !project || !repo) return;
+  const key = `${org}/${project}/${repo}`;
+  if (!countSlot || countSlot.key !== key) countSlot = { key, counts: {}, started: false };
+  const slot = countSlot;
+  paintTabCounts(document, slot.counts);
+  if (slot.started) return;
+  slot.started = true;
+  for (const [, status] of TAB_STATUS) {
+    void countPrs({ org, project, repo }, status).then((n) => {
+      if (n === null || countSlot !== slot) return;
+      slot.counts[status] = n;
+      paintTabCounts(document, slot.counts);
+    });
+  }
+}
+
+/** Writes each known count into its tab; idempotent, so settles are cheap. */
+export function paintTabCounts(root: ParentNode, counts: Partial<Record<PrStatus, number>>): void {
+  for (const [sel, status] of TAB_STATUS) {
+    const n = counts[status];
+    if (n === undefined) continue;
+    const inner = root.querySelector<HTMLElement>(`${sel} .bolt-tab-inner-container`);
+    if (!inner) continue;
+    let badge = inner.querySelector<HTMLElement>(".adofix-tab-count");
+    if (!badge) {
+      badge = document.createElement("span");
+      badge.className = "gh-Counter adofix-tab-count";
+      inner.append(badge);
+    }
+    const text = n.toLocaleString("en-US");
+    if (badge.textContent !== text) badge.textContent = text;
+  }
+}
 
 /*
  * "Mine" tagging, the Mine view's replacement: rows the user authored or
@@ -167,6 +222,21 @@ const CSS = `
   border-top: 4px solid var(--bgColor-default) !important;
   border-bottom: 4px solid var(--bgColor-default) !important;
 }
+/* More air inside each tile (user 2026-11-02): every cell's content
+   padding 9px -> 14px top and bottom, so the title, author coin and the
+   right-hand columns all move together. */
+.repos-pr-list a.bolt-table-row .bolt-table-cell-content {
+  padding-top: 14px !important;
+  padding-bottom: 14px !important;
+}
+/* Tab count badges sit after the label, centered on it. */
+[${ATTR}] .bolt-tab .bolt-tab-inner-container:has(> .adofix-tab-count) {
+  display: inline-flex;
+  align-items: center;
+}
+.adofix-tab-count {
+  margin-left: 6px;
+}
 /* Hover: the transparent hover tint layered over the tile (rows are <a>). */
 .repos-pr-list a.bolt-table-row:hover > .bolt-table-cell {
   background: linear-gradient(var(--control-transparent-bgColor-hover), var(--control-transparent-bgColor-hover)),
@@ -175,8 +245,13 @@ const CSS = `
 /* "New activity" left edge in GitHub's accent instead of ADO blue. Verified
    live 2026-08-20: the marker is a 2px border-left on the row's FIRST spacer
    cell — not on the row, not a pseudo-element. */
+/* Drawn as an inset shadow, not the native border: a border spans the
+   cell's 4px canvas-colored top/bottom edges too, so the bars of adjacent
+   marked rows ran together through the gaps (2026-11-02). The inset stays
+   inside the tile. */
 .repos-pr-list .bolt-list-row-marked > .bolt-table-spacer-cell:first-child {
-  border-left-color: var(--borderColor-accent-emphasis) !important;
+  border-left-color: transparent !important;
+  box-shadow: inset 2px 0 0 var(--borderColor-accent-emphasis) !important;
 }
 /* Author coin 32 → 20px, centered on the title line (title top 11px, height
    17.5px in a 56px row — flex-start + 10px lines the centers up). size32

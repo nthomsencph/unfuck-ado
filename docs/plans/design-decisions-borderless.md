@@ -206,3 +206,13 @@ overlapping titles. **PROVISIONAL** entries first in review.
   rail are one surface; muted cards and tiles (#151b23) step up from it.
   Everything painted with the canvas token follows (bridge, chrome-density
   pins, PR-list row gaps). Light keeps its white canvas.
+
+## B20 — Single-line buttons are pills
+- **Context:** user, 2026-11-02: every single-line button pill-shaped
+  ("like New pull request", which measured 2px corners at the time).
+- **Decision:** `--borderRadius-full` on every ADO `.bolt-button` that
+  isn't icon-only (text, link and dropdown/expandable buttons) and on
+  `gh-btn`. Split buttons (Approve, Complete) read as one pill: the main
+  part rounds its left end, the chevron its right. Icon-only buttons
+  (`.icon-only`, `.adofix-icon-btn`) keep their corners: as pills they'd be
+  circles.

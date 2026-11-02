@@ -97,3 +97,18 @@ html[data-adofix-bridge] .bolt-pill.outlined {
   background-color: color-mix(in srgb, currentColor 15%, transparent) !important;
   border-color: transparent !important;
 }
+
+/* Pill buttons (user 2026-11-02, B20): every single-line ADO button — text
+   buttons, link buttons, dropdown/expandable buttons — gets fully rounded
+   ends. Icon-only buttons keep ADO's corner (pills would make them circles).
+   Split buttons (Approve, Complete) read as ONE pill: the main part rounds
+   its left end, the chevron part its right end. */
+html[data-adofix-bridge] .bolt-button:not(.icon-only, .bolt-split-button-main, .bolt-split-button-option) {
+  border-radius: var(--borderRadius-full) !important;
+}
+html[data-adofix-bridge] .bolt-split-button .bolt-split-button-main {
+  border-radius: var(--borderRadius-full) 0 0 var(--borderRadius-full) !important;
+}
+html[data-adofix-bridge] .bolt-split-button .bolt-split-button-option {
+  border-radius: 0 var(--borderRadius-full) var(--borderRadius-full) 0 !important;
+}

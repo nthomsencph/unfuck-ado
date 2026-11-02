@@ -34,7 +34,9 @@
   color: var(--button-default-fgColor-rest);
   background-color: var(--button-default-bgColor-rest);
   border: var(--borderWidth-default) solid transparent;
-  border-radius: var(--borderRadius-medium);
+  /* Pill-shaped (user 2026-11-02: every single-line button, B20); icon-only
+     gh-btns (.adofix-icon-btn) keep the medium corner, below. */
+  border-radius: var(--borderRadius-full);
   box-shadow: none;
   text-decoration: none;
   transition: background-color 80ms cubic-bezier(0.33, 1, 0.68, 1);
@@ -378,4 +380,9 @@
   bottom: 100%;
   margin-top: 0;
   margin-bottom: 6px;
+}
+
+/* Icon-only gh-btns stay rounded squares: as pills they'd be circles. */
+.gh-btn.adofix-icon-btn {
+  border-radius: var(--borderRadius-medium);
 }

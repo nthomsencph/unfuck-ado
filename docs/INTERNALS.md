@@ -578,7 +578,7 @@ re-render (D41). `.adofix-surface` (core/dom) is now GitHub's overlay:
 `--overlay-bgColor`, transparent border, 6px radius, floating-small shadow.
 
 **Borderless** (user preference 2026-11-02, decisions
-`docs/plans/design-decisions-borderless.md` B1–B19). Surfaces separate by
+`docs/plans/design-decisions-borderless.md` B1–B20). Surfaces separate by
 background steps, never hairlines: canvas `--bgColor-default` (in dark it
 is the frame's `--bgColor-inset` black, B19) < surface
 `--bgColor-muted` < hover/selected tints. Borders keep their width in

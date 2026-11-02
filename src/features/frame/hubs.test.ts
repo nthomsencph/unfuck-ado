@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { contributionId, fabricName, GROUP_ICONS, readHubLinks, SUBHUB_ICONS } from "./hubs";
+import { contributionId, GROUP_ICONS, readHubLinks, SUBHUB_ICONS } from "./hubs";
 
 /** Trimmed copies of ADO's live markup (PR list page, 2026-11-02). */
 const INLINE_LIST = `
@@ -48,14 +48,6 @@ describe("contributionId", () => {
   it("rejects ids that are not bolt contribution ids", () => {
     expect(contributionId("project-expansion-toggle")).toBeNull();
     expect(contributionId("__bolt-")).toBeNull();
-  });
-});
-
-describe("fabricName", () => {
-  it("reads the ms-Icon--<Name> glyph", () => {
-    const el = fixture('<span class="navigation-icon fabric-icon ms-Icon--DoubleChevronRight medium"></span>').firstElementChild!;
-    expect(fabricName(el)).toBe("DoubleChevronRight");
-    expect(fabricName(document.createElement("span"))).toBeNull();
   });
 });
 

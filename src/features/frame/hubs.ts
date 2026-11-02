@@ -88,14 +88,6 @@ export const FABRIC_ICONS: Readonly<Record<string, OcticonName>> = {
   Search: "search",
 };
 
-/** The glyph name of an ms-Icon--<Name> element, or null. */
-export function fabricName(el: Element): string | null {
-  for (const cls of Array.from(el.classList)) {
-    if (cls.startsWith("ms-Icon--")) return cls.slice("ms-Icon--".length) || null;
-  }
-  return null;
-}
-
 export interface HubLink {
   /** The native element's id — re-resolved at click time. */
   elementId: string;

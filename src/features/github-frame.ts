@@ -1,15 +1,8 @@
 import type { Feature } from "../core/registry";
 import { injectStyleOnce, safeQuery, safeQueryAll } from "../core/dom";
 import { closePopover, isPopoverOpen, openPopover } from "../core/popover";
-import { octicon, type OcticonName } from "../core/primer/icons";
-import {
-  contributionId,
-  fabricName,
-  FABRIC_ICONS,
-  GROUP_ICONS,
-  readHubLinks,
-  type HubLink,
-} from "./frame/hubs";
+import { octicon, octiconMask, type OcticonName } from "../core/primer/icons";
+import { contributionId, FABRIC_ICONS, GROUP_ICONS, readHubLinks, type HubLink } from "./frame/hubs";
 
 /**
  * GitHub makeover stage 2, the global frame (spec
@@ -32,7 +25,79 @@ const CLOSE_DELAY_MS = 300;
 /** How long ADO gets to render a flyout after a synthetic hover. */
 const FLYOUT_WAIT_MS = 1000;
 
-const ICON_ATTR = "data-adofix-octicon";
+/* ---- Icons ------------------------------------------------------------ */
+
+/*
+ * The rail's and header's Octicons are pure CSS, generated from the hubs.ts
+ * tables: each mapped host hides ADO's <img>/font glyph and paints the
+ * Octicon as a currentColor mask on its ::after. Our sheet is in <head>
+ * before ADO renders the rail (measured 2026-11-02: script start ~100ms
+ * ahead of the first rail icon), so the Octicon is there in ADO's first
+ * frame. The JS version (an <svg> appended per settle) landed ~0.7s
+ * later — the settle debounce keeps restarting while ADO's first render
+ * streams in — and the old icons blinked on every reload. CSS also follows
+ * ADO's own re-renders for free (the rail toggle's glyph flips Right ↔
+ * Left by class).
+ */
+const FABRIC_SCOPES = [
+  ".project-navigation #__bolt-create-action",
+  ".project-navigation #__bolt-settings-link",
+  ".project-navigation #project-expansion-toggle",
+  ".region-header-menubar .bolt-button.icon-only",
+  ".region-header #__bolt-breadcrumb-extra-content",
+  ".region-header .expandable-search-header .search-icon",
+];
+
+/** Mapped host selector → Octicon: rail groups by contribution id, glyphs by name. */
+function iconHosts(): [string, OcticonName][] {
+  const groups = Object.entries(GROUP_ICONS).map(
+    ([id, name]): [string, OcticonName] => [
+      `.project-navigation a.hub-group[id="__bolt-${id}-link"] .navigation-icon`,
+      name,
+    ]
+  );
+  const glyphs = Object.entries(FABRIC_ICONS).map(([glyph, name]): [string, OcticonName] => [
+    fabricHosts(FABRIC_SCOPES, glyph),
+    name,
+  ]);
+  return [...groups, ...glyphs];
+}
+
+/** The ms-Icon--<glyph> hosts under any of `scopes` (all mapped glyphs if none given). */
+function fabricHosts(scopes: string[], glyph?: string): string {
+  const glyphs = glyph ? [glyph] : Object.keys(FABRIC_ICONS);
+  return `:is(${scopes.join(", ")}) :is(${glyphs.map((g) => `.ms-Icon--${g}`).join(", ")})`;
+}
+
+function iconCss(): string {
+  return iconHosts()
+    .map(
+      ([host, name]) => `${host} {
+  align-items: center;
+  justify-content: center;
+}
+${host}::before {
+  content: none !important;
+}
+${host} > * {
+  display: none !important;
+}
+${host}::after {
+  content: "";
+  display: block;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  background-color: currentColor;
+  -webkit-mask: ${octiconMask(name)} center / contain no-repeat;
+  mask: ${octiconMask(name)} center / contain no-repeat;
+}`
+    )
+    .join("\n");
+}
+
+let cssText: string | undefined;
+const css = (): string => CSS + iconCss();
 
 const CSS = `
 /* ---- Header material (F5) -------------------------------------------- */
@@ -95,7 +160,7 @@ const CSS = `
 .region-header #__bolt-breadcrumb-extra-content .bolt-button:hover {
   background: var(--control-transparent-bgColor-hover) !important;
 }
-.region-header #__bolt-breadcrumb-extra-content [${ICON_ATTR}] {
+${fabricHosts([".region-header #__bolt-breadcrumb-extra-content"])} {
   color: var(--fgColor-muted);
 }
 
@@ -119,21 +184,6 @@ const CSS = `
 /* Avatar: GitHub's round 32px. */
 .region-header-menubar #mectrl_headerPicture {
   border-radius: 50% !important;
-}
-
-/* ---- Octicon hosts: ADO's glyph/img hidden, our <svg> shown ----------- */
-[${ICON_ATTR}] {
-  align-items: center;
-  justify-content: center;
-}
-[${ICON_ATTR}] > .octicon {
-  display: block;
-}
-[${ICON_ATTR}]::before {
-  content: none !important;
-}
-[${ICON_ATTR}] > :not(.octicon) {
-  display: none !important;
 }
 
 /* ---- Rail: GitHub NavList states (F6) ---------------------------------- */
@@ -376,58 +426,12 @@ export const githubFrame: Feature = {
     ctx.hotkey("search", "/", "Focus the header search box", () => focusSearch());
   },
   apply(): void {
-    injectStyleOnce("github-frame", CSS);
+    injectStyleOnce("github-frame", (cssText ??= css()));
     decorateLogo();
-    decorateIcons();
     decorateSearch();
     bindRailGroups();
   },
 };
-
-/* ---- Icons ------------------------------------------------------------ */
-
-/**
- * Puts Octicon `name` into `host` (ADO's glyph/img hidden by CSS). The
- * attribute, not a class, marks the host: React rewrites className on
- * re-render but leaves unknown attributes alone. Re-run every settle; a
- * changed glyph (the rail toggle flips Right ↔ Left) swaps the icon.
- */
-function setIcon(host: Element, name: OcticonName, size = 16): void {
-  const svg = host.querySelector(":scope > .octicon");
-  if (host.getAttribute(ICON_ATTR) === name && svg) return;
-  svg?.remove();
-  host.appendChild(octicon(name, size));
-  host.setAttribute(ICON_ATTR, name);
-}
-
-const FABRIC_HOSTS = [
-  ".project-navigation #__bolt-create-action",
-  ".project-navigation #__bolt-settings-link",
-  ".project-navigation #project-expansion-toggle",
-  ".region-header-menubar .bolt-button.icon-only",
-  ".region-header #__bolt-breadcrumb-extra-content",
-  ".region-header .expandable-search-header .search-icon",
-]
-  .map((scope) => `${scope} [class*="ms-Icon--"]`)
-  .join(", ");
-
-function decorateIcons(): void {
-  for (const link of safeQueryAll<HTMLAnchorElement>(".project-navigation a.hub-group")) {
-    const name = GROUP_ICONS[contributionId(link.id) ?? ""];
-    const host = link.querySelector(".navigation-icon");
-    // Contributed groups without a mapping keep ADO's image (spec).
-    if (name && host) setIcon(host, name);
-  }
-  for (const host of safeQueryAll(FABRIC_HOSTS)) {
-    const glyph = fabricName(host);
-    const name = glyph ? FABRIC_ICONS[glyph] : undefined;
-    if (name) setIcon(host, name);
-    else if (host.hasAttribute(ICON_ATTR)) {
-      host.removeAttribute(ICON_ATTR);
-      host.querySelector(":scope > .octicon")?.remove();
-    }
-  }
-}
 
 /** ADO's logo, monochrome: its own image URL becomes a CSS mask (F2). */
 function decorateLogo(): void {

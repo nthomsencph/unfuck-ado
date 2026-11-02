@@ -11,6 +11,7 @@ import { backlogToolbar } from "./features/backlog-toolbar";
 import { boardDensity } from "./features/board-density";
 import { cardComments } from "./features/card-comments";
 import { chromeDensity } from "./features/chrome-density";
+import { githubFrame } from "./features/github-frame";
 import { prActions } from "./features/pr-actions";
 import { prChecks } from "./features/pr-checks";
 import { prComments } from "./features/pr-comments";
@@ -49,6 +50,8 @@ declare global {
 
   registry.register(boardDensity);
   registry.register(chromeDensity);
+  // After chromeDensity: the frame overrides its canvas pin on header and rail.
+  registry.register(githubFrame);
   registry.register(workitemLayout);
   registry.register(cardComments);
   registry.register(backlogToolbar);
@@ -91,6 +94,6 @@ declare global {
   // debugging). Detail logging: localStorage.setItem("adofix.debug", "1").
   info(
     `ado-unfuck v${__ADOFIX_VERSION__} active`,
-    "— features: board-density, chrome-density, workitem-layout, card-comments, backlog-toolbar, backlog-grid, backlog-status, sprint-header, taskboard-columns, pr-keynav, pr-overview, pr-thread-filter, pr-drafts, pr-reviewed, pr-diff-totals, pr-comments, pr-checks, pr-actions, pr-list, workitem-state"
+    "— features: board-density, chrome-density, github-frame, workitem-layout, card-comments, backlog-toolbar, backlog-grid, backlog-status, sprint-header, taskboard-columns, pr-keynav, pr-overview, pr-thread-filter, pr-drafts, pr-reviewed, pr-diff-totals, pr-comments, pr-checks, pr-actions, pr-list, workitem-state"
   );
 })();

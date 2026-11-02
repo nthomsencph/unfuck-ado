@@ -20,6 +20,10 @@ page, dark or light to match your ADO theme. On top of that sits a bundle of
 small, independent fixes. The bulk of it targets pull request review, with a
 second set for boards and work items.
 
+**Everywhere**
+
+- `GitHub frame` — ADO's header and left rail look like GitHub's: header material, "owner / repo" breadcrumbs, bordered icon buttons, Octicons in the rail, a GitHub-style dropdown of each rail section's pages (hover it, or click its caret), and a "Type / to search" box over ADO's own search.
+
 **Pull requests**
 
 - `Draft comments` — write review comments in ADO's own editor and keep them as local drafts instead of posting them one by one. Drafts show up as inline cards in the diff, under their file in the tree, and in a panel where you can edit them, jump to them, and submit the whole batch at once.
@@ -50,6 +54,7 @@ Hotkeys only fire outside inputs and editors.
 | `u` | next **unresolved** thread | PR |
 | `t` | toggle the file tree pane | PR |
 | `s` | change work item state | work item form, boards |
+| `/` | focus the search box (Escape leaves it) | everywhere |
 
 ## Developing
 

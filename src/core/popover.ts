@@ -1,4 +1,5 @@
 import { ADOFIX_ATTR, injectStyleOnce, safeQuery } from "./dom";
+import { isEditableTarget } from "./keys";
 import { octicon } from "./primer/icons";
 
 /**
@@ -110,6 +111,16 @@ export interface PopoverSpec {
   render(menu: HTMLElement, ctx: PopoverContext): void;
   /** Extra selector that must not light-dismiss (the toggle button). */
   keepOpenWithin?: string;
+  /**
+   * "below-end" (default): under the anchor, right edges aligned.
+   * "right-start": beside the anchor's right edge, tops aligned (rail menus).
+   */
+  placement?: "below-end" | "right-start";
+  /**
+   * false: a hover-opened menu that leaves focus where it is (a text field
+   * keeps its caret, and keeps its keys). Default true.
+   */
+  takeFocus?: boolean;
 }
 
 let activeClose: (() => void) | null = null;
@@ -133,12 +144,14 @@ export function openPopover(spec: PopoverSpec): void {
   menu.tabIndex = -1;
 
   const close = (): void => {
+    // Hand focus back so Escape doesn't strand it on <body> — only when it
+    // is inside the menu (a passive menu never took it).
+    const hadFocus = menu.contains(document.activeElement);
     menu.remove();
     document.removeEventListener("mousedown", onMouseDown, true);
     document.removeEventListener("keydown", onKeyDown, true);
     activeClose = null;
-    // Hand focus back so Escape doesn't strand it on <body>.
-    spec.anchor.focus();
+    if (hadFocus) spec.anchor.focus();
   };
 
   const onMouseDown = (e: MouseEvent): void => {
@@ -149,6 +162,8 @@ export function openPopover(spec: PopoverSpec): void {
   };
 
   const onKeyDown = (e: KeyboardEvent): void => {
+    // A passive menu never takes keys from a field the user is typing in.
+    if (spec.takeFocus === false && isEditableTarget(e.target)) return;
     if (e.key === "Escape") {
       e.preventDefault();
       e.stopPropagation();
@@ -169,6 +184,13 @@ export function openPopover(spec: PopoverSpec): void {
 
   const position = (): void => {
     const rect = spec.anchor.getBoundingClientRect();
+    if (spec.placement === "right-start") {
+      // Clamped so a tall menu from a low rail item stays on screen.
+      const maxTop = window.innerHeight - menu.offsetHeight - 8;
+      menu.style.top = `${Math.max(8, Math.min(rect.top, maxTop))}px`;
+      menu.style.left = `${rect.right + 4}px`;
+      return;
+    }
     menu.style.top = `${rect.bottom + 6}px`;
     menu.style.left = `${Math.max(8, rect.right - menu.offsetWidth)}px`;
   };
@@ -181,7 +203,7 @@ export function openPopover(spec: PopoverSpec): void {
       position();
       // A click that triggered the rerender destroyed the focused item —
       // keep focus inside so the modal hotkey suspension holds.
-      if (!menu.contains(document.activeElement)) menu.focus();
+      if (spec.takeFocus !== false && !menu.contains(document.activeElement)) menu.focus();
     },
   };
 
@@ -191,5 +213,5 @@ export function openPopover(spec: PopoverSpec): void {
   document.addEventListener("mousedown", onMouseDown, true);
   document.addEventListener("keydown", onKeyDown, true);
   activeClose = close;
-  menu.focus();
+  if (spec.takeFocus !== false) menu.focus();
 }

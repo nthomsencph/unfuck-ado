@@ -11,7 +11,8 @@ matching entry here moves with it. The user-facing overview lives in the
 | Feature | What it does |
 |---|---|
 | `board-density` | Pure CSS: tighter headers and swimlanes on Kanban boards, the card-shell margin (12px gap below every stacked card), and the board card MATERIAL (moved here from chrome-density 2026-08-19): kanban `.boards-card` + sprint `.taskboard-card` (both `.wit-card`) are GitHub Projects cards since stage 1 (2026-11-02) — flat `--bgColor-default` fill, 1px `--borderColor-default` border, 6px corners, no shadow — with ADO's inner 1px grey content frame removed, 3px state flag, 20px vertical padding; kanban columns are `--bgColor-muted` boxes with the same border and corners. The canvas behind them is the Primer bridge's (the canvas < lane < card layering is retired). |
-| `chrome-density` | Pure CSS: compresses ADO's header chrome (title rows, filter bar) across hubs — ~58px reclaimed on a sprint taskboard. The top banner loses its drop shadow and the site-wide search widget (`.expandable-search-header`). Page, banner, nav-rail and sticky-header canvas colors are no longer set here — the near-black overrides were removed in stage 1 and the Primer bridge colors them through ADO's own variables. Filter bars sit flat with the keyword box capped at 215px (natively it flex-grows across the whole bar) and the "Assigned to" / "Parent Work Item" filter items removed (aria-label prefix match, English-UI; an applied filter on a hidden item stays active — visible in the URL and status text). (The PR-Overview restructuring, work-item-form surfaces and board card material were carved out to `pr-overview`, `workitem-layout` and `board-density` on 2026-08-19 — this sheet is order-sensitive density chrome only.) |
+| `chrome-density` | Pure CSS: compresses ADO's header chrome (title rows, filter bar) across hubs — ~58px reclaimed on a sprint taskboard. The top banner loses its drop shadow. (The site-wide search widget `.expandable-search-header` was hidden here 2026-08-18 → 2026-11-02; `github-frame` now restyles it as GitHub's search box.) Header and rail canvas pins here are overridden by `github-frame`'s frame material (higher specificity). Page, banner, nav-rail and sticky-header canvas colors are no longer set here — the near-black overrides were removed in stage 1 and the Primer bridge colors them through ADO's own variables. Filter bars sit flat with the keyword box capped at 215px (natively it flex-grows across the whole bar) and the "Assigned to" / "Parent Work Item" filter items removed (aria-label prefix match, English-UI; an applied filter on a hidden item stays active — visible in the URL and status text). (The PR-Overview restructuring, work-item-form surfaces and board card material were carved out to `pr-overview`, `workitem-layout` and `board-density` on 2026-08-19 — this sheet is order-sensitive density chrome only.) |
+| `github-frame` | GitHub makeover stage 2 (spec `docs/specs/2026-11-02-github-frame-design.md`, decisions `docs/plans/design-decisions-frame.md` F1–F11): ADO's header and left rail as GitHub's frame. **Header** (`.project-header` row = `.region-header` + `.region-header-menubar`): `--bgColor-inset` material with a 1px `--borderColor-default` bottom hairline drawn as an inset shadow (height stays 48px, F3); ADO's logo kept but monochrome — its own image URL becomes a CSS `mask` painted `--fgColor-default` (F2); breadcrumbs as GitHub's "owner / repo" — 14px `--fgColor-default` links, hover underline, muted `/`, last crumb semibold, or, when the trail ends in a selector (repo, team), the selector semibold instead; the menubar's icon buttons (My Work, Marketplace, Help, User settings) as GitHub's bordered 32px squares, avatar round. **Icons**: Octicons replace ADO's glyphs by injecting an `<svg>` into the icon host, marked with a `data-adofix-octicon` attribute (React rewrites `className`, not unknown attributes) under CSS that hides the host's own glyph/img; rail groups mapped by contribution id, stand-alone rail items and header buttons by Fluent glyph name (`ms-Icon--<Name>`, locale-proof) — tables in `src/features/frame/hubs.ts`; unmapped contributed icons stay ADO's. **Rail** (F6): `--bgColor-inset` with a right hairline; NavList states — a 6px-radius plate inset 4px/6px, `--control-transparent-bgColor-hover` on hover, `-selected` + a 4px `--borderColor-accent-emphasis` bar on the left edge for the current group (ADO's tinted container and 3px bar removed). The current group's inline sub-page list is hidden. **Sub-page dropdown** (F4, F7–F9): a `gh-menu` via `core/popover` (new `placement: "right-start"`), anchored beside the rail item, headed by the group name, one Octicon + label row per sub-page, the current page selected (NavList bar). Links come from ADO's DOM only: the current group's (hidden) inline list, or ADO's own hover flyout `#__bolt-menu-<group>-callout`, which stays mounted but `visibility: hidden` — the feature hovers ADO's trigger synthetically when the flyout isn't there yet. Clicking an item clicks ADO's own link, resolved by id at click time (re-rendering the flyout if needed), so ADO's router navigates in-app; modifier/middle clicks follow the real `href`. Opens on hover after 250ms (passive: `takeFocus: false` — a text field keeps focus and its keys) and closes 300ms after the pointer leaves item and menu; the caret button at the item's right edge or ArrowRight on the item opens it with focus on the current/first row (arrow roving, Escape returns focus to the item). Single-hub groups (Artifacts) get no dropdown. **Search** (F10): ADO's own `.expandable-search-header` (hidden 2026-08-18 → 2026-11-02) restyled as GitHub's 272×32 box with a "Type [/] to search" hint (an `aria-hidden` overlay; the input's placeholder is a blank space so `:placeholder-shown` hides the hint once typed in); ADO keeps its suggestions callout and submit (→ `_search`). `/` focuses it (`github-frame.search`), Escape blurs it. |
 | `pr-overview` | Pure CSS, PR Overview restructuring (carved out of chrome-density 2026-08-19): conversation cards (status, Description, comment threads) get GitHub's Box look by CSS (D41: `--bgColor-default` fill, 1px default border, 6px corners, no shadow) with chrome divider lines removed; the nested checks/merge-commit boxes become `--bgColor-muted` wells and a file-anchored thread's path header becomes a muted Box-header, while non-comment feed entries ("pushed n commits") and the Reviewers/Tags/Work items sidebar sit flat against the page (tag-picker input outline removed). Reviewers render as one merged list (required first, per-row "Required"/"Optional" subtitle tags) instead of two headed groups. The discussion feed runs oldest-first with the composer at the bottom, GitHub-style (Overview feed only — the Updates tab's feed is virtualized and cannot be safely mirrored). |
 | `pr-keynav` | Keyboard navigation in the PR Files view (see hotkeys). |
 | `pr-thread-filter` | Hides resolved **and closed** threads (plus ADO's collapsed thread sites), leaving a placeholder per thread — click it to reveal that one. In the diff it is a compact secondary `gh-Label` with the comment-discussion octicon; on the Overview feed it is a full-width muted "Resolved comment thread — click to show" row sized to align with the timeline rail icon. Persisted via `GM_setValue`. Toggled from the `pr-comments` widget (its own toolbar button retired 2026-08-02). |
@@ -53,6 +54,7 @@ overrides go through `Hotkeys.setBindings()` and enumeration through
 | `u` | next **unresolved** thread | PR |
 | `t` | toggle the file tree pane | PR |
 | `s` | change work item state | work item form, boards |
+| `/` | focus the header search box (Escape leaves it) | everywhere |
 
 ## Selector verification status
 
@@ -305,6 +307,44 @@ throws). Key live findings baked into the code:
   bar keyword box is `.vss-FilterBar--item-keyword-container` and natively
   flex-grows across the whole bar (~867px on the sprints taskboard).
 
+- **Global frame (github-frame) — verified live 2026-11-02 (dark)** on the
+  PR list, PR files, repo files, Kanban board and work item pages:
+  - Header row `.project-header` = `.region-header` (logo
+    `a.suite-logo > img.suite-image`, a cdn.vsassets.io SVG that works as a
+    CSS mask; breadcrumb `.bolt-breadcrumb-list-item` > `.bolt-breadcrumb-item a
+    .bolt-breadcrumb-item-text`, dividers `.bolt-breadcrumb-divider`,
+    selectors in `#__bolt-breadcrumb-extra-content`; search
+    `.expandable-search-header > .search[role=search]` = `.search-icon` +
+    `input#l1-search-input.search-input`) + `.region-header-menubar` (icon
+    buttons `.bolt-button.icon-only` with `ms-Icon--CheckList/Shop/Unknown/
+    PlayerSettings`, avatar `#mectrl_headerPicture`). ADO stretches
+    `.search` (`align-self: stretch`), which pins a fixed-height box to the
+    top — it needs `align-self: center`. ADO's search box, on Enter, routes
+    to `_search?text=…`; its help/suggestions callout is
+    `.search-help-callout`.
+  - Rail `.project-navigation`: groups are
+    `.hub-group-container > [.bolt-expandable-container >]
+    a.hub-group#__bolt-<contribution>-link` with an `<img>` icon in
+    `.navigation-icon`; the current group has no expandable container and
+    renders its sub-pages inline (`:scope > [role=menu] > a.hub`,
+    `.displayed` = current page). ADO's selected look is the container's
+    tint + a 3px `::before` bar. Every other group renders its sub-pages
+    only on hover — dispatching `mouseenter`/`mouseover` on the
+    `.bolt-expandable-container` renders `.bolt-callout#__bolt-menu-<group>-callout`
+    with `a.bolt-menuitem-row[role=menuitem]#__bolt-<contribution>` rows,
+    and `mouseleave`/`mouseout` removes it. `.click()` on those rows (or the
+    hidden inline links) navigates in-app (same document). Artifacts is a
+    single hub: no container, no flyout. Stand-alone items:
+    `#__bolt-create-action` (`ms-Icon--Add`), `#__bolt-settings-link`
+    (`ms-Icon--Settings`), `#project-expansion-toggle`
+    (`ms-Icon--DoubleChevronRight` collapsed; `…Left` expanded, inferred).
+    The expanded (labelled) rail was NOT checked live — toggling it writes a
+    user preference.
+  - The live-browser harness only synthesizes `pointermove`/`mousemove`
+    for hovers (no `mouseover`/`mouseenter`, no `:hover`), so the rail
+    binds `mousemove` too; real-pointer hover and `:hover` plates were
+    checked through the open-menu state, not a real cursor.
+
 - **GitHub makeover stage 1 — NOT yet verified live (stage 1, 2026-11-02).**
   Live probes became unavailable mid-run (design-decisions D10a), so
   everything below was written from code, `azure-devops-ui` sources and the
@@ -544,7 +584,10 @@ wiring flags — that lasts the page lifetime by design.)
   every REST feature caches through (the v0.6.0 request-flood guard);
   failure policy per cache: latch (default) or retry.
 - `src/core/popover.ts` — the shared light-dismiss menu (outside-mousedown,
-  Escape, arrow roving, `data-adofix-modal` hotkey suspension) with
+  Escape, arrow roving, `data-adofix-modal` hotkey suspension; placement
+  `below-end` or `right-start`; `takeFocus: false` for hover-opened menus
+  that leave focus and a focused field's keys alone; focus returns to the
+  anchor on close only if it was inside the menu) with
   `menuItem`/`menuStatus`/`menuDivider` building blocks, rendered as a
   `gh-menu` (check octicon in an always-reserved slot, `gh-Counter` counts;
   no `aria-checked` on toggle items — D46).
@@ -557,5 +600,7 @@ wiring flags — that lasts the page lifetime by design.)
   `src/features/boards/` (filter parsing, status formatting, unfiltered-total
   memory, boards-hub path/scope helpers) and `src/features/workitem/`
   (English-UI label matches + string transforms in `fields.ts`, the
-  teleport-edit machinery in `teleport.ts`) — all with colocated tests.
+  teleport-edit machinery in `teleport.ts`) and `src/features/frame/`
+  (`hubs.ts`: the frame's Octicon tables and ADO hub-link extraction) —
+  all with colocated tests.
 

@@ -33,11 +33,9 @@ table:has(td.taskboard-expanded-cell) th,
   background-color: var(--bgColor-default) !important;
 }
 
-/* The banner's site-wide search widget — never used, and its 200px pill
-   broke the banner's quiet right edge (user 2026-08-18). */
-.region-header .expandable-search-header {
-  display: none !important;
-}
+/* The banner's site-wide search widget was hidden here from 2026-08-18 to
+   2026-11-02; GitHub makeover stage 2 brings it back as GitHub's "Type / to
+   search" box (github-frame owns its look and the / hotkey). */
 /*
  * Page title rows across hubs — .bolt-header is ADO's shared page-header
  * component (default padding-top 20-24px). Tab strips are ALSO .bolt-header

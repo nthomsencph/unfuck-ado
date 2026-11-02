@@ -18,6 +18,7 @@
 #   scripts/firefox-claude/setup.sh              install / refresh
 #   scripts/firefox-claude/setup.sh --uninstall  remove everything it added
 set -euo pipefail
+trap 'echo "setup.sh FAILED at line $LINENO — .firefox-claude/ext left untouched" >&2' ERR
 
 REPO_URL="https://github.com/NetVar1337/claude-for-firefox"
 PINNED_COMMIT="5ed02a6ad2e659476a8f4ee87b976cc1a1164630"  # audited 2026-11-01
@@ -52,11 +53,15 @@ git -C "$SRC" -c advice.detachedHead=false checkout --quiet --force "$PINNED_COM
 [[ "$(git -C "$SRC" rev-parse HEAD)" == "$PINNED_COMMIT" ]] || { echo "commit mismatch" >&2; exit 1; }
 git -C "$SRC" clean -qfdx
 
-# 2. Build the extension dir (no installers, no native/, no tokens)
-rm -rf "$EXT"
-mkdir -p "$EXT"
+# 2. Build the extension in a staging dir (no installers, no native/, no
+# tokens) and swap it in only once every patch has applied and checked out —
+# a failed patch must never leave a half-built, unpatched ext/ behind for
+# Firefox to load (that cost a debugging session on 2026-11-02).
+STAGE="$DIR/ext.new"
+rm -rf "$STAGE"
+mkdir -p "$STAGE"
 rsync -a --exclude='.git' --exclude='install.sh' --exclude='install.ps1' \
-  --exclude='native' --exclude='README.md' "$SRC/" "$EXT/"
+  --exclude='native' --exclude='README.md' "$SRC/" "$STAGE/"
 
 # Drop the claude.ai bridge: it lets any script on claude.ai send internal
 # extension messages (prompt injection into the sidebar, permission mode, logout).
@@ -65,8 +70,8 @@ rsync -a --exclude='.git' --exclude='install.sh' --exclude='install.ps1' \
   const m = JSON.parse(fs.readFileSync(f, "utf8"));
   m.content_scripts = m.content_scripts.filter(cs => !cs.js.includes("firefox-claude-ai-bridge.js"));
   fs.writeFileSync(f, JSON.stringify(m, null, 2) + "\n");
-' "$EXT/manifest.json"
-rm -f "$EXT/firefox-claude-ai-bridge.js"
+' "$STAGE/manifest.json"
+rm -f "$STAGE/firefox-claude-ai-bridge.js"
 
 # Read-only probes for CSP-strict pages (see probe.js): ADO and GitHub block
 # eval, so the javascript tool's eval-based shim can't run there.
@@ -94,7 +99,17 @@ rm -f "$EXT/firefox-claude-ai-bridge.js"
             return { result: { type: \x27string\x27, value: v, description: v } };
           }`);
   fs.writeFileSync(f, s + "\n" + probe);
-' "$EXT/firefox-compat.js" "$ROOT/scripts/firefox-claude/probe.js"
+' "$STAGE/firefox-compat.js" "$ROOT/scripts/firefox-claude/probe.js"
+
+# Check the staged build, then swap it in.
+"$NODE" --check "$STAGE/firefox-compat.js"
+grep -q "probeMatch" "$STAGE/firefox-compat.js" || { echo "probe patch missing from staged build" >&2; exit 1; }
+! grep -q "firefox-claude-ai-bridge" "$STAGE/manifest.json" || { echo "claude.ai bridge still in staged manifest" >&2; exit 1; }
+[[ -f "$EXT/firefox-injected-tokens.json" ]] && cp -p "$EXT/firefox-injected-tokens.json" "$STAGE/"
+rm -rf "$DIR/ext.old"
+[[ -d "$EXT" ]] && mv "$EXT" "$DIR/ext.old"
+mv "$STAGE" "$EXT"
+rm -rf "$DIR/ext.old"
 
 # 3. Native host + MCP server, talking over a socket inside .firefox-claude/.
 # Upstream uses os.tmpdir(), which differs between Firefox (launched from the

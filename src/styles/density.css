@@ -47,16 +47,12 @@
 }
 
 /*
- * Kanban board joins the layered theme (verified live 2026-08-18): canvas
- * behind the board and the column-header strip, lane surfaces on columns,
- * card material on every wit-card — which covers the sprint taskboard's
- * cards too (.taskboard-card is a .wit-card); overflow clips their state
- * stripes to the rounded corners.
+ * Kanban board surfaces (verified live 2026-08-18): lane surfaces on
+ * columns, card material on every wit-card — which covers the sprint
+ * taskboard's cards too (.taskboard-card is a .wit-card); overflow clips
+ * their state stripes to the rounded corners. The canvas behind the board
+ * is the Primer bridge's.
  */
-.kanban-board,
-.kanban-board-column-header-container {
-  background: var(--adofix-bg) !important;
-}
 .kanban-board-column {
   background: var(--adofix-lane) !important;
 }

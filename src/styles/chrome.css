@@ -7,32 +7,16 @@
  * Kanban board title row 63px -> 41px; PR header 86px -> 72px.
  */
 
-/* Design tokens (--adofix-radius/bg/lane/card) live in core/dom's BASE_CSS,
-   injected at boot — NOT here: this sheet is a toggleable feature and every
-   other feature's surfaces read the tokens. */
+/* Canvas colors are the Primer bridge's (core/primer) — the near-black
+   #141414 canvas overrides that lived here (page containers, banner, project
+   header, sticky grid headers, PR page bands, the nav rail) were removed in
+   stage 1 of the GitHub makeover. */
 
-/*
- * The app canvas goes almost black on every page: main page containers, the
- * top banner and the project header. The left rail uses translucent white,
- * so it adapts by itself. Sticky table header cells on the board/backlog
- * grids paint their own #201f1e and are synced below.
- */
-.bolt-page,
-.region-header,
-.region-header-menubar,
-.project-header {
-  background: var(--adofix-bg) !important;
-}
 /* The banner's site-wide search widget — never used, and its 200px pill
    broke the banner's quiet right edge (user 2026-08-18). */
 .region-header .expandable-search-header {
   display: none !important;
 }
-table:has(td.taskboard-expanded-cell) th,
-.backlogs-view th {
-  background-color: var(--adofix-bg) !important;
-}
-
 /*
  * Page title rows across hubs — .bolt-header is ADO's shared page-header
  * component (default padding-top 20-24px). Tab strips are ALSO .bolt-header
@@ -207,23 +191,6 @@ div.padding-vertical-16:has(> .vss-FilterBar) {
 }
 
 /*
- * PR page chrome unified on the darker header grey (verified live 2026-08-02).
- * ADO paints the PR page body, the file-tree pane and the sticky tabbar on
- * palette-neutral-2 (#252423 dark) while the top region sits on
- * --background-color (#201f1e dark) — the lighter band reads as clutter.
- * Using the variable keeps light theme coherent.
- * The splitter container (.repos-changes-explorer-splitter, carries
- * .bolt-page-grey) is the element that actually paints behind BOTH the
- * file tree and the diff-card backdrop — .repos-changes-explorer alone
- * does not exist on the Files view (re-verified live 2026-08-02).
- */
-.repos-pr-details-page,
-.repos-changes-explorer-splitter,
-.repos-pr-details-page-tabbar {
-  background: var(--adofix-bg) !important;
-}
-
-/*
  * File tree: room at the top and a real left gutter (user-tuned 2026-08-02;
  * the ask was to push the tree RIGHT, away from the nav rail). The
  * .absolute-fill child is the pane's scroll wrapper; padding there indents
@@ -265,8 +232,7 @@ div.padding-vertical-16:has(> .vss-FilterBar) {
 
 /*
  * More de-noising (verified live 2026-08-02):
- * - tab strip and left sidebar rail lose their hairlines; the rail
- *   (.project-navigation, neutral-8 background) joins the unified dark grey;
+ * - tab strip and left sidebar rail lose their hairlines;
  * - per-file header rows drop their bottom hairline — the card/background
  *   color difference already separates them.
  * (The 4vw diff-card side gutters added here were REMOVED 2026-08-17: they
@@ -280,7 +246,6 @@ div.padding-vertical-16:has(> .vss-FilterBar) {
   border-bottom: none !important;
 }
 .project-navigation.project-navigation {
-  background: var(--adofix-bg) !important;
   border-right: none !important;
 }
 .repos-summary-header > .flex-row {

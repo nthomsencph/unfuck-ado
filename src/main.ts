@@ -1,4 +1,5 @@
 import { injectBaseStyle } from "./core/dom";
+import { injectPrimer, syncPrimer } from "./core/primer";
 import { createRouter } from "./core/router";
 import { createHotkeys } from "./core/keys";
 import { createRegistry } from "./core/registry";
@@ -36,8 +37,10 @@ declare global {
   if (window.__adofix) return;
   window.__adofix = true;
 
-  // Tokens + .adofix-surface before any feature sheet, so feature rules win
-  // equal-specificity ties against the recipe.
+  // Primer (tokens, ADO bridge, GitHub fonts, gh- components) and then
+  // .adofix-surface before any feature sheet, so feature rules win
+  // equal-specificity ties against both. injectPrimer also syncs the theme.
+  injectPrimer();
   injectBaseStyle();
 
   const router = createRouter();
@@ -76,7 +79,9 @@ declare global {
   // DOM settle: recheck() catches SPA navigations the history patch missed
   // (sandboxed userscript contexts) and notifies onChange — which applies.
   // A settle without a route change still needs a plain re-apply.
+  // Theme sync first: ADO may have switched theme, and features read tokens.
   startObserver(() => {
+    syncPrimer();
     if (!router.recheck()) registry.applyAll(router.current());
   });
   // Dispatches the initial route through onChange.

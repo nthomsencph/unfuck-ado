@@ -1,7 +1,12 @@
 export const ADOFIX_ATTR = "data-adofix";
 
-/** One accent for everything we inject — deliberately foreign to ADO's blue. */
-export const ACCENT = "#8250df";
+/**
+ * TEMPORARY alias (D6) while features migrate to Primer tokens: GitHub's
+ * accent text color. Every importer interpolates it into CSS (plain values,
+ * color-mix(), borders), where a var() works; the old "#8250df" purple is
+ * retired. Deleted once no feature imports it.
+ */
+export const ACCENT = "var(--fgColor-accent)";
 
 export function safeQuery<T extends Element = HTMLElement>(
   selector: string,
@@ -154,45 +159,40 @@ export function setStyle(featureId: string, css: string): void {
 }
 
 /*
- * Shared design tokens + the elevated-surface recipe, injected once at boot
- * (main.ts) — owned by core, not by a toggleable feature, because every
- * feature's surfaces read these.
+ * The adofix base sheet, injected once at boot (main.ts) after the Primer
+ * foundation — owned by core, not by a toggleable feature, because every
+ * feature's surfaces read it.
  */
 const BASE_CSS = `
 /*
- * --adofix-radius is THE corner radius for every adofix-styled container
- * surface (cards, panels, menus, toasts) — change it here, not per-rule.
- * Small controls (checkboxes, pills, badges) keep their own radii; those
- * track control height, not surface language.
+ * TEMPORARY aliases (D6) onto Primer tokens while features migrate; the
+ * layered #141414 canvas < lane < card look and the 10px radius are
+ * retired (GitHub: flat canvas, muted columns, 6px corners). Deleted once
+ * no feature reads them.
  */
 :root {
-  --adofix-radius: 10px;
-  /* Near-black canvas with layered surfaces (user request 2026-08-18):
-     page < lane (grouping surfaces, e.g. board columns) < card. */
-  --adofix-bg: #141414;
-  --adofix-lane: #1d1c1b;
-  --adofix-card: #252423;
+  --adofix-radius: var(--borderRadius-medium);
+  --adofix-bg: var(--bgColor-default);
+  --adofix-lane: var(--bgColor-muted);
+  --adofix-card: var(--bgColor-default);
 }
 /*
  * One recipe for every floating adofix panel (toast, menus, pickers, the
- * drafts panel): ADO theme variables with dark fallbacks, resolved at the
- * element — where ADO's theme vars are actually inherited; :root sits above
- * them. --adofix-ink mixes the accent toward the theme's text color so
- * accent text stays readable on both themes.
+ * drafts panel): GitHub's overlay.
  */
 .adofix-surface {
-  --adofix-ink: color-mix(in srgb, ${ACCENT} 62%, var(--text-primary-color, #fff));
-  background: var(--callout-background-color, #201f1e);
-  color: var(--text-primary-color, #fff);
-  border: 1px solid var(--border-subtle-color, rgba(128, 128, 128, 0.25));
-  border-radius: var(--adofix-radius);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
-  font-family: "Segoe UI", system-ui, sans-serif;
+  --adofix-ink: var(--fgColor-accent);
+  background: var(--overlay-bgColor);
+  color: var(--fgColor-default);
+  border: var(--borderWidth-default) solid var(--borderColor-default);
+  border-radius: var(--borderRadius-medium);
+  box-shadow: var(--shadow-floating-small);
+  font-family: var(--fontStack-sansSerif);
 }
 /* One-shot accent flash used by flashOutline() after programmatic jumps. */
 @keyframes adofix-flash {
-  0% { box-shadow: 0 0 0 2px ${ACCENT}; }
-  100% { box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18); }
+  0% { box-shadow: 0 0 0 2px var(--fgColor-accent); }
+  100% { box-shadow: 0 0 0 0 transparent; }
 }
 .adofix-flash { animation: adofix-flash 1.4s ease-out; }
 /*
@@ -204,14 +204,14 @@ const BASE_CSS = `
  * accent background would vanish.
  */
 [class*="adofix-"]:focus-visible {
-  outline: 2px solid ${ACCENT} !important;
+  outline: 2px solid var(--focus-outlineColor) !important;
   outline-offset: 2px;
 }
 .adofix-review-btn:focus-visible,
 .adofix-toggle:focus-visible,
 .adofix-draft-btn.adofix-primary:focus-visible,
 .adofix-draft-capture:focus-visible {
-  outline-color: var(--text-primary-color, #fff) !important;
+  outline-color: var(--fgColor-default) !important;
 }
 `;
 

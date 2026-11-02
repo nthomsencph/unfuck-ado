@@ -1,6 +1,6 @@
 {
   "name": "ado-unfuck",
-  "version": "0.52.0",
+  "version": "0.53.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,7 +9,8 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "firefox:setup": "scripts/firefox-claude/setup.sh",
-    "firefox": "scripts/firefox-claude/launch.sh"
+    "firefox": "scripts/firefox-claude/launch.sh",
+    "icons": "node scripts/icons.mjs"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
@@ -17,6 +18,8 @@
     ]
   },
   "devDependencies": {
+    "@primer/octicons": "19.42.0",
+    "@primer/primitives": "11.10.0",
     "esbuild": "^0.25.0",
     "jsdom": "^26.0.0",
     "typescript": "^5.8.0",

@@ -1,0 +1,25 @@
+/*
+ * GitHub typography, stage 1: font FAMILIES only. Sizes and line heights
+ * stay ADO's — they move rows and headers, which would break "layout does
+ * not change" and the measured-size tricks (stub-hide, teleport).
+ *
+ * Forced over every element because ADO's legacy bundles declare fonts on
+ * their own elements, not just body (azure-devops-ui only sets body, from
+ * azure-devops-ui 2.281.0 Core/override.css). Exempt:
+ * - icon-font elements: FabricIcons (.fabric-icon, AzureDevOpsMDL2Assets),
+ *   Fluent (.fabric-icon/.ms-Icon--* under .fluent-icons-enabled), the
+ *   legacy .bowtie-icon — matched broadly by class substring, any case, so
+ *   glyphs never turn into letters (spec: verify live);
+ * - code and Monaco: code/pre/kbd/samp and ADO's .monospaced-* get GitHub's
+ *   monospace stack below; Monaco measures its own glyphs and is left alone.
+ * Off in ADO's high-contrast themes (no [data-adofix-bridge], theme.ts).
+ */
+html[data-adofix-bridge] body,
+html[data-adofix-bridge] body
+  :not([class*="icon" i], code, pre, kbd, samp, [class*="monospaced"], .monaco-editor,
+    .monaco-editor *, code *, pre *, kbd *, samp *, [class*="monospaced"] *) {
+  font-family: var(--fontStack-sansSerif) !important;
+}
+html[data-adofix-bridge] :is(code, pre, kbd, samp, [class*="monospaced"]):not(.monaco-editor, .monaco-editor *) {
+  font-family: var(--fontStack-monospace) !important;
+}

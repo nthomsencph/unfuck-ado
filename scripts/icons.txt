@@ -1,0 +1,37 @@
+# Octicons bundled into src/core/primer/icons.gen.ts — one name per line.
+# Regenerate with `pnpm icons` after editing; only listed icons ship.
+alert
+arrow-left
+arrow-right
+check
+check-circle
+chevron-down
+chevron-right
+clock
+comment
+comment-discussion
+dot-fill
+eye
+file-diff
+filter
+git-branch
+git-commit
+git-pull-request
+info
+issue-opened
+kebab-horizontal
+pencil
+people
+person
+plus
+project
+repo
+search
+sidebar-collapse
+sidebar-expand
+skip
+sync
+trash
+triangle-down
+x
+x-circle

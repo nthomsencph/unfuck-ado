@@ -79,8 +79,18 @@ rm -f "$EXT/firefox-claude-ai-bridge.js"
   s = s.replace(anchor, anchor + `
           const probeMatch = expr.match(/__PROBE__(\\{[\\s\\S]*?\\})__END__/);
           if (probeMatch) {
-            const [inj] = await browser.scripting.executeScript({ target: { tabId }, func: adofixProbe, args: [JSON.parse(probeMatch[1])], world: \x27MAIN\x27 });
-            const v = JSON.stringify(inj && inj.result);
+            // The tool embeds the code via JSON.stringify, so the probe JSON
+            // arrives escaped once. Never throw: a rejected shim call hangs the
+            // caller until its 45s timeout.
+            let v;
+            try {
+              let q;
+              try { q = JSON.parse(probeMatch[1]); } catch (_) { q = JSON.parse(JSON.parse(\x27"\x27 + probeMatch[1] + \x27"\x27)); }
+              if (q.op === \x27reload\x27) { setTimeout(() => chrome.runtime.reload(), 200); return { result: { type: \x27string\x27, value: \x27reloading\x27, description: \x27reloading\x27 } }; }
+              const [inj] = await browser.scripting.executeScript({ target: { tabId }, func: adofixProbe, args: [q], world: \x27MAIN\x27 });
+              // base64: the tool's output filter blocks text that looks like cookies/query strings
+              v = \x27b64:\x27 + btoa(unescape(encodeURIComponent(JSON.stringify(inj && inj.result))));
+            } catch (e) { v = JSON.stringify({ probeError: String(e && e.message || e) }); }
             return { result: { type: \x27string\x27, value: v, description: v } };
           }`);
   fs.writeFileSync(f, s + "\n" + probe);

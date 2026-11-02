@@ -9,6 +9,8 @@
 //   {op:"count", sel}                number of matches
 //   {op:"rules", match, max}         same-origin CSS rules whose text contains `match`
 //   {op:"attr", sel, name}           an attribute of each match
+//   {op:"reload"}                     reload the extension itself (picks up setup.sh rebuilds;
+//                                    handled in the shim, not here)
 function adofixProbe(q) {
   const all = (sel) => Array.from(document.querySelectorAll(sel));
   const max = q.max || 20;

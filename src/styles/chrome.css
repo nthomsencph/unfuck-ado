@@ -48,11 +48,19 @@ table:has(td.taskboard-expanded-cell) th,
 /* Page title rows get GitHub's air back (user 2026-11-02: the Aug squeeze
    to 6px left the PR title and the sprint/backlog headers jammed under the
    top bar). .no-padding headers are section headers inside a page (the PR
-   sidebar's Reviewers/Tags/Work items) and keep the tight 6px. The lifted
-   icon rows on the sprint and backlog headers use relative offsets, so the
-   extra padding moves them with the title. */
+   sidebar's Reviewers/Tags/Work items) and keep the tight 6px. */
+/* --adofix-title-pad is the ONE knob for that air; a page may set its own
+   value on its page scope (pr-list: 32px). The rows that sprint-header,
+   backlog-toolbar and pr-list lift onto the title row hang below the
+   header, which grows with the padding, so their offsets do NOT depend on
+   it: changing it moves them with the title (verified live at 20px and
+   30px on the taskboard, sprint backlog, Backlogs and PR list,
+   2026-11-02). */
+:root {
+  --adofix-title-pad: 20px;
+}
 .bolt-header:not([class*="tabbar"]):not([class*="tabs"]):not(.no-padding) {
-  padding-top: 20px !important;
+  padding-top: var(--adofix-title-pad) !important;
 }
 
 /* Page titles: 21px -> 16px drops the title row ~15px. Verified 2026-08-01. */

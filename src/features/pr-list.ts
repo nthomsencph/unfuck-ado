@@ -432,15 +432,13 @@ ${SCOPE} .bolt-header-title-area {
 ${SCOPE} .bolt-header .bolt-header-commandbar {
   margin-left: auto !important;
 }
-/* More room above the merged toolbar row (user 2026-11-02): the page
-   header's top padding 20px (chrome-density) -> 32px. The tab row and the
-   filter wrapper lifts below are unchanged: they hang off the header's
-   bottom edge, which moves down with the padding, so everything shifts
-   together (measured). */
-/* Specificity must beat chrome-density's
-   .bolt-header:not([class*="tabbar"]):not([class*="tabs"]):not(.no-padding). */
-${SCOPE} .bolt-page > .bolt-header.bolt-header-with-commandbar:not([class*="tabbar"]):not(.no-padding) {
-  padding-top: 32px !important;
+/* More room above the merged toolbar row (user 2026-11-02): this page's
+   title padding (chrome.css --adofix-title-pad) is 32px. The tab row and
+   the filter wrapper lifts below are unchanged by it: they hang off the
+   header's bottom edge, which moves down with the padding, so everything
+   shifts together (measured). */
+${SCOPE} {
+  --adofix-title-pad: 32px;
 }
 ${SCOPE} #__bolt-tab-mine {
   display: none !important;

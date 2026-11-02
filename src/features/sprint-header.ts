@@ -75,8 +75,10 @@ ${SCOPE} .sprints-tabbar-header .bolt-tabbar {
   ${tabScope("taskboard")} .sprints-tabbar-header-commandbar.bolt-header-commandbar,
   ${tabScope("backlog")} .sprints-tabbar-header-commandbar.bolt-header-commandbar {
     position: relative;
-    /* -36px (was -52px): centers the icons on the title row's centerline,
-       re-measured live 2026-11-02 (they sat 16px high). */
+    /* Centers the icons on the title row's centerline (live 2026-11-02).
+       Independent of the title padding (chrome.css --adofix-title-pad):
+       the lifted rows hang below the header, which grows with it —
+       verified live at 20px and 30px. */
     top: -36px;
     z-index: 3;
   }
@@ -94,7 +96,7 @@ ${SCOPE} .sprints-tabbar-header .bolt-tabbar {
        before that button existed — the pickers overlapped, user 2026-08-18) */
     padding-right: 360px;
     position: relative;
-    top: -32px; /* was -48px; 16px high, re-measured live 2026-11-02 */
+    top: -32px;
     z-index: 4;
     pointer-events: none;
   }

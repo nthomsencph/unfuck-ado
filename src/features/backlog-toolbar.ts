@@ -59,10 +59,12 @@ ${SCOPE} .wit-backlogs-header-row .bolt-header-command-item-button.bolt-expandab
  * The icon row lifted onto the title row, inline with the ⋮ menu (user
  * request 2026-08-18) — the PR Files toolbar-merge pattern: pure CSS, DOM
  * stays where React put it, container is click-through so the team-name
- * dropdown underneath stays clickable. -50px (was -64px before the page-title
- * padding went 6px -> 20px, re-measured 2026-11-02) puts the icons on the title
- * text's centerline (with chrome-density's 6px header padding and the ⋮
- * alignment fix above; all four centers measured equal 2026-08-18); 44px
+ * dropdown underneath stays clickable. -50px puts the icons on the title
+ * text's centerline (with the ⋮ alignment fix above; all four centers
+ * measured equal 2026-08-18 and 2026-11-02). It does not depend on the
+ * title padding (chrome.css --adofix-title-pad): the row hangs below the
+ * header, which grows with the padding — verified live at 20px and 30px
+ * (2026-11-02). 44px
  * right padding clears the ⋮ button (34px + rhythm gap). Below 900px the
  * title and the icon group would collide, so the row stays put (tabs stay
  * hidden at every width).

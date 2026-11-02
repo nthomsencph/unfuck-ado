@@ -151,14 +151,28 @@ function repoApiBase(ref: PrRef): string {
   return `${projectBase(ref)}/_apis/git/repositories/${encodeURIComponent(ref.repo)}`;
 }
 
-export async function fetchDiffTotals(ref: PrRef): Promise<ApiResult<DiffTotals>> {
-  const base = repoApiBase(ref);
+/** The PR's latest iteration: its commits are the diff's base and target. */
+export async function fetchLastIteration(ref: PrRef): Promise<ApiResult<Iteration>> {
   const iterations = await apiFetch<{ value: Iteration[] }>(
-    `${base}/pullRequests/${ref.prId}/iterations`
+    `${repoApiBase(ref)}/pullRequests/${ref.prId}/iterations`
   );
   if (!iterations.ok) return iterations;
   const last = iterations.value.value[iterations.value.value.length - 1];
   if (!last) return { ok: false, error: { status: 0, message: "PR has no iterations" } };
+  return { ok: true, value: last };
+}
+
+export async function fetchDiffTotals(ref: PrRef): Promise<ApiResult<DiffTotals>> {
+  const last = await fetchLastIteration(ref);
+  return last.ok ? fetchDiffTotalsAt(ref, last.value) : last;
+}
+
+/** Totals for an already-fetched iteration (the PR list caches by its commit). */
+export async function fetchDiffTotalsAt(
+  ref: PrRef,
+  last: Iteration
+): Promise<ApiResult<DiffTotals>> {
+  const base = repoApiBase(ref);
 
   const entries: ChangeEntry[] = [];
   for (let skip = 0; ; skip += CHANGES_PAGE_SIZE) {

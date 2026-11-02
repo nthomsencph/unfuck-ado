@@ -3,6 +3,7 @@ import type { Route } from "../core/router";
 import { injectStyleOnce } from "../core/dom";
 import { fetchCurrentUserId } from "./pr/reviewer-api";
 import { countPrs, fetchActivePrs, ownershipMap, type Ownership, type PrStatus } from "./pr/list-api";
+import { diffstatParts, fetchDiffStat, type DiffStat } from "./pr/list-diffstat";
 
 /**
  * GitHub-style restyle of the PR list page (spec:
@@ -33,8 +34,70 @@ export const prList: Feature = {
     sweepMetaLines(document);
     tagOwnership(route);
     tabCounts(route);
+    rowDiffstats(route);
   },
 };
+
+/*
+ * Each row's meta line ends in GitHub's diffstat, "+120 / −30 · 4 changed
+ * files" (user request 2026-11-02). Fetched per visible row through
+ * list-diffstat (queued, cached by the PR's latest commit); a failed fetch
+ * leaves the row without one. Appended inside the React-owned meta span,
+ * so the settle re-apply restores it after re-renders.
+ */
+let statSlot: { key: string; stats: Map<number, DiffStat | null> } | null = null;
+
+function rowDiffstats(route: Route): void {
+  const { org, project, repo } = route;
+  if (!org || !project || !repo) return;
+  const key = `${org}/${project}/${repo}`;
+  if (!statSlot || statSlot.key !== key) statSlot = { key, stats: new Map() };
+  const slot = statSlot;
+  for (const row of document.querySelectorAll<HTMLElement>('.repos-pr-list a[href*="/pullrequest/"]')) {
+    const id = prIdOf(row);
+    if (id === null) continue;
+    if (slot.stats.has(id)) {
+      const stat = slot.stats.get(id);
+      if (stat) paintDiffstat(row, id, stat);
+      continue;
+    }
+    slot.stats.set(id, null); // claimed; stays null if the fetch fails
+    void fetchDiffStat({ org, project, repo, prId: String(id) }).then((stat) => {
+      if (!stat || statSlot !== slot) return;
+      slot.stats.set(id, stat);
+      for (const r of document.querySelectorAll<HTMLElement>(
+        `.repos-pr-list a[href*="/pullrequest/${id}"]`
+      ))
+        if (prIdOf(r) === id) paintDiffstat(r, id, stat);
+    });
+  }
+}
+
+function prIdOf(row: Element): number | null {
+  const match = /\/pullrequest\/(\d+)/.exec(row.getAttribute("href") ?? "");
+  return match ? Number(match[1]) : null;
+}
+
+/** Appends (or refreshes) the diffstat at the end of the row's meta line. */
+export function paintDiffstat(row: Element, id: number, stat: DiffStat): void {
+  const line = row.querySelector<HTMLElement>(".secondary-text.body-s > span");
+  if (!line) return;
+  let el = line.querySelector<HTMLElement>(":scope > .adofix-pr-diffstat");
+  if (el && el.dataset["pr"] === String(id)) return;
+  el?.remove();
+  const parts = diffstatParts(stat);
+  el = document.createElement("span");
+  el.className = "adofix-pr-diffstat";
+  el.dataset["pr"] = String(id);
+  const adds = document.createElement("span");
+  adds.className = "adofix-adds";
+  adds.textContent = parts.adds;
+  const dels = document.createElement("span");
+  dels.className = "adofix-dels";
+  dels.textContent = parts.dels;
+  el.append(" \u00b7 ", adds, " / ", dels, ` \u00b7 ${parts.files}`);
+  line.append(el);
+}
 
 /*
  * GitHub's "7 Open · 6,987 Closed": each status tab carries a gh-Counter
@@ -227,8 +290,15 @@ const CSS = `
    right-hand columns all move together. */
 .repos-pr-list a.bolt-table-row .bolt-table-cell-content {
   padding-top: 14px !important;
-  padding-bottom: 14px !important;
+  padding-bottom: 20px !important; /* a touch more below (user 2026-11-02) */
 }
+/* Row diffstat: GitHub's green adds / red dels, semibold (D45). */
+.adofix-pr-diffstat .adofix-adds,
+.adofix-pr-diffstat .adofix-dels {
+  font-weight: var(--base-text-weight-semibold);
+}
+.adofix-pr-diffstat .adofix-adds { color: var(--fgColor-success); }
+.adofix-pr-diffstat .adofix-dels { color: var(--fgColor-danger); }
 /* Tab count badges sit after the label, centered on it. */
 [${ATTR}] .bolt-tab .bolt-tab-inner-container:has(> .adofix-tab-count) {
   display: inline-flex;

@@ -526,6 +526,31 @@ function hideDescriptionHeader(): void {
   }
 }
 
+/**
+ * Markdown fields enter edit mode only through the "Edit <field>" button
+ * in their section header — and the description's header is hidden, which
+ * left the description uneditable (found 2026-11-02). A click on the
+ * rendered text now presses that (hidden, still clickable) button, like
+ * the HTML editor's click-to-edit. Clicks on links and text selections
+ * keep their own meaning. Listener bound once per preview node.
+ */
+function clickToEditMarkdown(): void {
+  for (const preview of document.querySelectorAll<HTMLElement>(
+    ".work-item-form-page .new-css-for-md-fields .preview-mode-container"
+  )) {
+    if (preview.dataset["adofixEdit"]) continue;
+    preview.dataset["adofixEdit"] = "1";
+    preview.addEventListener("click", (e) => {
+      if ((e.target as Element).closest("a")) return;
+      if (window.getSelection()?.toString()) return;
+      preview
+        .closest(".work-item-form-group")
+        ?.querySelector<HTMLElement>('button[aria-label^="Edit "]')
+        ?.click();
+    });
+  }
+}
+
 /** MUST stay idempotent — runs on every route change and DOM settle. */
 function enhance(ref: ProjectRef | null): void {
   // Before the rail check: on the Attachments view the rail is unmounted,
@@ -536,6 +561,7 @@ function enhance(ref: ProjectRef | null): void {
   placeStateField();
   trimCommentCount();
   hideDescriptionHeader();
+  clickToEditMarkdown();
   const rail = document.querySelector<HTMLElement>(".work-item-form-right");
   if (!rail) {
     return;
@@ -969,6 +995,26 @@ ${commentCss({
    below it marks edit mode. */
 .work-item-form-page .html-editor.auto-grow :is(.rooster-wrapper, .rooster-editor) {
   max-height: none !important;
+  height: auto !important;
+  overflow-y: visible !important;
+}
+.work-item-form-page .new-css-for-md-fields .preview-mode-container {
+  cursor: text;
+}
+/* Markdown fields (description on newer forms, Repro Steps, …): the field
+   box caps at 420px with its own scrollbar, view and edit mode alike — the
+   page scrolls instead (user 2026-11-02: "show in full height"). */
+/* Edit mode: ADO's auto-growing textarea (sized from a hidden mirror)
+   stopped growing at 210px and scrolled. */
+.work-item-form-page .new-css-for-md-fields textarea {
+  max-height: none !important;
+  overflow-y: hidden !important;
+}
+.work-item-form-page .work-item-form-control-content.new-css-for-md-fields,
+.work-item-form-page .new-css-for-md-fields :is(.preview-mode-container, .markdown-editor, .markdown-editor-preview) {
+  max-height: none !important;
+  height: auto !important;
+  overflow-y: visible !important;
 }
 .work-item-form-page :is(.html-editor, .rooster-wrapper, .rooster-editor, .markdown-editor, .markdown-editor textarea):is(:focus, :focus-visible, :focus-within) {
   outline: none !important;

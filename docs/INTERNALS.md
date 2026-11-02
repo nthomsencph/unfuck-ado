@@ -340,6 +340,11 @@ throws). Key live findings baked into the code:
   page-title padding at 20px the sprint title row's center is y=85 on both
   sprint tabs; lifts are taskboard −36px icons / −32px pickers, Backlog tab
   −38 / −34 (its tab row sits 2px lower), Backlogs page −50px margin.
+  Browser Back from a PR (v0.61.1): the URL turns into the list's while
+  ADO keeps rendering the PR page for a moment, so `data-adofix-prlist`
+  is set only once `.repos-pr-details-page` is gone. Otherwise the
+  list-only header rules (tab-row lift, hidden `.bolt-header-title-area`)
+  mangle the PR header: tabs over the meta line, section headers gone.
   PR list (v0.59.4): the page header's top padding is 32px here (20px
   elsewhere); the tab-row and filter lifts hang off the header's bottom
   edge, so they need no change when that padding changes.

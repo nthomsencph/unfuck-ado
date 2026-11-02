@@ -23,7 +23,16 @@ export const prList: Feature = {
   id: "pr-list",
   areas: "*",
   apply(route: Route): void {
-    const onList = route.area === "repos-pr" && route.id === null;
+    // Route alone isn't enough: on browser Back from a PR, the URL is the
+    // list's while ADO still renders the PR page for a while, and the
+    // list-only header rules (tab-row lift, hidden title areas) then mangle
+    // the PR header (user report 2026-11-02, reproduced live). The
+    // attribute waits until the PR page's DOM is gone; the settle re-apply
+    // sets it as soon as ADO swaps the list in.
+    const onList =
+      route.area === "repos-pr" &&
+      route.id === null &&
+      !document.querySelector(".repos-pr-details-page");
     document.documentElement.toggleAttribute(ATTR, onList);
     injectStyleOnce("pr-list", CSS);
     if (!onList) return;

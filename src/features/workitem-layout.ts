@@ -109,21 +109,23 @@ interface CreatedInfo {
 const createdCache = createFetchCache<number, CreatedInfo>();
 
 function ensureCreated(id: number, ref: ProjectRef): void {
-  if (createdCache.begin([id]).length === 0) return;
-  void getWorkItem(ref, id, ["System.CreatedBy", "System.CreatedDate"]).then((res) => {
-    if (!res.ok) {
-      createdCache.fail([id]);
-      log(FEATURE_ID, "created-by fetch failed", res.error.message);
-      return;
-    }
-    const fields = res.value.fields;
-    const by =
-      (fields["System.CreatedBy"] as { displayName?: string } | undefined)?.displayName ?? "?";
-    const date = formatCreatedDate(fields["System.CreatedDate"] as string | undefined);
-    createdCache.settle(id, { by, date });
+  createdCache.load(
+    id,
+    async () => {
+      const res = await getWorkItem(ref, id, ["System.CreatedBy", "System.CreatedDate"]);
+      if (!res.ok) {
+        log(FEATURE_ID, "created-by fetch failed", res.error.message);
+        return null;
+      }
+      const fields = res.value.fields;
+      const by =
+        (fields["System.CreatedBy"] as { displayName?: string } | undefined)?.displayName ?? "?";
+      const date = formatCreatedDate(fields["System.CreatedDate"] as string | undefined);
+      return { by, date };
+    },
     // The fetch resolves between settles — patch the mounted rows now.
-    renderCreated(id);
-  });
+    () => renderCreated(id)
+  );
 }
 
 function renderCreated(id: number): void {

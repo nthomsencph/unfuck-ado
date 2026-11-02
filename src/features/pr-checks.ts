@@ -139,22 +139,20 @@ export const prChecks: Feature = {
     if (!ref) return;
     if (!safeQuery(CHECK_BOX_SELECTOR)) return; // Overview checks box not up
     const key = refKey(ref);
-    const cached = rowsByPr.get(key);
-    if (cached) {
-      render(cached);
-      return;
-    }
-    if (rowsByPr.begin([key]).length === 0) return;
-    void fetchPolicyEvaluations(ref).then((res) => {
-      if (!res.ok) {
-        rowsByPr.fail([key]);
-        log(FEATURE_ID, "fetch failed — not retrying this page load", res.error);
-        return;
-      }
-      const rows = selectInlineChecks(res.value);
-      rowsByPr.settle(key, rows);
-      log(FEATURE_ID, `${rows.length} hidden check(s) for ${key}`);
-      render(rows);
-    });
+    const rows = rowsByPr.load(
+      key,
+      async () => {
+        const res = await fetchPolicyEvaluations(ref);
+        if (!res.ok) {
+          log(FEATURE_ID, "fetch failed — not retrying this page load", res.error);
+          return null;
+        }
+        const inline = selectInlineChecks(res.value);
+        log(FEATURE_ID, `${inline.length} hidden check(s) for ${key}`);
+        return inline;
+      },
+      render
+    );
+    if (rows) render(rows);
   },
 };

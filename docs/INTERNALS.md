@@ -706,7 +706,12 @@ wiring flags — that lasts the page lifetime by design.)
   builder of project-scoped paths (legacy visualstudio.com-safe).
 - `src/core/fetch-cache.ts` — the fetch-once/latch-failure state machine
   every REST feature caches through (the v0.6.0 request-flood guard);
-  failure policy per cache: latch (default) or retry.
+  failure policy per cache: latch (default) or retry. `load(key, fetch,
+  onSettled)` is the whole single-key flow (cached value, else claim +
+  fetch; `fetch` resolves null on failure; `onSettled` paints a value that
+  lands between settle passes) — pr-checks, pr-diff-totals,
+  workitem-layout's Created rows and pr-list's ownership, tab counts and
+  row diffstats (keyed per repo) all go through it (v0.62.4).
 - `src/core/popover.ts` — the shared light-dismiss menu (outside-mousedown,
   Escape, arrow roving, `data-adofix-modal` hotkey suspension; placement
   `below-end` or `right-start`; `takeFocus: false` for hover-opened menus

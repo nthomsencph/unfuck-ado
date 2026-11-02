@@ -86,26 +86,24 @@ export const prDiffTotals: Feature = {
     if (!ref) return;
     if (!safeQuery(LABEL_ROW_SELECTOR)) return; // Files tab not up yet
     const key = refKey(ref);
-    const cached = totalsByPr.get(key);
-    if (cached) {
-      render(cached);
-      return;
-    }
-    if (totalsByPr.begin([key]).length === 0) return;
-    void fetchDiffTotals(ref).then((res) => {
-      if (!res.ok) {
-        // Passive feature: log once and stand down until the next reload.
-        totalsByPr.fail([key]);
-        log(FEATURE_ID, "fetch failed — not retrying this page load", res.error);
-        return;
-      }
-      totalsByPr.settle(key, res.value);
-      const overall = scopedTotals(res.value.files, null);
-      log(
-        FEATURE_ID,
-        `totals for ${key}: -${overall.dels} +${overall.adds} over ${res.value.files.length} files`
-      );
-      render(res.value);
-    });
+    const totals = totalsByPr.load(
+      key,
+      async () => {
+        const res = await fetchDiffTotals(ref);
+        if (!res.ok) {
+          // Passive feature: log once and stand down until the next reload.
+          log(FEATURE_ID, "fetch failed — not retrying this page load", res.error);
+          return null;
+        }
+        const overall = scopedTotals(res.value.files, null);
+        log(
+          FEATURE_ID,
+          `totals for ${key}: -${overall.dels} +${overall.adds} over ${res.value.files.length} files`
+        );
+        return res.value;
+      },
+      render
+    );
+    if (totals) render(totals);
   },
 };

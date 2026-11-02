@@ -27,6 +27,15 @@ export interface FetchCache<K, V> {
   settle(key: K, value: V): void;
   /** Ends the keys' flight per the failure policy. */
   fail(keys: Iterable<K>): void;
+  /**
+   * The single-key fetch-once flow in one call: returns the settled value,
+   * or undefined while there is none — claiming the key and starting
+   * `fetch` the first time. `fetch` resolves null (or rejects) on failure,
+   * which ends the flight per the policy. On success `onSettled` runs:
+   * the fetch lands between settle passes, so this is where the caller
+   * paints the value (apply() paints the returned value on later passes).
+   */
+  load(key: K, fetch: () => Promise<V | null>, onSettled: (value: V) => void): V | undefined;
 }
 
 export function createFetchCache<K, V>(options: FetchCacheOptions = {}): FetchCache<K, V> {
@@ -35,7 +44,7 @@ export function createFetchCache<K, V>(options: FetchCacheOptions = {}): FetchCa
   const inflight = new Set<K>();
   const failed = new Set<K>();
   const known = (key: K): boolean => values.has(key) || inflight.has(key) || failed.has(key);
-  return {
+  const cache: FetchCache<K, V> = {
     get: (key) => values.get(key),
     known,
     begin(keys) {
@@ -58,5 +67,19 @@ export function createFetchCache<K, V>(options: FetchCacheOptions = {}): FetchCa
         if (onFailure === "latch") failed.add(key);
       }
     },
+    load(key, fetch, onSettled) {
+      if (values.has(key)) return values.get(key);
+      if (cache.begin([key]).length === 0) return undefined;
+      fetch().then(
+        (value) => {
+          if (value === null) return cache.fail([key]);
+          cache.settle(key, value);
+          onSettled(value);
+        },
+        () => cache.fail([key])
+      );
+      return undefined;
+    },
   };
+  return cache;
 }

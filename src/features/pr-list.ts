@@ -1,8 +1,16 @@
-import { scopeSelector, type Feature } from "../core/registry";
+import { scopeAttr, scopeSelector, type Feature } from "../core/registry";
+import { createFetchCache } from "../core/fetch-cache";
 import type { Route } from "../core/router";
 import { injectStyleOnce } from "../core/dom";
 import { fetchCurrentUserId } from "./pr/reviewer-api";
-import { countPrs, fetchActivePrs, ownershipMap, type Ownership, type PrStatus } from "./pr/list-api";
+import {
+  countPrs,
+  fetchActivePrs,
+  ownershipMap,
+  type Ownership,
+  type PrStatus,
+  type RepoRef,
+} from "./pr/list-api";
 import { diffstatParts, fetchDiffStat, type DiffStat } from "./pr/list-diffstat";
 
 /**
@@ -34,12 +42,58 @@ export const prList: Feature = {
     // land on Active instead (the hidden Mine tab still takes .click()).
     if (shouldRedirectToActive(location.search))
       document.querySelector<HTMLElement>("#__bolt-tab-active")?.click();
-    sweepMetaLines(document);
-    tagOwnership(route);
-    tabCounts(route);
-    rowDiffstats(route);
+    const { org, project, repo } = route;
+    shown = org && project && repo ? { org, project, repo } : null;
+    paint();
   },
 };
+
+/** Every PR row link in the list (rows are <a>s; the href carries the id). */
+const ROWS = '.repos-pr-list a[href*="/pullrequest/"]';
+
+function prIdOf(row: Element): number | null {
+  const match = /\/pullrequest\/(\d+)/.exec(row.getAttribute("href") ?? "");
+  return match ? Number(match[1]) : null;
+}
+
+/*
+ * The REST-backed adornments (ownership tags, tab counts, row diffstats)
+ * share one shape: fetched once per key through core/fetch-cache (latched
+ * on failure — a failed fetch simply leaves the adornment off until
+ * reload), keyed by repo so another repo's list never shows stale values,
+ * and painted by paint() on every settle pass, which also repairs React
+ * re-renders. A fetch that lands between passes repaints at once.
+ */
+let shown: RepoRef | null = null;
+
+function repaint(): void {
+  if (document.documentElement.hasAttribute(scopeAttr(FEATURE_ID))) paint();
+}
+
+function paint(): void {
+  sweepMetaLines(document);
+  if (!shown) return;
+  const repo = shown;
+  const key = `${repo.org}/${repo.project}/${repo.repo}`;
+
+  const owners = ownership.load(key, () => fetchOwnership(repo), repaint);
+  if (owners) sweepOwnership(document, owners);
+
+  const counts: Partial<Record<PrStatus, number>> = {};
+  for (const [, status] of TAB_STATUS) {
+    const n = tabTotals.load(`${key}:${status}`, () => countPrs(repo, status), repaint);
+    if (n !== undefined) counts[status] = n;
+  }
+  paintTabCounts(document, counts);
+
+  for (const row of document.querySelectorAll<HTMLElement>(ROWS)) {
+    const id = prIdOf(row);
+    if (id === null) continue;
+    const prRef = { ...repo, prId: String(id) };
+    const stat = diffstats.load(`${key}#${id}`, () => fetchDiffStat(prRef), repaint);
+    if (stat) paintDiffstat(row, id, stat);
+  }
+}
 
 /*
  * Each row's meta line ends in GitHub's diffstat, "+120 / −30 · 4 changed
@@ -48,38 +102,7 @@ export const prList: Feature = {
  * leaves the row without one. Appended inside the React-owned meta span,
  * so the settle re-apply restores it after re-renders.
  */
-let statSlot: { key: string; stats: Map<number, DiffStat | null> } | null = null;
-
-function rowDiffstats(route: Route): void {
-  const { org, project, repo } = route;
-  if (!org || !project || !repo) return;
-  const key = `${org}/${project}/${repo}`;
-  if (!statSlot || statSlot.key !== key) statSlot = { key, stats: new Map() };
-  const slot = statSlot;
-  for (const row of document.querySelectorAll<HTMLElement>('.repos-pr-list a[href*="/pullrequest/"]')) {
-    const id = prIdOf(row);
-    if (id === null) continue;
-    if (slot.stats.has(id)) {
-      const stat = slot.stats.get(id);
-      if (stat) paintDiffstat(row, id, stat);
-      continue;
-    }
-    slot.stats.set(id, null); // claimed; stays null if the fetch fails
-    void fetchDiffStat({ org, project, repo, prId: String(id) }).then((stat) => {
-      if (!stat || statSlot !== slot) return;
-      slot.stats.set(id, stat);
-      for (const r of document.querySelectorAll<HTMLElement>(
-        `.repos-pr-list a[href*="/pullrequest/${id}"]`
-      ))
-        if (prIdOf(r) === id) paintDiffstat(r, id, stat);
-    });
-  }
-}
-
-function prIdOf(row: Element): number | null {
-  const match = /\/pullrequest\/(\d+)/.exec(row.getAttribute("href") ?? "");
-  return match ? Number(match[1]) : null;
-}
+const diffstats = createFetchCache<string, DiffStat>();
 
 /** Appends (or refreshes) the diffstat at the end of the row's meta line. */
 export function paintDiffstat(row: Element, id: number, stat: DiffStat): void {
@@ -117,26 +140,7 @@ const TAB_STATUS: readonly (readonly [string, PrStatus])[] = [
   ["#__bolt-tab-abandoned", "abandoned"],
 ];
 
-let countSlot: { key: string; counts: Partial<Record<PrStatus, number>>; started: boolean } | null =
-  null;
-
-function tabCounts(route: Route): void {
-  const { org, project, repo } = route;
-  if (!org || !project || !repo) return;
-  const key = `${org}/${project}/${repo}`;
-  if (!countSlot || countSlot.key !== key) countSlot = { key, counts: {}, started: false };
-  const slot = countSlot;
-  paintTabCounts(document, slot.counts);
-  if (slot.started) return;
-  slot.started = true;
-  for (const [, status] of TAB_STATUS) {
-    void countPrs({ org, project, repo }, status).then((n) => {
-      if (n === null || countSlot !== slot) return;
-      slot.counts[status] = n;
-      paintTabCounts(document, slot.counts);
-    });
-  }
-}
+const tabTotals = createFetchCache<string, number>();
 
 /** Writes each known count into its tab; idempotent, so settles are cheap. */
 export function paintTabCounts(root: ParentNode, counts: Partial<Record<PrStatus, number>>): void {
@@ -167,41 +171,18 @@ export function paintTabCounts(root: ParentNode, counts: Partial<Record<PrStatus
  * Abandoned rows simply never match. Rows are tagged with a data attribute
  * the settle re-apply repairs after React re-renders, like the meta sweep.
  */
-let ownershipSlot: {
-  key: string;
-  map: ReadonlyMap<number, Ownership> | null;
-  pending: boolean;
-} | null = null;
+const ownership = createFetchCache<string, ReadonlyMap<number, Ownership>>();
 
-function tagOwnership(route: Route): void {
-  const { org, project, repo } = route;
-  if (!org || !project || !repo) return;
-  const key = `${org}/${project}/${repo}`;
-  if (!ownershipSlot || ownershipSlot.key !== key)
-    ownershipSlot = { key, map: null, pending: false };
-  const slot = ownershipSlot;
-  if (slot.map) {
-    sweepOwnership(document, slot.map);
-    return;
-  }
-  if (slot.pending) return;
-  slot.pending = true;
-  void (async () => {
-    const [myId, prs] = await Promise.all([
-      fetchCurrentUserId(org),
-      fetchActivePrs({ org, project, repo }),
-    ]);
-    slot.map = myId && prs.ok ? ownershipMap(prs.value, myId) : new Map();
-    sweepOwnership(document, slot.map);
-  })();
+async function fetchOwnership(repo: RepoRef): Promise<ReadonlyMap<number, Ownership>> {
+  const [myId, prs] = await Promise.all([fetchCurrentUserId(repo.org), fetchActivePrs(repo)]);
+  return myId && prs.ok ? ownershipMap(prs.value, myId) : new Map();
 }
 
 /** Tags every list row with its ownership; clears rows that lost it. */
 export function sweepOwnership(root: ParentNode, map: ReadonlyMap<number, Ownership>): void {
-  const rows = root.querySelectorAll<HTMLElement>('.repos-pr-list a[href*="/pullrequest/"]');
-  for (const row of rows) {
-    const match = /\/pullrequest\/(\d+)/.exec(row.getAttribute("href") ?? "");
-    const rel = match ? map.get(Number(match[1])) : undefined;
+  for (const row of root.querySelectorAll<HTMLElement>(ROWS)) {
+    const id = prIdOf(row);
+    const rel = id === null ? undefined : map.get(id);
     if (rel) row.setAttribute("data-adofix-mine", rel);
     else row.removeAttribute("data-adofix-mine");
   }
@@ -245,9 +226,7 @@ export function rewriteMetaValues(values: readonly string[]): string[] | null {
  * settle re-apply repairs any React re-render that restores the original.
  */
 export function sweepMetaLines(root: ParentNode): void {
-  const lines = root.querySelectorAll<HTMLElement>(
-    '.repos-pr-list a[href*="/pullrequest/"] .secondary-text.body-s > span'
-  );
+  const lines = root.querySelectorAll<HTMLElement>(`${ROWS} .secondary-text.body-s > span`);
   for (const line of lines) {
     const textNodes: Text[] = [];
     for (const node of line.childNodes) {

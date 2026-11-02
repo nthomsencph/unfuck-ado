@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { injectStyleOnce, setStyle } from "./dom";
+import { injectStyleOnce, setStyle, syncCommandProxies } from "./dom";
 
 describe("injectStyleOnce", () => {
   afterEach(() => {
@@ -56,5 +56,51 @@ describe("setStyle", () => {
 
     setStyle("dyn", ".a {}");
     expect(document.head.lastElementChild?.getAttribute("data-adofix")).toBe("dyn");
+  });
+});
+
+describe("syncCommandProxies", () => {
+  afterEach(() => {
+    document.body.innerHTML = "";
+  });
+
+  function setup(natives: string[]): HTMLElement {
+    for (const id of natives) {
+      const n = document.createElement("button");
+      n.id = id;
+      n.innerHTML = '<span class="bolt-button-icon"></span>';
+      document.body.appendChild(n);
+    }
+    const row = document.createElement("div");
+    row.innerHTML = '<button id="filter"></button><button id="settings"></button>';
+    document.body.appendChild(row);
+    return row;
+  }
+  const ids = (row: Element): string[] =>
+    Array.from(row.children).map((c) => (c as HTMLElement).dataset["native"] ?? c.id);
+
+  it("inserts proxies in order after the anchor, once", () => {
+    const row = setup(["nwi", "opts"]);
+    const specs = [["nwi", "New"], ["opts", "Options"]] as const;
+    expect(syncCommandProxies(row.firstElementChild!, specs)).toBe(true);
+    expect(syncCommandProxies(row.firstElementChild!, specs)).toBe(false);
+    expect(ids(row)).toEqual(["filter", "nwi", "opts", "settings"]);
+  });
+
+  it("skips missing natives and drops proxies no longer wanted", () => {
+    const row = setup(["nwi", "opts"]);
+    syncCommandProxies(row.firstElementChild!, [["nwi", "New"], ["opts", "Options"], ["gone", "X"]]);
+    syncCommandProxies(row.firstElementChild!, [["opts", "Options"]]);
+    expect(ids(row)).toEqual(["filter", "opts", "settings"]);
+  });
+
+  it("leaves another feature's button next to the anchor in place", () => {
+    const row = setup(["nwi"]);
+    syncCommandProxies(row.firstElementChild!, [["nwi", "New"]]);
+    const other = document.createElement("button");
+    other.id = "columns";
+    row.firstElementChild!.after(other);
+    syncCommandProxies(row.firstElementChild!, [["nwi", "New"]]);
+    expect(ids(row)).toEqual(["filter", "columns", "nwi", "settings"]);
   });
 });

@@ -368,3 +368,20 @@ Decisions made on the user's behalf while executing
   16px root; ADO's root font size isn't guaranteed to be 16px.
 - **Decision:** `remToPx` (build-css.ts) converts every rem in the bundled
   token files to px (×16), pinning GitHub's rendered sizes.
+
+## D67 — No removal without a way back in (2026-11-02)
+- **Context:** an audit of everything the script hides found actions with
+  no remaining path: New Work Item on Backlogs and both sprint tabs, the
+  Mine view, Add link on a work item without links, Development (branch /
+  PR linking), History and Follow.
+- **Decision:** hiding a duplicate is fine; the only path to an action is
+  demoted, never removed. New Work Item is an icon proxy next to Filter
+  (ADO's own add callout opens; it light-dismisses). Related Work always
+  shows its "+". Development and Follow are back as ADO renders them;
+  History is a header icon proxy next to Attachments. Mine is an accent
+  "Author" / "Reviewer" gh-Label after the row title (user's choice over
+  restoring the tab).
+- **Kept hidden (user-requested, information or duplicates only):** the
+  Analytics/Capacity/Backlog tabs, the burndown widget, the Deployments
+  group, Maximize toggles, the Assigned to / Parent Work Item filters,
+  and the duplicate controls folded into adofix widgets.

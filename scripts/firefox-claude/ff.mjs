@@ -32,8 +32,9 @@ import { fileURLToPath } from "node:url";
 const here = dirname(fileURLToPath(import.meta.url));
 const server = join(here, "..", "..", ".firefox-claude", "firefox-mcp.mjs");
 // Pages this script opens itself. Anything else in the group's tab means the
-// user is using it.
-const OURS = /^(about:(newtab|blank|home)|https:\/\/(dev\.azure\.com|[\w-]+\.visualstudio\.com|github\.com|example\.com|www\.iana\.org)\/)/;
+// user is using it. login.microsoftonline.com: ADO redirects there itself
+// when the session expires (2026-11-02), and navigating away is the fix.
+const OURS = /^(about:(newtab|blank|home)|https:\/\/(dev\.azure\.com|[\w-]+\.visualstudio\.com|login\.microsoftonline\.com|github\.com|example\.com|www\.iana\.org)\/)/;
 
 const p = spawn(process.execPath, [server]);
 let buf = "";

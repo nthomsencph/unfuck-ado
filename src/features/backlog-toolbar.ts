@@ -1,14 +1,14 @@
 import { scopeSelector, type Feature } from "../core/registry";
 import { parseHubPath } from "../core/router";
-import { injectStyleOnce, makeCommandProxy, stubHide } from "../core/dom";
+import { injectStyleOnce, stubHide, syncCommandProxies } from "../core/dom";
 import { log } from "../core/log";
 
 /**
  * Backlogs header cleanup (user request 2026-08-18):
- *  - "New Work Item" removed outright;
- *  - "View as Board" and "Column Options" leave the big header commandbar and
- *    become icon-only buttons in the tab row, inline with View options /
- *    Filter / Settings.
+ *  - "New Work Item", "View as Board" and "Column Options" leave the big
+ *    header commandbar and become icon-only buttons in the tab row, inline
+ *    with View options / Filter / Settings (New Work Item was removed
+ *    outright until 2026-11-02 — the only way to create an item here).
  * The natives keep stable bolt ids (#__bolt-view-as-board etc.) and are
  * STUBBED, not display:none'd: bolt's commandbar overflow logic removes
  * display:none commands from the DOM entirely (they move into the ⋮ menu,
@@ -26,7 +26,6 @@ const NWI = "__bolt-new-work-item";
 const VAB = "__bolt-view-as-board";
 const OPTS = "__bolt-column-options";
 const FILTER = "__bolt-filter";
-const BTN_CLASS = "adofix-toolbar-btn";
 
 const CSS = `
 ${stubHide(`${SCOPE} #${NWI},
@@ -110,14 +109,15 @@ export const backlogToolbar: Feature = {
     injectStyleOnce(FEATURE_ID, CSS);
 
     const filter = document.getElementById(FILTER);
-    const row = filter?.parentElement;
-    if (!filter || !row || row.querySelector(`.${BTN_CLASS}`)) return;
-
-    // Order after insertion: … Filter | View as board | Column options | …
-    const opts = makeCommandProxy(OPTS, "Column options");
-    const board = makeCommandProxy(VAB, "View as board");
-    if (opts) filter.insertAdjacentElement("afterend", opts);
-    if (board) filter.insertAdjacentElement("afterend", board);
-    if (opts || board) log(FEATURE_ID, "proxies injected");
+    // Order after insertion: … Filter | New work item | View as board | Column options | …
+    if (
+      filter &&
+      syncCommandProxies(filter, [
+        [NWI, "New work item"],
+        [VAB, "View as board"],
+        [OPTS, "Column options"],
+      ])
+    )
+      log(FEATURE_ID, "proxies injected");
   },
 };

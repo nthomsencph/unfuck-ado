@@ -1,6 +1,12 @@
 import { scopeSelector, type Feature } from "../core/registry";
 import type { Route } from "../core/router";
-import { ensureText, injectStyleOnce, makeCommandProxy, stubHide } from "../core/dom";
+import {
+  ensureText,
+  injectStyleOnce,
+  stubHide,
+  syncCommandProxies,
+  type CommandProxySpec,
+} from "../core/dom";
 import { log } from "../core/log";
 import { formatBacklogStatus, parseBacklogFilters, resolveTotal } from "./boards/status";
 import { sprintScopeKey, sprintTab } from "./boards/paths";
@@ -8,8 +14,9 @@ import { sprintScopeKey, sprintTab } from "./boards/paths";
 /**
  * Sprints hub header compressed to two rows (user request 2026-08-18, the
  * Backlogs treatment transplanted):
- *  - "New Work Item" and "Create Query" removed, "Column Options" becomes an
- *    icon proxy next to Filter (native ids differ per tab: taskboard uses
+ *  - "Create Query" removed; "New Work Item" (removed until 2026-11-02 — the
+ *    only way to create an item here) and "Column Options" become icon
+ *    proxies next to Filter (native ids differ per tab: taskboard uses
  *    #__bolt-taskboard-*, the sprint Backlog tab reuses the plain
  *    #__bolt-new-work-item/#__bolt-column-options ids);
  *  - the Analytics and Capacity tabs hidden (never used; the capacity page
@@ -32,12 +39,17 @@ const FEATURE_ID = "sprint-header";
 const SCOPE = scopeSelector(FEATURE_ID);
 const tabScope = (tab: string): string => scopeSelector(FEATURE_ID, tab);
 const STATUS_CLASS = "adofix-sprint-status";
-const BTN_CLASS = "adofix-toolbar-btn";
 
-/** Column Options native id per sprints tab. */
-const COLUMN_OPTIONS_BY_TAB: Record<string, string> = {
-  taskboard: "__bolt-taskboard-column-options",
-  backlog: "__bolt-column-options",
+/** Commands proxied next to Filter, per sprints tab (native ids differ). */
+const PROXIES_BY_TAB: Record<string, readonly CommandProxySpec[]> = {
+  taskboard: [
+    ["__bolt-taskboard-new-work-item", "New work item"],
+    ["__bolt-taskboard-column-options", "Column options"],
+  ],
+  backlog: [
+    ["__bolt-new-work-item", "New work item"],
+    ["__bolt-column-options", "Column options"],
+  ],
 };
 
 const CSS = `
@@ -92,14 +104,21 @@ ${SCOPE} .sprints-tabbar-header .bolt-tabbar {
   ${tabScope("backlog")} .sprints-header-dates {
     margin-top: -38px !important;
     justify-content: flex-end;
-    /* 360px clears the icon group incl. taskboard-columns' button (was 310
-       before that button existed — the pickers overlapped, user 2026-08-18) */
+    /* Clears the icon group: 360px on the Backlog tab; the taskboard's
+       group also holds taskboard-columns' button (set below). Was 310
+       before that button existed — the pickers overlapped, user 2026-08-18. */
     padding-right: 360px;
     position: relative;
     top: -32px;
     z-index: 4;
     pointer-events: none;
   }
+  /* 400px: the New work item proxy (2026-11-02) widened the taskboard's
+     group past 360px (pickers overlapped the icons by 4px, measured). */
+  ${tabScope("taskboard")} .sprints-header-dates {
+    padding-right: 400px;
+  }
+
   /* The Backlog tab's tab row sits 2px lower than the taskboard's, so its
      lifts are 2px longer (centerlines measured equal live 2026-11-02). */
   ${tabScope("backlog")} .sprints-tabbar-header-commandbar.bolt-header-commandbar {
@@ -154,9 +173,12 @@ ${SCOPE} .sprints-tabbar-header .bolt-tabbar {
   /* The pickers/icons overlay the title row from a separate layer, so flex
      can't shrink the status text against them — reserve their width so the
      status ellipsizes instead of sliding underneath (user 2026-08-18). */
-  ${tabScope("taskboard")} .wit-sprints-header-row .bolt-header-title-row,
   ${tabScope("backlog")} .wit-sprints-header-row .bolt-header-title-row {
     padding-right: 620px;
+  }
+  /* +40px with the pickers' taskboard reserve above. */
+  ${tabScope("taskboard")} .wit-sprints-header-row .bolt-header-title-row {
+    padding-right: 660px;
   }
   /* Capacity keeps its title row for Add user/Save/Revert — the pickers go
      into the tab row's free middle instead (300px clears the tabs). */
@@ -228,26 +250,11 @@ function applyStatus(tab: string, path: string): void {
   ensureText(row, STATUS_CLASS, text);
 }
 
-function applyProxy(tab: string): void {
-  const nativeId = COLUMN_OPTIONS_BY_TAB[tab];
+function applyProxies(tab: string): void {
   const filter = document.getElementById("__bolt-filter");
-  const bar = filter?.parentElement;
-  if (!filter || !bar) return;
-  const existing = bar.querySelector<HTMLElement>(`.${BTN_CLASS}`);
-  // Tab switches re-target the proxy: replace one pointing at the wrong (or
-  // a vanished) native, drop it on tabs with no Column Options at all.
-  if (existing) {
-    if (nativeId && existing.dataset["native"] === nativeId && document.getElementById(nativeId)) {
-      return;
-    }
-    existing.remove();
-  }
-  if (!nativeId) return;
-  const proxy = makeCommandProxy(nativeId, "Column options");
-  if (proxy) {
-    filter.insertAdjacentElement("afterend", proxy);
-    log(FEATURE_ID, "column-options proxy injected", tab);
-  }
+  // Tab switches re-target the proxies; tabs without any (Capacity) drop them.
+  if (filter && syncCommandProxies(filter, PROXIES_BY_TAB[tab] ?? []))
+    log(FEATURE_ID, "command proxies injected", tab);
 }
 
 export const sprintHeader: Feature = {
@@ -259,6 +266,6 @@ export const sprintHeader: Feature = {
     const tab = sprintTab(route.path);
     if (!tab) return;
     applyStatus(tab, route.path);
-    applyProxy(tab);
+    applyProxies(tab);
   },
 };

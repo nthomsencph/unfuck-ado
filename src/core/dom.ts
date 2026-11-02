@@ -75,7 +75,7 @@ export function makeCommandProxy(nativeId: string, label: string): HTMLButtonEle
   const native = document.getElementById(nativeId);
   const icon = native?.querySelector('[class*="fluent"], .bolt-button-icon');
   if (!native || !icon) return null;
-  const btn = makeToolbarButton(label, icon.cloneNode(true));
+  const btn = makeToolbarButton(label, icon.cloneNode(true), "adofix-command-proxy");
   btn.dataset["native"] = nativeId;
   btn.addEventListener("click", (e) => {
     e.preventDefault();
@@ -83,6 +83,41 @@ export function makeCommandProxy(nativeId: string, label: string): HTMLButtonEle
     document.getElementById(nativeId)?.click();
   });
   return btn;
+}
+
+/** [native command id, label] for syncCommandProxies. */
+export type CommandProxySpec = readonly [nativeId: string, label: string];
+
+/**
+ * Keeps one makeCommandProxy button per spec in `anchor`'s row, in spec
+ * order after `anchor`, for the natives that exist right now: missing ones
+ * are created, ones whose native is gone (or no longer wanted, e.g. after a
+ * tab switch) are removed. Existing proxies are never moved, so another
+ * feature's button inserted next to the anchor keeps its place. Idempotent;
+ * returns whether anything was added.
+ */
+export function syncCommandProxies(anchor: Element, specs: readonly CommandProxySpec[]): boolean {
+  const row = anchor.parentElement;
+  if (!row) return false;
+  const wanted = specs.filter(([id]) => document.getElementById(id));
+  for (const btn of safeQueryAll<HTMLElement>(":scope > .adofix-command-proxy", row)) {
+    if (!wanted.some(([id]) => id === btn.dataset["native"])) btn.remove();
+  }
+  let prev: Element = anchor;
+  let added = false;
+  for (const [id, label] of wanted) {
+    const existing = row.querySelector(`:scope > .adofix-command-proxy[data-native="${id}"]`);
+    if (existing) {
+      prev = existing;
+      continue;
+    }
+    const btn = makeCommandProxy(id, label);
+    if (!btn) continue;
+    prev.after(btn);
+    prev = btn;
+    added = true;
+  }
+  return added;
 }
 
 /**

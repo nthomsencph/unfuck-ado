@@ -402,8 +402,7 @@ function ensureButton(key: string): void {
   const filter = document.getElementById("__bolt-filter");
   const bar = filter?.parentElement;
   if (!filter || !bar || bar.querySelector(`.${BTN_CLASS}`)) return;
-  // Own marker class (not adofix-toolbar-btn): sprint-header's proxy guard
-  // scans the same filter row and must not mistake this button for its own.
+  // Own marker class: sprint-header's command proxies share this row.
   const btn = makeToolbarButton("Show or hide board columns", octicon("columns"), BTN_CLASS);
   btn.title = "Show/hide board columns (ado-unfuck)";
   btn.addEventListener("click", (e) => {

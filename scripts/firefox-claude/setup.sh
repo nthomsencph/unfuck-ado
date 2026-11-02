@@ -68,6 +68,24 @@ rsync -a --exclude='.git' --exclude='install.sh' --exclude='install.ps1' \
 ' "$EXT/manifest.json"
 rm -f "$EXT/firefox-claude-ai-bridge.js"
 
+# Read-only probes for CSP-strict pages (see probe.js): ADO and GitHub block
+# eval, so the javascript tool's eval-based shim can't run there.
+"$NODE" -e '
+  const fs = require("fs"), [f, probeFile] = process.argv.slice(1);
+  const probe = fs.readFileSync(probeFile, "utf8");
+  const anchor = "if (!expr) return { result: { type: \x27undefined\x27 } };";
+  let s = fs.readFileSync(f, "utf8");
+  if (!s.includes(anchor)) { console.error("probe patch anchor missing"); process.exit(1); }
+  s = s.replace(anchor, anchor + `
+          const probeMatch = expr.match(/__PROBE__(\\{[\\s\\S]*?\\})__END__/);
+          if (probeMatch) {
+            const [inj] = await browser.scripting.executeScript({ target: { tabId }, func: adofixProbe, args: [JSON.parse(probeMatch[1])], world: \x27MAIN\x27 });
+            const v = JSON.stringify(inj && inj.result);
+            return { result: { type: \x27string\x27, value: v, description: v } };
+          }`);
+  fs.writeFileSync(f, s + "\n" + probe);
+' "$EXT/firefox-compat.js" "$ROOT/scripts/firefox-claude/probe.js"
+
 # 3. Native host + MCP server, talking over a socket inside .firefox-claude/.
 # Upstream uses os.tmpdir(), which differs between Firefox (launched from the
 # Dock: /var/folders/…) and Claude Code (may be /tmp), so they never meet.

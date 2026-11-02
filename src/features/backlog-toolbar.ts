@@ -1,5 +1,5 @@
-import type { Feature } from "../core/registry";
-import { parseHubPath, type Route } from "../core/router";
+import { scopeSelector, type Feature } from "../core/registry";
+import { parseHubPath } from "../core/router";
 import { injectStyleOnce, makeCommandProxy, stubHide } from "../core/dom";
 import { log } from "../core/log";
 
@@ -16,12 +16,12 @@ import { log } from "../core/log";
  * Zero-width invisible keeps them mounted — the pr-actions split-button
  * pattern. Proxies resolve the native BY ID AT CLICK TIME because the header
  * re-renders (and View as Board's href tracks the backlog level).
- * Scoped to the _backlogs route via an <html> attribute: the same command
+ * Scoped to the _backlogs route (registry page scope): the same command
  * ids exist on other Boards-hub pages where nothing was requested.
  */
 const FEATURE_ID = "backlog-toolbar";
 
-const ATTR = "data-adofix-backlogs";
+const SCOPE = scopeSelector(FEATURE_ID);
 const NWI = "__bolt-new-work-item";
 const VAB = "__bolt-view-as-board";
 const OPTS = "__bolt-column-options";
@@ -29,19 +29,19 @@ const FILTER = "__bolt-filter";
 const BTN_CLASS = "adofix-toolbar-btn";
 
 const CSS = `
-${stubHide(`html[${ATTR}] #${NWI},
-html[${ATTR}] #${VAB},
-html[${ATTR}] #${OPTS}`)}
+${stubHide(`${SCOPE} #${NWI},
+${SCOPE} #${VAB},
+${SCOPE} #${OPTS}`)}
 /* Backlog/Analytics tabs removed outright (user request 2026-08-18: Analytics
    is never used). Plain tabs container — display:none is safe here; only
    commandbar ITEMS get evicted from the DOM when display:none'd. */
-html[${ATTR}] .backlogs-tabbar-tabs {
+${SCOPE} .backlogs-tabbar-tabs {
   display: none !important;
 }
 /* With the tabs gone, the tabbar's space-between has one child left — pin the
    icon group right and drop the row's own grey background (bolt-tabbar-grey)
    so the title row can show through when the row is lifted. */
-html[${ATTR}] .backlogs-tabbar-header .bolt-tabbar {
+${SCOPE} .backlogs-tabbar-header .bolt-tabbar {
   background: transparent !important;
   justify-content: flex-end !important;
 }
@@ -49,10 +49,10 @@ html[${ATTR}] .backlogs-tabbar-header .bolt-tabbar {
    the 50px row (group is align-items:flex-end + a 2px wrapper margin), 14px
    below the title's centerline. Pin it to the top instead so ⋮ centers on
    the title text — the lifted icon row below aligns to the same line. */
-html[${ATTR}] .wit-backlogs-header-row .bolt-header-commandbar-button-group {
+${SCOPE} .wit-backlogs-header-row .bolt-header-commandbar-button-group {
   align-items: flex-start !important;
 }
-html[${ATTR}] .wit-backlogs-header-row .bolt-header-command-item-button.bolt-expandable-button {
+${SCOPE} .wit-backlogs-header-row .bolt-header-command-item-button.bolt-expandable-button {
   margin-top: 0 !important;
 }
 /*
@@ -68,33 +68,33 @@ html[${ATTR}] .wit-backlogs-header-row .bolt-header-command-item-button.bolt-exp
  * hidden at every width).
  */
 @media (min-width: 900px) {
-  html[${ATTR}] .backlogs-tabbar-header {
+  ${SCOPE} .backlogs-tabbar-header {
     margin-top: -50px !important;
     background: transparent !important;
     pointer-events: none;
     position: relative;
     z-index: 3;
   }
-  html[${ATTR}] .backlogs-tabbar-header .bolt-header-commandbar {
+  ${SCOPE} .backlogs-tabbar-header .bolt-header-commandbar {
     pointer-events: auto;
   }
-  html[${ATTR}] .backlogs-tabbar-header .bolt-tabbar {
+  ${SCOPE} .backlogs-tabbar-header .bolt-tabbar {
     padding-right: 44px !important;
   }
   /* The lifted icon row overlays the title row from a separate layer —
      reserve its width so the status text ellipsizes instead of sliding
      underneath at narrow widths. */
-  html[${ATTR}] .wit-backlogs-header-row .bolt-header-title-row {
+  ${SCOPE} .wit-backlogs-header-row .bolt-header-title-row {
     padding-right: 440px;
   }
 }
 /* Filter bar: compact row tight under the one-row header, cluster parked
    right (user 2026-08-18, the sprints treatment; no tab row exists here to
    merge into). Same .page-content-top mount as the sprint Backlog tab. */
-html[${ATTR}] .page-content-top:has(> .vss-FilterBar) {
+${SCOPE} .page-content-top:has(> .vss-FilterBar) {
   padding: 2px 0 0 !important;
 }
-html[${ATTR}] .vss-FilterBar--list {
+${SCOPE} .vss-FilterBar--list {
   justify-content: flex-end;
 }
 `;
@@ -103,11 +103,9 @@ html[${ATTR}] .vss-FilterBar--list {
 export const backlogToolbar: Feature = {
   id: FEATURE_ID,
   areas: ["boards"],
-  apply(route: Route): void {
+  scope: (route) => parseHubPath(route.path).hub === "_backlogs",
+  apply(): void {
     injectStyleOnce(FEATURE_ID, CSS);
-    const onBacklogs = parseHubPath(route.path).hub === "_backlogs";
-    document.documentElement.toggleAttribute(ATTR, onBacklogs);
-    if (!onBacklogs) return;
 
     const filter = document.getElementById(FILTER);
     const row = filter?.parentElement;

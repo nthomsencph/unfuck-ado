@@ -1,4 +1,4 @@
-import type { Feature } from "../core/registry";
+import { scopeSelector, type Feature } from "../core/registry";
 import type { Route } from "../core/router";
 import { injectStyleOnce } from "../core/dom";
 import { fetchCurrentUserId } from "./pr/reviewer-api";
@@ -12,30 +12,24 @@ import { diffstatParts, fetchDiffStat, type DiffStat } from "./pr/list-diffstat"
  * .repos-pr-listing-filterbar exist ONLY on the list page, so those rules
  * are inert on PR detail routes). The header-consolidation rules target
  * generic bolt chrome (.bolt-header, .bolt-tabbar) that every hub reuses,
- * so they are gated behind a data-adofix-prlist attribute on <html> —
- * which is why areas is "*": the attribute must clear when navigating to
- * ANY other page, including other hubs where apply() would otherwise
- * never run (the backlog-toolbar precedent).
+ * so they are gated behind the feature's page scope (registry: the
+ * data-adofix-pr-list attribute on <html>, cleared on every other page).
  */
-const ATTR = "data-adofix-prlist";
+const FEATURE_ID = "pr-list";
+const SCOPE = scopeSelector(FEATURE_ID);
 
 export const prList: Feature = {
-  id: "pr-list",
-  areas: "*",
+  id: FEATURE_ID,
+  areas: ["repos-pr"],
+  // Route alone isn't enough: on browser Back from a PR, the URL is the
+  // list's while ADO still renders the PR page for a while, and the
+  // list-only header rules (tab-row lift, hidden title areas) then mangle
+  // the PR header (user report 2026-11-02, reproduced live). The scope
+  // waits until the PR page's DOM is gone; the settle re-apply sets it as
+  // soon as ADO swaps the list in.
+  scope: (route) => route.id === null && !document.querySelector(".repos-pr-details-page"),
   apply(route: Route): void {
-    // Route alone isn't enough: on browser Back from a PR, the URL is the
-    // list's while ADO still renders the PR page for a while, and the
-    // list-only header rules (tab-row lift, hidden title areas) then mangle
-    // the PR header (user report 2026-11-02, reproduced live). The
-    // attribute waits until the PR page's DOM is gone; the settle re-apply
-    // sets it as soon as ADO swaps the list in.
-    const onList =
-      route.area === "repos-pr" &&
-      route.id === null &&
-      !document.querySelector(".repos-pr-details-page");
-    document.documentElement.toggleAttribute(ATTR, onList);
-    injectStyleOnce("pr-list", CSS);
-    if (!onList) return;
+    injectStyleOnce(FEATURE_ID, CSS);
     // The Mine view is retired: bare /pullrequests defaults to it, so both
     // land on Active instead (the hidden Mine tab still takes .click()).
     if (shouldRedirectToActive(location.search))
@@ -321,7 +315,7 @@ const CSS = `
 .adofix-pr-diffstat .adofix-adds { color: var(--fgColor-success); }
 .adofix-pr-diffstat .adofix-dels { color: var(--fgColor-danger); }
 /* Tab count badges sit after the label, centered on it. */
-[${ATTR}] .bolt-tab .bolt-tab-inner-container:has(> .adofix-tab-count) {
+${SCOPE} .bolt-tab .bolt-tab-inner-container:has(> .adofix-tab-count) {
   display: inline-flex;
   align-items: center;
 }
@@ -432,10 +426,10 @@ const CSS = `
  * bars must out-stack it or every click lands on the header. The Mine tab
  * hides (stable bolt id); the redirect above covers direct URLs.
  */
-[${ATTR}] .bolt-header-title-area {
+${SCOPE} .bolt-header-title-area {
   display: none !important;
 }
-[${ATTR}] .bolt-header .bolt-header-commandbar {
+${SCOPE} .bolt-header .bolt-header-commandbar {
   margin-left: auto !important;
 }
 /* More room above the merged toolbar row (user 2026-11-02): the page
@@ -445,13 +439,13 @@ const CSS = `
    together (measured). */
 /* Specificity must beat chrome-density's
    .bolt-header:not([class*="tabbar"]):not([class*="tabs"]):not(.no-padding). */
-[${ATTR}] .bolt-page > .bolt-header.bolt-header-with-commandbar:not([class*="tabbar"]):not(.no-padding) {
+${SCOPE} .bolt-page > .bolt-header.bolt-header-with-commandbar:not([class*="tabbar"]):not(.no-padding) {
   padding-top: 32px !important;
 }
-[${ATTR}] #__bolt-tab-mine {
+${SCOPE} #__bolt-tab-mine {
   display: none !important;
 }
-[${ATTR}] .bolt-tabbar {
+${SCOPE} .bolt-tabbar {
   background: transparent !important;
   position: relative !important;
   z-index: 4 !important;
@@ -464,8 +458,8 @@ const CSS = `
   padding-right: 220px !important;
   pointer-events: none !important;
 }
-[${ATTR}] .bolt-tabbar .bolt-tabbar-tabs,
-[${ATTR}] .bolt-tabbar .bolt-header-commandbar {
+${SCOPE} .bolt-tabbar .bolt-tabbar-tabs,
+${SCOPE} .bolt-tabbar .bolt-header-commandbar {
   pointer-events: auto !important;
 }
 /* The Filter toggle (#__bolt-filter, the tab row's only command) hides
@@ -473,14 +467,14 @@ const CSS = `
    exists only while toggled on. visibility, not display: bolt moves
    display:none commands into its overflow menu, and the container keeps
    its slot so nothing reflows. */
-[${ATTR}] .bolt-page:has(.repos-pr-listing-filterbar) .bolt-tabbar .bolt-header-commandbar {
+${SCOPE} .bolt-page:has(.repos-pr-listing-filterbar) .bolt-tabbar .bolt-header-commandbar {
   visibility: hidden !important;
   pointer-events: none !important;
 }
 /* The filter-bar lift needs the full row's width to clear the tabs; below
    1400px it stays a second row (the tabbar lift above still applies). */
 @media (min-width: 1400px) {
-  [${ATTR}] .page-content-left.page-content-right.page-content-top {
+  ${SCOPE} .page-content-left.page-content-right.page-content-top {
     margin-top: -57px !important;
     position: relative !important;
     top: 5px; /* filter row center onto the New PR button's (live 2026-11-02) */
@@ -488,20 +482,20 @@ const CSS = `
     pointer-events: none !important;
   }
 }
-[${ATTR}] .repos-pr-listing-filterbar .vss-FilterBar--list {
+${SCOPE} .repos-pr-listing-filterbar .vss-FilterBar--list {
   justify-content: flex-end !important;
   padding-right: 260px !important;
   pointer-events: none !important;
 }
-[${ATTR}] .repos-pr-listing-filterbar .vss-FilterBar--item,
-[${ATTR}] .repos-pr-listing-filterbar .vss-FilterBar--right-items {
+${SCOPE} .repos-pr-listing-filterbar .vss-FilterBar--item,
+${SCOPE} .repos-pr-listing-filterbar .vss-FilterBar--right-items {
   pointer-events: auto !important;
 }
 /* One size for every filter (user 2026-11-02): natively the ID/title box is
    220x27, the two identity pickers 270x35 and Target branch 230x32 (live).
    All become 220px wide and GitHub's 32px control height; the field is the
    .bolt-textfield inside each item. */
-[${ATTR}] .repos-pr-listing-filterbar .vss-FilterBar--item {
+${SCOPE} .repos-pr-listing-filterbar .vss-FilterBar--item {
   flex: 0 0 220px !important;
   width: 220px !important;
   max-width: 220px !important;
@@ -510,13 +504,13 @@ const CSS = `
 }
 /* ADO spaces only the keyword box (8px); the pickers and Target branch sat
    flush against each other — one 8px gap between every filter. */
-[${ATTR}] .repos-pr-listing-filterbar .vss-FilterBar--item {
+${SCOPE} .repos-pr-listing-filterbar .vss-FilterBar--item {
   margin-right: 0 !important;
 }
-[${ATTR}] .repos-pr-listing-filterbar .vss-FilterBar--item + .vss-FilterBar--item {
+${SCOPE} .repos-pr-listing-filterbar .vss-FilterBar--item + .vss-FilterBar--item {
   margin-left: 8px !important;
 }
-[${ATTR}] .repos-pr-listing-filterbar .vss-FilterBar--item .bolt-textfield {
+${SCOPE} .repos-pr-listing-filterbar .vss-FilterBar--item .bolt-textfield {
   /* the identity pickers' field carries min-width: 270px natively, which
      overflowed the 220px item under its neighbour */
   min-width: 0 !important;
@@ -525,7 +519,7 @@ const CSS = `
   min-height: 32px !important;
   box-sizing: border-box !important;
 }
-[${ATTR}] .repos-pr-listing-filterbar .vss-FilterBar--item .bolt-textfield-input {
+${SCOPE} .repos-pr-listing-filterbar .vss-FilterBar--item .bolt-textfield-input {
   height: 100% !important;
   min-height: 0 !important;
   min-width: 0 !important;
@@ -533,14 +527,14 @@ const CSS = `
 }
 /* The pickers' flex wrappers default to min-width: auto, so they grew to
    the input's intrinsic width (239px) past the item. */
-[${ATTR}] .repos-pr-listing-filterbar .vss-FilterBar--item :is(.bolt-identitypickerdropdown, .bolt-identitypickerdropdown-container, .repos-version-dropdown-filterbaritem, .flex-column) {
+${SCOPE} .repos-pr-listing-filterbar .vss-FilterBar--item :is(.bolt-identitypickerdropdown, .bolt-identitypickerdropdown-container, .repos-version-dropdown-filterbaritem, .flex-column) {
   min-width: 0 !important;
 }
 /* Target branch's wrapper column has no flex-grow of its own (with its
    min-width at 0 it collapsed to the chevron); the version dropdown also
    doesn't fill the item by default. */
-[${ATTR}] .repos-pr-listing-filterbar .repos-version-dropdown-filterbaritem,
-[${ATTR}] .repos-pr-listing-filterbar .repos-version-dropdown-filterbaritem > .flex-column {
+${SCOPE} .repos-pr-listing-filterbar .repos-version-dropdown-filterbaritem,
+${SCOPE} .repos-pr-listing-filterbar .repos-version-dropdown-filterbaritem > .flex-column {
   flex: 1 1 auto !important;
   width: 100% !important;
 }

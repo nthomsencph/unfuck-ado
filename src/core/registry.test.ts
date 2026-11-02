@@ -133,4 +133,41 @@ describe("registry", () => {
     });
     expect(seen).toMatchObject({ area: "workitems" });
   });
+
+  describe("scope", () => {
+    const attr = "data-adofix-scoped";
+
+    it("mirrors scope() on <html> and skips apply() out of scope", () => {
+      const { registry } = fresh();
+      const apply = vi.fn();
+      let tab: string | boolean = "taskboard";
+      registry.register({ id: "scoped", areas: ["boards"], scope: () => tab, apply });
+
+      registry.applyAll(route("boards"));
+      expect(document.documentElement.getAttribute(attr)).toBe("taskboard");
+      expect(apply).toHaveBeenCalledTimes(1);
+
+      tab = true;
+      registry.applyAll(route("boards"));
+      expect(document.documentElement.getAttribute(attr)).toBe("");
+
+      tab = false;
+      registry.applyAll(route("boards"));
+      expect(document.documentElement.hasAttribute(attr)).toBe(false);
+      expect(apply).toHaveBeenCalledTimes(2);
+    });
+
+    it("clears the scope on routes outside the feature's areas without asking it", () => {
+      const { registry } = fresh();
+      const scope = vi.fn(() => true);
+      registry.register({ id: "scoped", areas: ["boards"], scope, apply: vi.fn() });
+
+      registry.applyAll(route("boards"));
+      expect(document.documentElement.hasAttribute(attr)).toBe(true);
+
+      registry.applyAll(route("workitems"));
+      expect(document.documentElement.hasAttribute(attr)).toBe(false);
+      expect(scope).toHaveBeenCalledTimes(1);
+    });
+  });
 });

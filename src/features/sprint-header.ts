@@ -1,4 +1,4 @@
-import type { Feature } from "../core/registry";
+import { scopeSelector, type Feature } from "../core/registry";
 import type { Route } from "../core/router";
 import { ensureText, injectStyleOnce, makeCommandProxy, stubHide } from "../core/dom";
 import { log } from "../core/log";
@@ -22,14 +22,15 @@ import { sprintScopeKey, sprintTab } from "./boards/paths";
  *    range and days-remaining reappear as status text in the title row
  *    (mirrored from the hidden elements, which stay in the DOM and re-render
  *    when the sprint changes).
- * Scoped per tab via data-adofix-sprints="<tab>" on <html>. Offsets measured
+ * Scoped per tab via the registry page scope (data-adofix-sprint-header="<tab>"). Offsets measured
  * live 2026-08-18 with chrome-density active; the icon lift uses
  * position:relative top (a margin-top lift is partially absorbed by the
  * header's flex layout — measured -76px margin moving the bar only 13px).
  */
 const FEATURE_ID = "sprint-header";
 
-const ATTR = "data-adofix-sprints";
+const SCOPE = scopeSelector(FEATURE_ID);
+const tabScope = (tab: string): string => scopeSelector(FEATURE_ID, tab);
 const STATUS_CLASS = "adofix-sprint-status";
 const BTN_CLASS = "adofix-toolbar-btn";
 
@@ -43,36 +44,36 @@ const CSS = `
 /* Stubs, not display:none — see backlog-toolbar (bolt evicts display:none
    commandbar items from the DOM on the _backlogs page; on _sprints it merely
    hides them, but the stub is safe in both worlds). */
-${stubHide(`html[${ATTR}] #__bolt-taskboard-new-work-item,
-html[${ATTR}] #__bolt-taskboard-column-options,
-html[${ATTR}] #__bolt-new-work-item,
-html[${ATTR}] #__bolt-column-options,
-html[${ATTR}] #__bolt-create-query`)}
-html[${ATTR}] #__bolt-tab-analytics,
-html[${ATTR}] #__bolt-tab-capacity {
+${stubHide(`${SCOPE} #__bolt-taskboard-new-work-item,
+${SCOPE} #__bolt-taskboard-column-options,
+${SCOPE} #__bolt-new-work-item,
+${SCOPE} #__bolt-column-options,
+${SCOPE} #__bolt-create-query`)}
+${SCOPE} #__bolt-tab-analytics,
+${SCOPE} #__bolt-tab-capacity {
   display: none !important;
 }
 /* Title-row commandbar buttons pinned to the title's centerline (same
    bottom-parking fix as the backlogs title row). */
-html[${ATTR}] .wit-sprints-header-row .bolt-header-commandbar-button-group {
+${SCOPE} .wit-sprints-header-row .bolt-header-commandbar-button-group {
   align-items: flex-start !important;
 }
-html[${ATTR}] .wit-sprints-header-row .bolt-header-command-item-button.bolt-expandable-button {
+${SCOPE} .wit-sprints-header-row .bolt-header-command-item-button.bolt-expandable-button {
   margin-top: 0 !important;
 }
 /* The dates block and burndown mini-widget leave the header; their text
    lives on as the title-row status span. */
-html[${ATTR}] .sprints-header-dates > .flex-row:has(.sprint-dates-button) {
+${SCOPE} .sprints-header-dates > .flex-row:has(.sprint-dates-button) {
   display: none !important;
 }
-html[${ATTR}] .sprints-tabbar-header .bolt-tabbar {
+${SCOPE} .sprints-tabbar-header .bolt-tabbar {
   background: transparent !important;
 }
 @media (min-width: 900px) {
   /* Icon commandbar onto the title row — Taskboard and Backlog only
      (Capacity keeps Add user/Save/Revert up there). */
-  html[${ATTR}="taskboard"] .sprints-tabbar-header-commandbar.bolt-header-commandbar,
-  html[${ATTR}="backlog"] .sprints-tabbar-header-commandbar.bolt-header-commandbar {
+  ${tabScope("taskboard")} .sprints-tabbar-header-commandbar.bolt-header-commandbar,
+  ${tabScope("backlog")} .sprints-tabbar-header-commandbar.bolt-header-commandbar {
     position: relative;
     /* -36px (was -52px): centers the icons on the title row's centerline,
        re-measured live 2026-11-02 (they sat 16px high). */
@@ -85,8 +86,8 @@ html[${ATTR}] .sprints-tabbar-header .bolt-tabbar {
      the remaining 32px up to the title line comes from relative top so the
      filter bar does not ride up over the tabs. Click-through except on the
      pickers themselves. */
-  html[${ATTR}="taskboard"] .sprints-header-dates,
-  html[${ATTR}="backlog"] .sprints-header-dates {
+  ${tabScope("taskboard")} .sprints-header-dates,
+  ${tabScope("backlog")} .sprints-header-dates {
     margin-top: -38px !important;
     justify-content: flex-end;
     /* 360px clears the icon group incl. taskboard-columns' button (was 310
@@ -99,10 +100,10 @@ html[${ATTR}] .sprints-tabbar-header .bolt-tabbar {
   }
   /* The Backlog tab's tab row sits 2px lower than the taskboard's, so its
      lifts are 2px longer (centerlines measured equal live 2026-11-02). */
-  html[${ATTR}="backlog"] .sprints-tabbar-header-commandbar.bolt-header-commandbar {
+  ${tabScope("backlog")} .sprints-tabbar-header-commandbar.bolt-header-commandbar {
     top: -38px;
   }
-  html[${ATTR}="backlog"] .sprints-header-dates {
+  ${tabScope("backlog")} .sprints-header-dates {
     top: -34px;
   }
   /*
@@ -116,55 +117,55 @@ html[${ATTR}] .sprints-tabbar-header .bolt-tabbar {
    * so toggling the filter off never drags the board under the tabs. The
    * tab header spans the shared row — click-through except tabs/commandbar.
    */
-  html[${ATTR}="taskboard"] .sprints-header-dates:has(~ * .vss-FilterBar) {
+  ${tabScope("taskboard")} .sprints-header-dates:has(~ * .vss-FilterBar) {
     margin-bottom: -54px !important;
   }
-  html[${ATTR}="taskboard"] div.padding-vertical-16:has(> .vss-FilterBar) {
+  ${tabScope("taskboard")} div.padding-vertical-16:has(> .vss-FilterBar) {
     padding: 2px 0 2px 330px !important;
   }
   /* Backlog tab, same treatment, own geometry (measured live 2026-08-18):
      its filter bar mounts in .page-content-top (16px top padding, NOT the
      taskboard's padding-vertical-16 wrapper), and trimming that to 2px
      supplies 14 of the 52px lift, so the dates row collapses only -38px. */
-  html[${ATTR}="backlog"] .sprints-header-dates:has(~ * .vss-FilterBar) {
+  ${tabScope("backlog")} .sprints-header-dates:has(~ * .vss-FilterBar) {
     margin-bottom: -38px !important;
   }
-  html[${ATTR}="backlog"] .page-content-top:has(> .vss-FilterBar) {
+  ${tabScope("backlog")} .page-content-top:has(> .vss-FilterBar) {
     padding: 2px 0 0 330px !important;
   }
   /* The compact filter cluster parks at the row's right edge (user
      2026-08-18) — left-packed it floated mid-row next to the tabs. */
-  html[${ATTR}="taskboard"] .vss-FilterBar--list,
-  html[${ATTR}="backlog"] .vss-FilterBar--list {
+  ${tabScope("taskboard")} .vss-FilterBar--list,
+  ${tabScope("backlog")} .vss-FilterBar--list {
     justify-content: flex-end;
   }
-  html[${ATTR}="taskboard"] .sprints-tabbar-header,
-  html[${ATTR}="backlog"] .sprints-tabbar-header {
+  ${tabScope("taskboard")} .sprints-tabbar-header,
+  ${tabScope("backlog")} .sprints-tabbar-header {
     pointer-events: none;
   }
-  html[${ATTR}="taskboard"] .sprints-tabbar-header [role="tab"],
-  html[${ATTR}="taskboard"] .sprints-tabbar-header .bolt-header-commandbar,
-  html[${ATTR}="backlog"] .sprints-tabbar-header [role="tab"],
-  html[${ATTR}="backlog"] .sprints-tabbar-header .bolt-header-commandbar {
+  ${tabScope("taskboard")} .sprints-tabbar-header [role="tab"],
+  ${tabScope("taskboard")} .sprints-tabbar-header .bolt-header-commandbar,
+  ${tabScope("backlog")} .sprints-tabbar-header [role="tab"],
+  ${tabScope("backlog")} .sprints-tabbar-header .bolt-header-commandbar {
     pointer-events: auto;
   }
   /* The pickers/icons overlay the title row from a separate layer, so flex
      can't shrink the status text against them — reserve their width so the
      status ellipsizes instead of sliding underneath (user 2026-08-18). */
-  html[${ATTR}="taskboard"] .wit-sprints-header-row .bolt-header-title-row,
-  html[${ATTR}="backlog"] .wit-sprints-header-row .bolt-header-title-row {
+  ${tabScope("taskboard")} .wit-sprints-header-row .bolt-header-title-row,
+  ${tabScope("backlog")} .wit-sprints-header-row .bolt-header-title-row {
     padding-right: 620px;
   }
   /* Capacity keeps its title row for Add user/Save/Revert — the pickers go
      into the tab row's free middle instead (300px clears the tabs). */
-  html[${ATTR}="capacity"] .sprints-header-dates {
+  ${tabScope("capacity")} .sprints-header-dates {
     margin-top: -38px !important;
     padding-left: 300px;
     position: relative;
     z-index: 3;
     pointer-events: none;
   }
-  html[${ATTR}] .sprints-header-dates > * {
+  ${SCOPE} .sprints-header-dates > * {
     pointer-events: auto;
   }
 }
@@ -250,14 +251,11 @@ function applyProxy(tab: string): void {
 export const sprintHeader: Feature = {
   id: FEATURE_ID,
   areas: ["boards"],
+  scope: (route) => sprintTab(route.path) ?? false,
   apply(route: Route): void {
     injectStyleOnce(FEATURE_ID, CSS);
     const tab = sprintTab(route.path);
-    if (!tab) {
-      document.documentElement.removeAttribute(ATTR);
-      return;
-    }
-    document.documentElement.setAttribute(ATTR, tab);
+    if (!tab) return;
     applyStatus(tab, route.path);
     applyProxy(tab);
   },

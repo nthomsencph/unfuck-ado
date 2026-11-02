@@ -1,7 +1,6 @@
 import { scopeSelector, type Feature } from "../core/registry";
 import type { Route } from "../core/router";
 import {
-  ensureText,
   injectStyleOnce,
   stubHide,
   syncCommandProxies,
@@ -193,6 +192,19 @@ ${SCOPE} .sprints-tabbar-header .bolt-tabbar {
     pointer-events: auto;
   }
 }
+/* The dates read as status text; hover shows they are a button. */
+.adofix-sprint-dates {
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.adofix-sprint-dates:hover {
+  color: var(--fgColor-accent);
+  text-decoration: underline;
+}
 .${STATUS_CLASS} {
   margin-left: 16px;
   font-size: var(--text-body-size-medium);
@@ -241,13 +253,49 @@ function applyStatus(tab: string, path: string): void {
     countText = formatBacklogStatus(shown, total, filters);
   }
 
-  const dates = document.querySelector(".sprint-dates-button")?.textContent?.trim();
-  const remaining = document
-    .querySelector(".sprints-header-dates .text-right")
-    ?.textContent?.trim();
-  const text = [countText, dates, remaining].filter(Boolean).join(" · ");
-  if (!text) return;
-  ensureText(row, STATUS_CLASS, text);
+  const dates = document.querySelector(".sprint-dates-button")?.textContent?.trim() || null;
+  const remaining =
+    document.querySelector(".sprints-header-dates .text-right")?.textContent?.trim() || null;
+  renderStatus(row, [countText, dates, remaining]);
+}
+
+/**
+ * The status line: "Showing n items · <dates> · n work days remaining".
+ * The dates part is a button that clicks ADO's own (hidden) dates button,
+ * so the sprint's dates stay editable from the header (D67; the native
+ * row left the header 2026-08-18 and took the only way in with it).
+ * Rebuilt only when the text changes — this runs on every settle.
+ */
+function renderStatus(row: HTMLElement, [count, dates, remaining]: (string | null)[]): void {
+  const key = [count, dates, remaining].join("\u0000");
+  if (!count && !dates && !remaining) return;
+  let host = row.querySelector<HTMLElement>(`:scope .${STATUS_CLASS}`);
+  if (!host) {
+    host = document.createElement("span");
+    host.className = STATUS_CLASS;
+    row.appendChild(host);
+  }
+  if (host.dataset["key"] === key) return;
+  host.dataset["key"] = key;
+  host.textContent = "";
+  const parts: (string | Node)[] = [];
+  if (count) parts.push(count);
+  if (dates) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "adofix-sprint-dates";
+    btn.textContent = dates;
+    btn.title = "Edit sprint dates";
+    btn.addEventListener("click", () =>
+      document.querySelector<HTMLElement>(".sprint-dates-button")?.click()
+    );
+    parts.push(btn);
+  }
+  if (remaining) parts.push(remaining);
+  parts.forEach((part, i) => {
+    if (i > 0) host.append(" \u00b7 ");
+    host.append(part);
+  });
 }
 
 function applyProxies(tab: string): void {

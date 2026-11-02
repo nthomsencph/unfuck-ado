@@ -413,6 +413,16 @@ const CSS = `
 [${ATTR}] .bolt-header .bolt-header-commandbar {
   margin-left: auto !important;
 }
+/* More room above the merged toolbar row (user 2026-11-02): the page
+   header's top padding 20px (chrome-density) -> 32px. The tab row and the
+   filter wrapper lifts below are unchanged: they hang off the header's
+   bottom edge, which moves down with the padding, so everything shifts
+   together (measured). */
+/* Specificity must beat chrome-density's
+   .bolt-header:not([class*="tabbar"]):not([class*="tabs"]):not(.no-padding). */
+[${ATTR}] .bolt-page > .bolt-header.bolt-header-with-commandbar:not([class*="tabbar"]):not(.no-padding) {
+  padding-top: 32px !important;
+}
 [${ATTR}] #__bolt-tab-mine {
   display: none !important;
 }
@@ -421,10 +431,10 @@ const CSS = `
   position: relative !important;
   z-index: 4 !important;
   margin-top: -55px !important;
-  /* Lifting by the header's full height (55px with chrome-density's 20px
-     title padding) puts the 48px tab row's center 13px above the New PR
-     button's; the relative nudge centers it without moving the flow below
-     (measured live 2026-11-02). */
+  /* -55px hangs the tab row off the header's bottom edge (so it follows
+     the header's top padding); that leaves the 48px row's center 13px
+     above the New PR button's, and the relative nudge centers it without
+     moving the flow below (measured live 2026-11-02). */
   top: 13px;
   padding-right: 220px !important;
   pointer-events: none !important;

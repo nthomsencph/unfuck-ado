@@ -340,6 +340,9 @@ throws). Key live findings baked into the code:
   page-title padding at 20px the sprint title row's center is y=85 on both
   sprint tabs; lifts are taskboard −36px icons / −32px pickers, Backlog tab
   −38 / −34 (its tab row sits 2px lower), Backlogs page −50px margin.
+  PR list (v0.59.4): the page header's top padding is 32px here (20px
+  elsewhere); the tab-row and filter lifts hang off the header's bottom
+  edge, so they need no change when that padding changes.
   PR list (v0.57.1): with the 55px header the lifted tab row needs
   `top: 13px` and the filter wrapper `top: 5px` to share the New PR
   button's centerline (y≈85.5, measured). Filter items (v0.57.2): natively

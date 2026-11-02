@@ -1,4 +1,5 @@
 import type { Feature } from "../core/registry";
+import { commentCss } from "../core/comment";
 import { injectStyleOnce } from "../core/dom";
 
 /**
@@ -43,6 +44,18 @@ const CSS = `
 .repos-pr-details-page .shadow-padding .separator-line-top {
   border-top-color: transparent !important;
 }
+/* PR thread comments (Overview and Files): the shared GitHub comment look
+   (core/comment.ts, also on work item comments) — author and date on one
+   line, the date right-aligned against the comment's actions. The thread
+   card is the surface; ADO's padding-left-8 already gives the 8px avatar
+   gap. Selectors verified live 2026-11-02 on PR 7338. */
+${commentCss({
+  header: ".repos-discussion-comment-header",
+  meta: ".repos-discussion-comment-header > :first-child",
+  author: ".repos-discussion-comment-header > :first-child > .font-weight-semibold",
+  date: ".repos-discussion-comment-header > :first-child > :nth-child(2)",
+  actions: ".repos-discussion-comment-header > :nth-child(2)",
+})}
 /* Reply separators inside discussion threads and row separators inside the
    commit-list / checks tables — author rows and spacing already do the work. */
 .repos-pr-details-page .shadow-padding .repos-discussion-comment {

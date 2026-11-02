@@ -4,6 +4,7 @@ import { getWorkItem, type ProjectRef } from "../core/api";
 import { injectStyleOnce, stubHide } from "../core/dom";
 import { createFetchCache } from "../core/fetch-cache";
 import { log } from "../core/log";
+import { commentCss } from "../core/comment";
 import { octicon, octiconMask } from "../core/primer";
 import {
   DESCRIPTION_HEADER_RE,
@@ -177,10 +178,10 @@ function classifyRailGroups(): HTMLElement[] {
       case "hide":
         group.classList.add("adofix-wi-group-hide");
         break;
-      case "relwork":
-        // Shown even without links: its "+" is the only way to add one
-        // (2026-11-02; it used to hide until a link existed).
-        group.classList.add("adofix-wi-relwork");
+      case "links":
+        // Related Work / Development: shown even without links (their "+"
+        // is the only way to add one — 2026-11-02, D67).
+        group.classList.add("adofix-wi-links");
         break;
       case "absorb":
         group.classList.add("adofix-wi-group-absorb");
@@ -329,6 +330,26 @@ function ensureTabProxies(): void {
     }
     btn.classList.toggle("adofix-wi-tab-active", native.classList.contains("selected"));
   }
+  keepMoreActionsLast(bar);
+}
+
+/**
+ * ⋮ (More actions) stays the bar's last item (user 2026-11-02): the tab
+ * proxies go right before it, in TAB_PROXIES order. Moves nodes only when
+ * the order is wrong — this runs on every settle.
+ */
+function keepMoreActionsLast(bar: HTMLElement): void {
+  const more = bar.querySelector<HTMLElement>('button[aria-label="More actions"]');
+  if (!more) return;
+  const item = more.closest<HTMLElement>(".bolt-expandable-button") ?? more;
+  let next: Element = item;
+  const proxies = TAB_PROXIES.map((t) =>
+    bar.querySelector<HTMLElement>(`.adofix-wi-tab-proxy[data-tab="${t.field}"]`)
+  ).filter((b): b is HTMLElement => b !== null);
+  for (const btn of proxies.reverse()) {
+    if (btn.nextElementSibling !== next) next.before(btn);
+    next = btn;
+  }
 }
 
 /**
@@ -360,19 +381,115 @@ function placeStateField(): void {
     `${Math.round(ar.top - pr.top + (ar.height - CONTROL_HEIGHT) / 2)}px`
   );
   state.style.setProperty("left", `${Math.round(r3.left - pr.left + 8)}px`);
+  fitToText(page, "--adofix-wi-state-w", state, state.querySelector("input"));
+  fitToText(
+    page,
+    "--adofix-wi-assignee-w",
+    header.querySelector(".work-item-assignment-dropdown"),
+    header.querySelector(".work-item-assignment-dropdown input")
+  );
+}
+
+let measureCtx: CanvasRenderingContext2D | null | undefined;
+
+/**
+ * Sizes `box` to its input's text: State and the assignee are fixed-width
+ * fields natively (190px clamp / 270px), which cut "Ready for development"
+ * off and left a wide gap after short names (user 2026-11-02). Writes the
+ * width as a custom property on `host` for the CSS to use; the box's other
+ * content (dot, coin, chevron) is kept as the box-minus-input difference.
+ * Re-fits on the input's own edits — a value change is no childList
+ * mutation, so the settle pass alone would miss it.
+ */
+function fitToText(
+  host: HTMLElement,
+  prop: string,
+  box: HTMLElement | null,
+  input: HTMLInputElement | null
+): void {
+  if (!box || !input) return;
+  if (!input.dataset["adofixFit"]) {
+    input.dataset["adofixFit"] = "1";
+    const refit = (): void => placeStateField();
+    input.addEventListener("input", refit);
+    input.addEventListener("blur", refit);
+  }
+  measureCtx ??= document.createElement("canvas").getContext("2d");
+  if (!measureCtx) return;
+  const cs = getComputedStyle(input);
+  measureCtx.font = cs.font;
+  const text = measureCtx.measureText(input.value || input.placeholder).width;
+  // The box's other content (dot, coin, chevron): at every level from the
+  // input up to the box, the siblings beside the input's branch plus the
+  // parent's padding — measured from the siblings, not as box-minus-input,
+  // so the width we set never feeds back into the next fit.
+  let other = 0;
+  for (let el: Element = input; el !== box && el.parentElement; el = el.parentElement) {
+    const parent = el.parentElement;
+    const ps = getComputedStyle(parent);
+    other += parseFloat(ps.paddingLeft) + parseFloat(ps.paddingRight);
+    for (const sib of parent.children) {
+      if (sib !== el) other += sib.getBoundingClientRect().width;
+    }
+  }
+  const pad = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+  const width = `${Math.ceil(text + pad + other + 4)}px`;
+  if (host.style.getPropertyValue(prop) !== width) host.style.setProperty(prop, width);
 }
 
 /**
- * The command bar and the dialog's Fullscreen/Close buttons sit ON the
- * title row — vertical centers measured from the title row's live rect
+ * The title as wrapping text (user 2026-11-02): ADO's title is a
+ * single-line <input>, which can't wrap, so a long title was cut off. An
+ * adofix view shows the same text, wrapping; clicking (or tabbing into) it
+ * hands over to the real input, which stays in place but visually hidden
+ * while not edited — still focusable, still ADO's. The view is appended
+ * next to the React-owned field; the settle pass re-adds it after a
+ * re-render and re-syncs its text (typing syncs it live).
+ */
+function ensureWrappingTitle(): void {
+  const header = document.querySelector<HTMLElement>(".work-item-form-header");
+  const field = header?.children[1]?.querySelector<HTMLElement>(".bolt-textfield");
+  const input = field?.querySelector<HTMLInputElement>("input");
+  const box = field?.parentElement;
+  if (!field || !input || !box) return;
+  let view = box.querySelector<HTMLElement>(":scope > .adofix-wi-title");
+  if (!view) {
+    view = document.createElement("div");
+    view.className = "adofix-wi-title";
+    view.addEventListener("click", () => {
+      box.classList.add("adofix-wi-title-editing");
+      box.querySelector<HTMLInputElement>(":scope > .bolt-textfield input")?.focus();
+    });
+    box.append(view);
+  }
+  if (!input.dataset["adofixTitle"]) {
+    input.dataset["adofixTitle"] = "1";
+    const sync = (): void => ensureWrappingTitle();
+    input.addEventListener("focus", () => box.classList.add("adofix-wi-title-editing"));
+    input.addEventListener("blur", () => {
+      box.classList.remove("adofix-wi-title-editing");
+      sync();
+    });
+    input.addEventListener("input", sync);
+  }
+  const text = input.value || input.placeholder;
+  if (view.textContent !== text) view.textContent = text;
+  view.classList.toggle("adofix-wi-title--empty", !input.value);
+}
+
+/**
+ * The command bar and the dialog's Fullscreen/Close buttons sit on the
+ * eyebrow row ("TASK 36642"), above the title, so the title gets the full
+ * width (user 2026-11-02; they sat on the title row before and cut it
+ * off). Vertical centers measured from the eyebrow row's live rect
  * (horizontal offsets are CSS).
  */
 function placeHeaderControls(): void {
   const header = document.querySelector<HTMLElement>(".work-item-form-header");
-  const title = header?.children[1] as HTMLElement | undefined;
-  if (!header || !title) return;
+  const eyebrow = header?.children[0] as HTMLElement | undefined;
+  if (!header || !eyebrow) return;
   const hr = header.getBoundingClientRect();
-  const tr = title.getBoundingClientRect();
+  const tr = eyebrow.getBoundingClientRect();
   const top = `${Math.round(tr.top - hr.top + (tr.height - CONTROL_HEIGHT) / 2)}px`;
   const cb = header.querySelector<HTMLElement>(
     ":scope > :nth-child(3) > .work-item-header-command-bar"
@@ -410,6 +527,7 @@ function enhance(ref: ProjectRef | null): void {
   // Before the rail check: on the Attachments view the rail is unmounted,
   // but the proxy's count/active state still needs refreshing.
   ensureTabProxies();
+  ensureWrappingTitle();
   placeHeaderControls();
   placeStateField();
   trimCommentCount();
@@ -455,9 +573,14 @@ function enhance(ref: ProjectRef | null): void {
     if (row.tags) {
       if (row.tags.length === 0) value.append(document.createTextNode("—"));
       for (const tag of row.tags) {
+        // ADO's own tag pill classes, so tags match the boards' (and follow
+        // whatever the bridge paints them) — user 2026-11-02.
         const pill = document.createElement("span");
-        pill.className = "adofix-wi-tag gh-Label gh-Label--secondary";
-        pill.textContent = tag;
+        pill.className = "adofix-wi-tag bolt-pill flex-row flex-center themed-standard regular";
+        const text = document.createElement("span");
+        text.className = "bolt-pill-content text-ellipsis";
+        text.textContent = tag;
+        pill.append(text);
         value.append(pill);
       }
     } else {
@@ -590,16 +713,38 @@ const CSS = `
   flex-direction: column-reverse;
   gap: 16px;
 }
-/* Comments as GitHub timeline comments in gh-Box material: a muted
-   surface on the canvas, 6px corners, no border, no shadow (B1). CSS rather than the gh-Box class —
-   the comment nodes are React-owned and re-rendered, and a class added
-   from enhance() would flicker off and back on (D41). */
+/* Comments: the shared GitHub comment look (core/comment.ts, also on PR
+   threads) in gh-Box material — a muted surface on the canvas, 6px
+   corners, no border, no shadow (B1). CSS rather than the gh-Box class:
+   the comment nodes are React-owned and re-rendered (D41). */
+${commentCss({
+  box: ".comment-item.displayed-comment",
+  avatar: ".comment-item.displayed-comment .comment-item-left .bolt-coin",
+  header: ".comment-item.displayed-comment .comment-header",
+  meta: ".comment-item.displayed-comment .comment-header-main",
+  author: ".comment-item.displayed-comment .user-display-name",
+  date: ".comment-item.displayed-comment .comment-timestamp",
+  actions: ".comment-item.displayed-comment .comment-viewer-toolbar",
+})}
+/* The comment toolbar (reactions, edit, ⋯) is invisible until hover but
+   kept its ~120px in the header row, so the right-aligned date stopped
+   short of the edge. It overlays the date's spot instead, and takes it
+   over while the comment is hovered or focused. */
+.comment-item.displayed-comment .comment-header {
+  position: relative;
+}
+/* ADO's own 16px block margins doubled the 16px timeline gap. */
 .comment-item.displayed-comment {
-  background: var(--bgColor-muted) !important;
-  border: var(--borderWidth-default) solid transparent !important;
-  border-radius: var(--borderRadius-medium) !important;
-  box-shadow: none !important;
-  padding: 8px 16px !important;
+  margin: 0 !important;
+}
+.comment-item.displayed-comment .comment-viewer-toolbar {
+  position: absolute !important;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+}
+.comment-item.displayed-comment:is(:hover, :focus-within) .comment-timestamp {
+  visibility: hidden;
 }
 /* Section headers out: Discussion always (Description via text-matched
    class — Repro Steps etc. keep theirs). ADO's 1px divider lives ON the
@@ -661,19 +806,92 @@ const CSS = `
   right: 8px;
   z-index: 6;
 }
-/* Title room for the absolute command bar: 447px wide since Follow and the
-   History proxy came back (D67, measured live 2026-11-02; was 400/470). */
-.work-item-form-header > :nth-child(2) {
+/* The command bar lives on the eyebrow row, so the title row needs no
+   reserve for it (it reserved 460px / 530px in the dialog until
+   2026-11-02 and cut long titles off). The eyebrow keeps the bar's room. */
+.work-item-form-header > :nth-child(1) {
   padding-right: 460px !important;
+  min-height: ${CONTROL_HEIGHT}px;
 }
-.work-item-form-dialog .work-item-form-header > :nth-child(2) {
+.work-item-form-dialog .work-item-form-header > :nth-child(1) {
   padding-right: 530px !important;
+}
+/* The wrapping title view (ensureWrappingTitle) in the title's type, and
+   ADO's single-line input visually hidden while not edited. */
+.adofix-wi-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 4px 8px;
+  border-radius: var(--borderRadius-medium);
+  font-size: var(--text-title-size-large);
+  font-weight: var(--base-text-weight-normal);
+  line-height: var(--text-title-lineHeight-large);
+  color: var(--fgColor-default);
+  white-space: normal;
+  overflow-wrap: anywhere;
+  cursor: text;
+}
+.adofix-wi-title:hover {
+  background: var(--bgColor-neutral-muted);
+}
+.adofix-wi-title--empty {
+  color: var(--fgColor-muted);
+}
+.adofix-wi-title-editing > .adofix-wi-title {
+  display: none;
+}
+:not(.adofix-wi-title-editing) > .bolt-textfield:has(~ .adofix-wi-title) {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  clip-path: inset(50%);
 }
 /* Assignee row makes room at its left for the promoted State field.
    NOT position:relative — that would become the absolute command bar's
    containing block and drag it down to this row's line. */
 .work-item-form-header > :nth-child(3) {
-  padding-left: ${STATE_WIDTH + 20}px !important;
+  padding-left: calc(var(--adofix-wi-state-w, ${STATE_WIDTH}px) + 8px) !important;
+}
+/* The assignee sized to its name (fitToText); full width while editing,
+   where the field is a search box. */
+.work-item-form-header .work-item-assignment-dropdown {
+  min-width: 0 !important;
+  width: var(--adofix-wi-assignee-w, 270px) !important;
+}
+.work-item-form-header .work-item-assignment-dropdown:focus-within {
+  width: 270px !important;
+}
+/* The input fills the sized box (natively it keeps an intrinsic ~207px). */
+.work-item-form-header .work-item-assignment-dropdown input {
+  flex: 1 1 auto !important;
+  width: 0 !important;
+  min-width: 0 !important;
+}
+/* No ID before the title: the eyebrow already carries it (user
+   2026-11-02). It is a bare text node in the title row, so the row's font
+   size goes to 0 and the title column brings its own back. The title's
+   text lines up with the eyebrow (the view's hover padding hangs left),
+   with 16px of air below the toolbar on the eyebrow row (user 2026-11-02). */
+.work-item-form-header > :nth-child(2) {
+  font-size: 0 !important;
+  padding-top: 16px !important;
+}
+.work-item-form-header > :nth-child(2) > * {
+  font-size: var(--text-body-size-medium);
+}
+.work-item-form-header > :nth-child(2) .flex-column.padding-left-8 {
+  padding-left: 0 !important;
+}
+.work-item-form-header .adofix-wi-title {
+  margin-left: -8px;
+}
+/* The assignee row as one centered line: assignee, comment count (and the
+   promoted State, placed against the assignee's center) — natively a block
+   of inline boxes on the baseline, which left the count 5px low. */
+.work-item-form-header > :nth-child(3) {
+  display: flex !important;
+  align-items: center !important;
 }
 /* State promoted out of its stub column into the header, left of the
    assignee. Absolute against .work-item-form-page; it escapes the
@@ -685,7 +903,7 @@ const CSS = `
 }
 .adofix-wi-state-promoted {
   position: absolute !important;
-  width: ${STATE_WIDTH}px !important;
+  width: var(--adofix-wi-state-w, ${STATE_WIDTH}px) !important;
   height: ${CONTROL_HEIGHT}px !important;
   visibility: visible !important;
   pointer-events: auto !important;
@@ -693,7 +911,7 @@ const CSS = `
   z-index: 5;
 }
 /* Same clamp as teleports: the state control's inner fixed widths must
-   not render wider than the 190px box (it overlapped the assignee). */
+   not render wider than its box (it overlapped the assignee). */
 .adofix-wi-state-promoted * {
   max-width: 100% !important;
   min-width: 0 !important;
@@ -714,36 +932,55 @@ const CSS = `
 .work-item-form-page .html-editor.auto-grow .rooster-editor {
   min-height: 200px !important;
 }
-/* Related Work's "Add link" becomes a "+" on the group header, right-
-   aligned left of the collapse chevron (user 2026-08-18). */
-.adofix-wi-relwork {
+/* The link sections' "Add link" (Related Work: a dropdown; Development: a
+   plain button) becomes a "+" on the section header, right-aligned left of
+   the collapse chevron (user 2026-08-18; Development since 2026-11-02). */
+.adofix-wi-links {
   position: relative;
 }
 /* Position the BUTTON, not its wrapper: the wrapper also contains the
    .compact-links-list itself — absoluting it dragged the links into the
    header box (user 2026-08-18). */
-.adofix-wi-relwork .bolt-expandable-button {
+.adofix-wi-links :is(.bolt-expandable-button, .work-item-form-control-wrapper > button.bolt-button) {
   position: absolute !important;
   top: -2px;
   right: 30px;
   z-index: 2;
 }
-.adofix-wi-relwork .bolt-expandable-button .bolt-button-text,
-.adofix-wi-relwork .bolt-expandable-button .fluent-icons-enabled {
-  display: none !important;
-}
-.adofix-wi-relwork .bolt-expandable-button .bolt-button {
+.adofix-wi-links :is(.bolt-expandable-button .bolt-button, .work-item-form-control-wrapper > button.bolt-button) {
   min-width: 0 !important;
   padding: 2px 10px !important;
+  & .bolt-button-text,
+  & .fluent-icons-enabled {
+    display: none !important;
+  }
+  &::before {
+    content: "";
+    display: block;
+    width: 16px;
+    height: 16px;
+    background-color: currentColor;
+    -webkit-mask: ${octiconMask("plus")} center / 16px no-repeat;
+    mask: ${octiconMask("plus")} center / 16px no-repeat;
+  }
 }
-.adofix-wi-relwork .bolt-expandable-button .bolt-button::before {
-  content: "";
-  display: block;
-  width: 16px;
-  height: 16px;
-  background-color: currentColor;
-  -webkit-mask: ${octiconMask("plus")} center / 16px no-repeat;
-  mask: ${octiconMask("plus")} center / 16px no-repeat;
+/* Linked items (parent, related, PRs, commits) show their whole title,
+   wrapping, with the type icon pinned to the first line (user 2026-11-02;
+   ADO ellipsizes every line — the PR page's linked-work-items precedent). */
+.work-item-form-right .artifact-link-container {
+  white-space: normal !important;
+}
+.work-item-form-right .artifact-link-container > .flex-row.artifact-link {
+  align-items: flex-start !important;
+}
+.work-item-form-right .artifact-link-container :is(a.artifact-link-link, .artifact-details, .artifact-details *) {
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  overflow-wrap: anywhere;
+}
+.work-item-form-right .artifact-link-container .artifact-details {
+  flex-wrap: wrap;
 }
 /* Header noise out (user 2026-08-18): the Links tab (Related Work keeps
    Add link, shown even with no links since 2026-11-02) and every
@@ -896,7 +1133,7 @@ ${stubHide(".adofix-wi-group-absorb")}
   white-space: normal;
   overflow: visible;
 }
-/* Tag pills are gh-Label (secondary) — no rules of their own. */
+/* Tag pills are ADO's own themed-standard bolt-pills (the boards' look). */
 
 /*
  * Work item form (dialog and full page, verified live 2026-08-18): the

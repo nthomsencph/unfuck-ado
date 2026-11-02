@@ -1,15 +1,22 @@
 import { describe, expect, it } from "vitest";
-import { formatCreatedDate, groupAction, leaf, planningKey, updatedText } from "./fields";
+import {
+  DESCRIPTION_HEADER_RE,
+  formatCreatedDate,
+  groupAction,
+  leaf,
+  planningKey,
+  updatedText,
+} from "./fields";
 
 describe("groupAction", () => {
-  it("hides Implementation/System Info, keeps Development (its only way in)", () => {
-    expect(groupAction("Development")).toBeNull();
+  it("hides Implementation/System Info", () => {
     expect(groupAction("Implementation")).toBe("hide");
     expect(groupAction("System Info")).toBe("hide");
   });
 
-  it("marks Related Work for its header "+"", () => {
-    expect(groupAction("Related Work")).toBe("relwork");
+  it("marks the link sections (Related Work, Development) for their header '+'", () => {
+    expect(groupAction("Related Work")).toBe("links");
+    expect(groupAction("Development")).toBe("links");
   });
 
   it("absorbs Planning/Classification/Effort into the Details list", () => {
@@ -20,7 +27,7 @@ describe("groupAction", () => {
 
   it("matches by prefix (headers may carry counts/suffixes)", () => {
     expect(groupAction("Implementation (2)")).toBe("hide");
-    expect(groupAction("Related Work (3)")).toBe("relwork");
+    expect(groupAction("Related Work (3)")).toBe("links");
   });
 
   it("leaves unknown groups alone", () => {
@@ -61,5 +68,13 @@ describe("formatCreatedDate", () => {
   });
   it("renders ? when the field is absent", () => {
     expect(formatCreatedDate(undefined)).toBe("?");
+  });
+});
+
+describe("DESCRIPTION_HEADER_RE", () => {
+  it("matches the description header, English or this org's Danish label", () => {
+    expect(DESCRIPTION_HEADER_RE.test("Description")).toBe(true);
+    expect(DESCRIPTION_HEADER_RE.test("Beskrivelse")).toBe(true);
+    expect(DESCRIPTION_HEADER_RE.test("Repro Steps")).toBe(false);
   });
 });

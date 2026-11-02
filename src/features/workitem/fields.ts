@@ -6,24 +6,30 @@
  */
 
 /** What the rail does with a group, matched by its header text. */
-export type GroupAction = "hide" | "relwork" | "absorb" | null;
+export type GroupAction = "hide" | "links" | "absorb" | null;
 
 /**
  * Implementation (bugs name it "System Info") disappears outright;
- * Development (create branch / link PR) stays since 2026-11-02 — it was
- * the only way in; Related Work is marked for its header "+"; Planning /
+ * Development (create branch / link PR, kept since 2026-11-02 — it was the
+ * only way in) and Related Work are link sections: their "Add link"
+ * becomes a "+" on the section header; Planning /
  * Classification / Effort are absorbed — their fields join the adofix
  * Details list row-by-row and the native group becomes a zero-size stub.
  */
 export function groupAction(label: string): GroupAction {
   if (/^(Implementation|System Info)/.test(label)) return "hide";
-  if (/^Related Work/.test(label)) return "relwork";
+  if (/^(Related Work|Development)/.test(label)) return "links";
   if (/^(Planning|Classification|Effort)/.test(label)) return "absorb";
   return null;
 }
 
 /** The Description section header (hidden; Repro Steps etc. keep theirs). */
-export const DESCRIPTION_HEADER_RE = /^Description/;
+/**
+ * The description section's header, which the layout hides (GitHub shows
+ * none). "Beskrivelse": this org's bug form labels its description field
+ * in Danish (live 2026-11-02, bug 37439).
+ */
+export const DESCRIPTION_HEADER_RE = /^(Description|Beskrivelse)\b/;
 
 /** "Proj\\Release 1\\Sprint 12" → "Sprint 12" (area/iteration leaf). */
 export function leaf(path: string): string {

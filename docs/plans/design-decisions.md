@@ -385,3 +385,21 @@ Decisions made on the user's behalf while executing
   Analytics/Capacity/Backlog tabs, the burndown widget, the Deployments
   group, Maximize toggles, the Assigned to / Parent Work Item filters,
   and the duplicate controls folded into adofix widgets.
+
+## D68 — Work item header and one comment look (2026-11-02)
+- **Context:** user review of the work item page: the title was cut off by
+  the command bar's reserve, State and the assignee were fixed-width (text
+  cut / big gaps), the comment count sat 5px low, Development had no "+",
+  linked titles were ellipsized, tags didn't match the boards, comments were
+  boxes with the date off the author line.
+- **Decision:** toolbar on the eyebrow row with ⋮ last before the window
+  controls; the title as a wrapping view over ADO's input; no ID before the
+  title; State/assignee sized to their text; Development and Related Work
+  share the header "+"; linked items wrap; tags use ADO's themed-standard
+  pills (the boards'). One comment look (`core/comment.ts`) on work item
+  comments and PR threads: author left, date muted and right-aligned.
+- **Drift (allowed, user-requested):** PR thread dates moved from next to
+  the author to the right, before the thread's actions. In the dialog,
+  Fullscreen sits between ⋮ and Close (both are window controls).
+- **Not changed:** the PR list's tag pills stay the neutral tint
+  (pr-list); only the work item followed the boards' pill.

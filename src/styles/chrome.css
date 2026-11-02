@@ -7,10 +7,31 @@
  * Kanban board title row 63px -> 41px; PR header 86px -> 72px.
  */
 
-/* Canvas colors are the Primer bridge's (core/primer) — the near-black
-   canvas overrides that lived here (page containers, banner, project
-   header, sticky grid headers, PR page bands, the nav rail) were removed in
-   stage 1 of the GitHub makeover. */
+/*
+ * GitHub's canvas on every page. The bridge (core/primer) recolors ADO's
+ * components, but these page containers paint ADO's own grey (#202020 in
+ * dark, live 2026-11-02 after the bridge shipped), so they're pinned to
+ * --bgColor-default here. Selectors are the ones verified live 2026-08-01/02
+ * for the old near-black canvas: page containers, banner, project header,
+ * the left rail, sticky grid header cells, and the PR page bands (the
+ * splitter container paints behind both the file tree and the diff cards).
+ */
+.bolt-page,
+.region-header,
+.region-header-menubar,
+.project-header,
+.project-navigation.project-navigation,
+.repos-pr-details-page,
+.repos-changes-explorer-splitter,
+.repos-pr-details-page-tabbar,
+.kanban-board,
+.kanban-board-column-header-container {
+  background: var(--bgColor-default) !important;
+}
+table:has(td.taskboard-expanded-cell) th,
+.backlogs-view th {
+  background-color: var(--bgColor-default) !important;
+}
 
 /* The banner's site-wide search widget — never used, and its 200px pill
    broke the banner's quiet right edge (user 2026-08-18). */

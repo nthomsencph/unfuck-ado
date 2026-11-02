@@ -161,11 +161,10 @@ export function paintTabCounts(root: ParentNode, counts: Partial<Record<PrStatus
 }
 
 /*
- * "Mine" tagging, the Mine view's replacement: rows the user authored or
- * reviews carry data-adofix-mine="author"|"reviewer". The accent wash that
- * used to paint them is retired (GitHub's list has no equivalent, spec
- * 2026-11-02); the tags stay as the hook for a GitHub-style signal in
- * stage 3 (D40). One fetch per
+ * "Mine" marking, the Mine view's replacement: rows the user authored or
+ * reviews carry data-adofix-mine="author"|"reviewer" and an accent
+ * "Author" / "Reviewer" label after the title (user 2026-11-02, D67; the
+ * earlier accent wash on the whole row was retired by D40). One fetch per
  * repo per page load, success and failure both cached until reload (the
  * pr-checks precedent); the fetch targets active PRs, so Completed/
  * Abandoned rows simply never match. Rows are tagged with a data attribute
@@ -178,13 +177,35 @@ async function fetchOwnership(repo: RepoRef): Promise<ReadonlyMap<number, Owners
   return myId && prs.ok ? ownershipMap(prs.value, myId) : new Map();
 }
 
-/** Tags every list row with its ownership; clears rows that lost it. */
+const MINE_LABEL: Record<Ownership, string> = { author: "Author", reviewer: "Reviewer" };
+
+/**
+ * Tags every list row with its ownership and marks it with an accent
+ * gh-Label right after the title ("Author" / "Reviewer"); clears rows that
+ * lost it. The label lives in the React-owned title line, so the settle
+ * re-apply re-adds it after re-renders.
+ */
 export function sweepOwnership(root: ParentNode, map: ReadonlyMap<number, Ownership>): void {
   for (const row of root.querySelectorAll<HTMLElement>(ROWS)) {
     const id = prIdOf(row);
     const rel = id === null ? undefined : map.get(id);
     if (rel) row.setAttribute("data-adofix-mine", rel);
     else row.removeAttribute("data-adofix-mine");
+    let label = row.querySelector<HTMLElement>(".adofix-pr-mine");
+    if (!rel) {
+      label?.remove();
+      continue;
+    }
+    // The title line's first child is the title: .font-weight-semibold on
+    // rows with new activity, a plain .text-ellipsis on read ones (live).
+    const title = row.querySelector(".bolt-table-two-line-cell-item")?.firstElementChild;
+    if (!title || title === label) continue;
+    if (!label) {
+      label = document.createElement("span");
+      label.className = "gh-Label gh-Label--accent adofix-pr-mine";
+    }
+    if (title.nextElementSibling !== label) title.after(label);
+    if (label.textContent !== MINE_LABEL[rel]) label.textContent = MINE_LABEL[rel];
   }
 }
 
@@ -280,8 +301,16 @@ const CSS = `
 .repos-pr-list .bolt-table-two-line-cell-item > .font-weight-semibold + * {
   margin-left: 12px !important;
 }
-.repos-pr-list .bolt-table-two-line-cell-item > .repos-pr-list-draft-pill + .bolt-pill-group {
+.repos-pr-list .bolt-table-two-line-cell-item > .repos-pr-list-draft-pill + .bolt-pill-group,
+.repos-pr-list .bolt-table-two-line-cell-item > .adofix-pr-mine + * {
   margin-left: 8px !important;
+}
+/* The "mine" label (sweepOwnership) keeps its pill shape against the
+   title line's flex shrink. */
+.repos-pr-list .adofix-pr-mine {
+  flex-shrink: 0;
+  align-self: center;
+  margin-left: 12px !important;
 }
 .repos-pr-list .bolt-table-two-line-cell .bolt-table-two-line-cell-item + .bolt-table-two-line-cell-item {
   margin-top: 6px !important;

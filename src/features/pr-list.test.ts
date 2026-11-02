@@ -39,6 +39,33 @@ describe("sweepOwnership", () => {
     expect(b!.getAttribute("data-adofix-mine")).toBe("reviewer");
     expect(c!.hasAttribute("data-adofix-mine")).toBe(false);
   });
+
+  it("marks owned rows with a label after the title, and removes it when lost", () => {
+    const [a, b] = listWithRows([7039, 6970]);
+    for (const row of [a!, b!]) {
+      const line = document.createElement("div");
+      line.className = "bolt-table-two-line-cell-item";
+      // Unread rows bold the title; read rows use a plain text-ellipsis div.
+      const cls = row === a ? "font-weight-semibold" : "body-l text-ellipsis";
+      line.innerHTML = `<span class="${cls}">Title</span><span class="bolt-pill-group"></span>`;
+      row.appendChild(line);
+    }
+    const mine = new Map<number, "author" | "reviewer">([
+      [7039, "author"],
+      [6970, "reviewer"],
+    ]);
+    sweepOwnership(document, mine);
+    sweepOwnership(document, mine); // idempotent
+    const label = (row: Element): Element | null => row.querySelector(".adofix-pr-mine");
+    expect(a!.querySelectorAll(".adofix-pr-mine")).toHaveLength(1);
+    expect(label(a!)?.textContent).toBe("Author");
+    expect(label(a!)?.previousElementSibling?.textContent).toBe("Title");
+    expect(label(b!)?.textContent).toBe("Reviewer");
+    expect(label(b!)?.previousElementSibling?.textContent).toBe("Title");
+
+    sweepOwnership(document, new Map([[7039, "author"]]));
+    expect(label(b!)).toBeNull();
+  });
 });
 
 describe("shouldRedirectToActive", () => {

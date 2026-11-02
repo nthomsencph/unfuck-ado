@@ -196,3 +196,13 @@ overlapping titles. **PROVISIONAL** entries first in review.
 - **Decision:** `.wit-card .card-flag` is hidden on Kanban and sprint
   taskboard cards (user 2026-11-02); the type icon on the id line carries
   the type.
+
+## B19 — Dark canvas is the frame's black
+- **Context:** user, 2026-11-02: the page background should be black, like
+  the left rail and site header (`--bgColor-inset`, #010409); the canvas was
+  Primer's `--bgColor-default` (#0d1117).
+- **Decision:** in the dark theme only, `--bgColor-default` is
+  `var(--bgColor-inset)` (components.css, next to B14). Page, header and
+  rail are one surface; muted cards and tiles (#151b23) step up from it.
+  Everything painted with the canvas token follows (bridge, chrome-density
+  pins, PR-list row gaps). Light keeps its white canvas.

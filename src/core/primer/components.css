@@ -265,6 +265,18 @@
   --bgColor-muted: #eff1f3;
 }
 
+/* Dark theme: the canvas goes to the frame's black (B19, user 2026-11-02:
+ * "like the left rail and site header"). --bgColor-default takes
+ * --bgColor-inset (#010409), so page, header and rail are one surface and
+ * every muted card/tile (#151b23) steps up from it. Everything painted
+ * with the canvas token follows: the bridge's ADO page variables, the
+ * chrome-density page pins, the PR list's row gaps. Light keeps its white
+ * canvas — "black" is a dark-theme ask.
+ */
+[data-color-mode="dark"][data-dark-theme="dark"] {
+  --bgColor-default: var(--bgColor-inset);
+}
+
 /* ---- Menu (SelectMenu / ActionList look) ---------------------------- */
 .gh-menu {
   min-width: 192px;

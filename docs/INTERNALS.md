@@ -343,6 +343,10 @@ throws). Key live findings baked into the code:
   PR list (v0.59.4): the page header's top padding is 32px here (20px
   elsewhere); the tab-row and filter lifts hang off the header's bottom
   edge, so they need no change when that padding changes.
+  The Filter toggle (`#__bolt-filter`, the tab row's only command) is
+  `visibility: hidden` while `.repos-pr-listing-filterbar` exists (the
+  wrapper only mounts while the bar is toggled on); display:none would push
+  it into bolt's overflow menu.
   PR list (v0.57.1): with the 55px header the lifted tab row needs
   `top: 13px` and the filter wrapper `top: 5px` to share the New PR
   button's centerline (y≈85.5, measured). Filter items (v0.57.2): natively

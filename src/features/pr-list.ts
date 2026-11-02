@@ -443,6 +443,15 @@ const CSS = `
 [${ATTR}] .bolt-tabbar .bolt-header-commandbar {
   pointer-events: auto !important;
 }
+/* The Filter toggle (#__bolt-filter, the tab row's only command) hides
+   while the filter bar is showing (user 2026-11-02); the bar's wrapper
+   exists only while toggled on. visibility, not display: bolt moves
+   display:none commands into its overflow menu, and the container keeps
+   its slot so nothing reflows. */
+[${ATTR}] .bolt-page:has(.repos-pr-listing-filterbar) .bolt-tabbar .bolt-header-commandbar {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
 /* The filter-bar lift needs the full row's width to clear the tabs; below
    1400px it stays a second row (the tabbar lift above still applies). */
 @media (min-width: 1400px) {

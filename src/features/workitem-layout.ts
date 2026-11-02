@@ -507,6 +507,10 @@ function trimCommentCount(): void {
   if (!commentText) return;
   const n = commentText.textContent?.match(/\d+/)?.[0];
   if (n && commentText.textContent !== n) commentText.textContent = n;
+  // No comments, no count (user 2026-11-02).
+  commentText
+    .closest(".wif-comment-count-link")
+    ?.classList.toggle("adofix-wi-count-zero", (n ?? commentText.textContent?.trim()) === "0");
 }
 
 /** Description loses its section header (and with it ADO's 1px border and the
@@ -746,6 +750,26 @@ ${commentCss({
 .comment-item.displayed-comment:is(:hover, :focus-within) .comment-timestamp {
   visibility: hidden;
 }
+/* The comment count reads as metadata: muted, not link-blue; hidden at 0. */
+.work-item-form-header .wif-comment-count-link,
+.work-item-form-header .wif-comment-count-link * {
+  color: var(--fgColor-muted) !important;
+}
+.work-item-form-header .wif-comment-count-link:hover,
+.work-item-form-header .wif-comment-count-link:hover * {
+  color: var(--fgColor-accent) !important;
+}
+.work-item-form-header .adofix-wi-count-zero {
+  display: none !important;
+}
+/* Toolbar feedback (user 2026-11-02): the header's command buttons get
+   GitHub's invisible-button hover and press tints (natively nothing). */
+.work-item-header-command-bar .bolt-button:not(.disabled, :disabled):hover {
+  background-color: var(--control-transparent-bgColor-hover) !important;
+}
+.work-item-header-command-bar .bolt-button:not(.disabled, :disabled):active {
+  background-color: var(--control-transparent-bgColor-active) !important;
+}
 /* Section headers out: Discussion always (Description via text-matched
    class — Repro Steps etc. keep theirs). ADO's 1px divider lives ON the
    header, so it goes too, as does the collapse affordance. */
@@ -892,6 +916,7 @@ ${commentCss({
 .work-item-form-header > :nth-child(3) {
   display: flex !important;
   align-items: center !important;
+  margin-top: 12px; /* air between the title and this metadata row */
 }
 /* State promoted out of its stub column into the header, left of the
    assignee. Absolute against .work-item-form-page; it escapes the
@@ -920,13 +945,27 @@ ${commentCss({
 .work-item-form-subheader .work-item-control-label {
   display: none !important;
 }
-/* Description expands to its content in view mode (native cap 460/500px
-   with an inner scrollbar); editing keeps ADO's cap. */
-.work-item-form-page .html-editor.auto-grow .rooster-wrapper {
+/* Description expands to its content (native cap 460/500px with an inner
+   scrollbar) — in edit mode too since 2026-11-02: the cap made the editor
+   shrink the moment it took focus. No focus ring on the editing surface
+   either (user 2026-11-02: "an ugly blue outline"); the formatting bar
+   below it marks edit mode. */
+.work-item-form-page .html-editor.auto-grow :is(.rooster-wrapper, .rooster-editor) {
   max-height: none !important;
 }
-.work-item-form-page .html-editor.auto-grow .rooster-editor.view-mode {
-  max-height: none !important;
+.work-item-form-page :is(.html-editor, .rooster-wrapper, .rooster-editor, .markdown-editor, .markdown-editor textarea):is(:focus, :focus-visible, :focus-within) {
+  outline: none !important;
+  box-shadow: none !important;
+}
+/* The description's first line on the first Details row's line: ADO's
+   4px editor padding stays, the first block's 14px top margin goes (HTML
+   editor); the markdown preview gets 8px (natively 4px, measured live
+   2026-11-02: first lines 21px low / 4px high against the "Reason" row). */
+.work-item-form-first-section .rooster-editor > :first-child {
+  margin-top: 0 !important;
+}
+.work-item-form-first-section .markdown-editor-preview {
+  padding-top: 8px !important;
 }
 /* Short descriptions still get a real canvas (user 2026-08-18). */
 .work-item-form-page .html-editor.auto-grow .rooster-editor {
@@ -981,6 +1020,43 @@ ${commentCss({
 }
 .work-item-form-right .artifact-link-container .artifact-details {
   flex-wrap: wrap;
+}
+/*
+ * Linked items as two lines under their type heading (user 2026-11-02):
+ *   Parent
+ *   [type icon] title
+ *   state · updated
+ * The avatar coin and the number go; the state (ADO's 2nd detail span)
+ * leads the details line, which starts flush with the icon.
+ */
+.work-item-form-right .link-type-name {
+  font-size: var(--text-body-size-small) !important;
+  font-weight: var(--base-text-weight-semibold) !important;
+  color: var(--fgColor-muted) !important;
+  padding-bottom: 4px !important;
+}
+.work-item-form-right .artifact-link-container {
+  padding-bottom: 12px !important;
+}
+.work-item-form-right .artifact-link-container .artifact-link > div:has(> .bolt-coin),
+.work-item-form-right .artifact-link-container .artifact-link-id {
+  display: none !important;
+}
+.work-item-form-right .artifact-link-container .artifact-details {
+  margin: 2px 0 0 !important;
+  gap: 0 8px;
+  color: var(--fgColor-muted);
+  font-size: var(--text-body-size-small);
+}
+.work-item-form-right .artifact-link-container .artifact-details > :nth-child(2) {
+  order: -1;
+}
+.work-item-form-right .artifact-link-container .artifact-details > * {
+  padding-right: 0 !important;
+}
+/* Commits have no state: an empty span that would lead with a gap. */
+.work-item-form-right .artifact-link-container .artifact-details > :empty {
+  display: none !important;
 }
 /* Header noise out (user 2026-08-18): the Links tab (Related Work keeps
    Add link, shown even with no links since 2026-11-02) and every
@@ -1120,7 +1196,7 @@ ${stubHide(".adofix-wi-group-absorb")}
 .adofix-wi-kv--block {
   display: block;
   min-height: 0;
-  padding: 6px 0 2px;
+  padding: 16px 0 2px;
 }
 .adofix-wi-kv--block .adofix-wi-kv-label {
   display: block;

@@ -77,19 +77,17 @@ html[${TWO_UP_ATTR}] .taskboard-expanded-cell .flex-row.flex-wrap > .taskboard-c
   display: block;
   margin: 4px 0 0 !important;
 }
-/* GitHub Projects columns (D61): each cell is a --bgColor-muted box with a
-   1px border and 6px corners, the canvas showing through 4px transparent
-   gutters. Transparent borders + padding-box clip keep the gutters out of
-   the fixed-table geometry; the visible 1px border is an inset shadow
-   (drawn inside the padding box, so the gutter border stays clear), and the
-   radius adds the 4px gutter so the PADDING edge rounds at 6px. The
-   show-lines cell borders go invisible. Card material lives in density.css
+/* GitHub Projects columns (D61): each cell is a --bgColor-muted box with
+   6px corners, the canvas showing through 4px transparent gutters — no
+   outline, the color step is the edge (borderless, B4). Transparent
+   borders + padding-box clip keep the gutters out of the fixed-table
+   geometry, and the radius adds the 4px gutter so the PADDING edge rounds
+   at 6px. The show-lines cell borders go invisible. Card material lives in density.css
    (.wit-card covers these). */
 .taskboard-expanded-cell {
   background: var(--bgColor-muted) !important;
   border: 4px solid transparent !important;
   border-radius: calc(var(--borderRadius-medium) + 4px);
-  box-shadow: inset 0 0 0 var(--borderWidth-default) var(--borderColor-default);
   background-clip: padding-box !important;
 }
 table:has(td.taskboard-expanded-cell) td,

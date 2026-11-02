@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { BRIDGE_ATTR, BRIDGE_SHEET_ID, detectTheme, luminance, parseCssColor, syncTheme } from "./theme";
+import { BRIDGE_ATTR, BRIDGE_SHEET_ID, detectTheme, luminance, parseCssColor, syncTheme, watchTheme } from "./theme";
 
 const html = document.documentElement;
 
@@ -11,6 +11,7 @@ function mockComputed(backgroundColor: string, backgroundVar = ""): void {
 }
 
 describe("detectTheme", () => {
+  beforeEach(() => localStorage.clear());
   afterEach(() => {
     document.body.className = "";
     document.head.innerHTML = "";
@@ -121,5 +122,64 @@ describe("color helpers", () => {
     expect(luminance(255, 255, 255)).toBeCloseTo(1);
     expect(luminance(0, 0, 0)).toBe(0);
     expect(luminance(128, 128, 128)).toBeLessThan(0.5); // mid-grey reads dark
+  });
+});
+
+describe("persisted theme", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    for (const a of ["data-color-mode", BRIDGE_ATTR]) html.removeAttribute(a);
+  });
+  afterEach(() => {
+    document.body.className = "";
+    vi.restoreAllMocks();
+  });
+
+  it("persists the class-derived theme", () => {
+    document.body.className = "ms-vss-web-vsts-theme-dark";
+    syncTheme();
+    expect(JSON.parse(localStorage.getItem("adofix.primer.theme")!).data).toEqual({ mode: "dark", highContrast: false });
+  });
+
+  it("uses the persisted theme at boot when ADO's class isn't there yet, not the luminance guess", () => {
+    document.body.className = "ms-vss-web-vsts-theme-dark";
+    syncTheme();
+    document.body.className = "";
+    mockComputed("rgb(255, 255, 255)"); // ADO's light default canvas before its theme lands
+    expect(syncTheme()).toEqual({ mode: "dark", highContrast: false });
+    expect(html.getAttribute("data-color-mode")).toBe("dark");
+  });
+
+  it("never persists the luminance guess", () => {
+    mockComputed("rgb(0, 0, 0)");
+    syncTheme();
+    expect(localStorage.getItem("adofix.primer.theme")).toBeNull();
+  });
+
+  it("ignores a malformed persisted value", () => {
+    localStorage.setItem("adofix.primer.theme", JSON.stringify({ v: 1, data: { mode: "purple" } }));
+    mockComputed("rgb(0, 0, 0)");
+    expect(detectTheme().mode).toBe("dark");
+  });
+});
+
+describe("watchTheme", () => {
+  let stop: () => void = () => {};
+  beforeEach(() => {
+    localStorage.clear();
+    html.removeAttribute("data-color-mode");
+  });
+  afterEach(() => {
+    stop();
+    document.body.className = "";
+  });
+
+  it("re-syncs as soon as ADO writes its theme class, without waiting for a settle", async () => {
+    document.body.className = "ms-vss-web-vsts-theme";
+    syncTheme();
+    stop = watchTheme();
+    document.body.className = "ms-vss-web-vsts-theme-dark";
+    await Promise.resolve(); // MutationObserver callbacks run as a microtask
+    expect(html.getAttribute("data-color-mode")).toBe("dark");
   });
 });

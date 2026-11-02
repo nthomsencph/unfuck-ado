@@ -2,9 +2,11 @@
  * Theme detection: GitHub Dark Default when ADO is dark, GitHub Light when
  * ADO is light. Primer's theme selectors key off attributes on <html>
  * ([data-color-mode="dark"][data-dark-theme="dark"]), which this module
- * writes. Runs at boot and on every settle, so switching ADO's theme
- * switches ours without a reload.
+ * writes. Runs at boot, on every settle, and immediately when ADO rewrites
+ * body's class list (watchTheme), so switching ADO's theme switches ours
+ * without a reload or a debounce-long flash.
  */
+import { getValue, setValue } from "../storage";
 
 /** Present on <html> while the ADO bridge and font override apply. */
 export const BRIDGE_ATTR = "data-adofix-bridge";
@@ -76,12 +78,35 @@ function adoCanvasIsDark(body: HTMLElement): boolean {
   }
 }
 
-export function detectTheme(body: HTMLElement = document.body): ThemeState {
+/** The theme ADO's body class names; null while ADO hasn't set one yet. */
+export function classTheme(body: HTMLElement = document.body): ThemeState | null {
   const cls = themeClass(body);
-  if (cls) {
-    return { mode: /theme-(hc-)?dark/.test(cls) ? "dark" : "light", highContrast: /theme-hc/.test(cls) };
-  }
-  return { mode: adoCanvasIsDark(body) ? "dark" : "light", highContrast: false };
+  if (!cls) return null;
+  return { mode: /theme-(hc-)?dark/.test(cls) ? "dark" : "light", highContrast: /theme-hc/.test(cls) };
+}
+
+const STORE = "primer";
+const STORE_KEY = "theme";
+
+function isThemeState(v: unknown): v is ThemeState {
+  const s = v as ThemeState | null;
+  return !!s && (s.mode === "dark" || s.mode === "light") && typeof s.highContrast === "boolean";
+}
+
+/** Last class-derived theme, from an earlier page load (GM storage is sync). */
+function persistedTheme(): ThemeState | null {
+  const stored = getValue<unknown>(STORE, STORE_KEY, null);
+  return isThemeState(stored) ? stored : null;
+}
+
+/**
+ * ADO's theme class first. At document-idle it may not be on body yet, so
+ * next comes the theme the class named on an earlier load — a luminance
+ * guess there flashed the light theme into dark-theme users' page loads.
+ * The luminance read is the last resort (first load ever, no class yet).
+ */
+export function detectTheme(body: HTMLElement = document.body): ThemeState {
+  return classTheme(body) ?? persistedTheme() ?? { mode: adoCanvasIsDark(body) ? "dark" : "light", highContrast: false };
 }
 
 function setAttr(el: Element, name: string, value: string | null): void {
@@ -98,11 +123,40 @@ function setAttr(el: Element, name: string, value: string | null): void {
  * adofix's own UI still resolves its Primer tokens there.
  */
 export function syncTheme(): ThemeState {
-  const state = detectTheme();
+  const fromClass = classTheme(document.body);
+  const state = fromClass ?? detectTheme();
+  // Persist only what the class said (a guess must never outlive the load),
+  // and only on change: this runs on every settle.
+  if (fromClass) {
+    const saved = persistedTheme();
+    if (saved?.mode !== fromClass.mode || saved.highContrast !== fromClass.highContrast) {
+      setValue(STORE, STORE_KEY, fromClass);
+    }
+  }
   const html = document.documentElement;
   setAttr(html, "data-color-mode", state.mode);
   setAttr(html, "data-dark-theme", "dark");
   setAttr(html, "data-light-theme", "light");
   setAttr(html, BRIDGE_ATTR, state.highContrast ? null : "");
   return state;
+}
+
+let watching = false;
+
+/**
+ * Re-syncs the moment ADO writes body's class list — the settle observer is
+ * childList-only and debounced, so a theme class landing after boot would
+ * otherwise show the wrong theme until the next settle. Undebounced: a
+ * class write is rare and syncTheme only writes attributes that changed.
+ * Once per page; body is never replaced by ADO's SPA.
+ */
+export function watchTheme(): () => void {
+  if (watching || !document.body) return () => {};
+  watching = true;
+  const observer = new MutationObserver(() => syncTheme());
+  observer.observe(document.body, { attributes: true, attributeFilter: ["class"] });
+  return () => {
+    observer.disconnect();
+    watching = false;
+  };
 }

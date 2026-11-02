@@ -39,8 +39,9 @@ html[data-adofix-reviewing] .adofix-reviewed { opacity: 1; }
 .adofix-reviewed[aria-checked="true"],
 .adofix-reviewed[aria-checked="true"]:hover:not(:disabled) {
   background-color: var(--bgColor-accent-muted);
-  border-color: var(--borderColor-accent-muted);
 }
+/* The checkbox square keeps its outline: it is the control itself, not a
+   surface edge (B8). */
 .adofix-reviewed-box {
   width: 16px; height: 16px; box-sizing: border-box; flex-shrink: 0;
   display: inline-flex; align-items: center; justify-content: center;
@@ -49,7 +50,9 @@ html[data-adofix-reviewing] .adofix-reviewed { opacity: 1; }
   border-radius: var(--borderRadius-small);
 }
 .adofix-reviewed .adofix-reviewed-box .octicon { color: var(--control-checked-fgColor-rest); visibility: hidden; }
-.adofix-reviewed[aria-checked="true"] .adofix-reviewed-box {
+.adofix-reviewed[aria-checked="true"] /* The checkbox square keeps its outline: it is the control itself, not a
+   surface edge (B8). */
+.adofix-reviewed-box {
   background: var(--control-checked-bgColor-rest);
   border-color: var(--control-checked-borderColor-rest);
 }

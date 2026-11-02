@@ -15,7 +15,7 @@ import {
  * GitHub makeover stage 2, the global frame (spec
  * docs/specs/2026-11-02-github-frame-design.md, decisions F1–F…): ADO's top
  * header and left rail restyled as GitHub's app header and a NavList-like
- * rail — header material, "owner / repo" breadcrumbs, bordered icon
+ * rail — header material, "owner / repo" breadcrumbs, filled icon
  * buttons, Octicons for the rail's hubs, GitHub's selected/hover states, a
  * gh-menu dropdown of each rail group's sub-pages (built from ADO's own
  * links), and GitHub's "Type / to search" box over ADO's own search with a
@@ -42,10 +42,11 @@ const CSS = `
 .project-header .region-header-menubar.region-header-menubar {
   background: var(--bgColor-inset) !important;
 }
-/* GitHub's bottom hairline, drawn inside the 48px (F3) so nothing moves. */
+/* No bottom hairline (borderless, B5): the inset material already differs
+   from the canvas. */
 .project-header .region-header.region-header,
 .project-header .region-header-menubar.region-header-menubar {
-  box-shadow: inset 0 calc(-1 * var(--borderWidth-default)) 0 var(--borderColor-default) !important;
+  box-shadow: none !important;
 }
 
 /* Logo: ADO's own mark, monochrome (F2) — the image becomes a mask. */
@@ -98,7 +99,7 @@ const CSS = `
   color: var(--fgColor-muted);
 }
 
-/* ---- Header icon buttons: GitHub's bordered 32px squares -------------- */
+/* ---- Header icon buttons: GitHub's 32px squares, filled not bordered --- */
 .region-header-menubar .bolt-button.icon-only {
   box-sizing: border-box;
   width: var(--control-medium-size) !important;
@@ -108,12 +109,12 @@ const CSS = `
   padding: 0 !important;
   justify-content: center;
   color: var(--fgColor-muted) !important;
-  background: transparent !important;
-  border: var(--borderWidth-default) solid var(--borderColor-default) !important;
+  background: var(--button-default-bgColor-rest) !important;
+  border: var(--borderWidth-default) solid transparent !important;
   border-radius: var(--borderRadius-medium) !important;
 }
 .region-header-menubar .bolt-button.icon-only:hover {
-  background: var(--control-transparent-bgColor-hover) !important;
+  background: var(--button-default-bgColor-hover) !important;
 }
 /* Avatar: GitHub's round 32px. */
 .region-header-menubar #mectrl_headerPicture {
@@ -138,10 +139,11 @@ const CSS = `
 /* ---- Rail: GitHub NavList states (F6) ---------------------------------- */
 .navigation-container .project-navigation.project-navigation {
   background: var(--bgColor-inset) !important;
-  box-shadow: inset calc(-1 * var(--borderWidth-default)) 0 0 var(--borderColor-default);
+  box-shadow: none;
 }
+/* Group separators: space only (borderless, B5). */
 .project-navigation .separator {
-  background: var(--borderColor-muted) !important;
+  background: transparent !important;
 }
 /* ADO's selected look: a tinted container + 3px ::before bar. */
 .project-navigation .hub-group-container,
@@ -307,8 +309,9 @@ const CSS = `
   align-self: center !important;
   align-items: center;
   color: var(--fgColor-default);
-  background: var(--bgColor-default) !important;
-  border: var(--borderWidth-default) solid var(--borderColor-default) !important;
+  /* The translucent field fill on the inset header, no outline (B6). */
+  background: var(--bgColor-neutral-muted) !important;
+  border: var(--borderWidth-default) solid transparent !important;
   border-radius: var(--borderRadius-medium) !important;
   cursor: text;
 }
@@ -355,8 +358,8 @@ const CSS = `
   font: var(--text-body-size-small) / 16px var(--fontStack-sansSerif);
   text-align: center;
   color: var(--fgColor-muted);
-  background: transparent;
-  border: var(--borderWidth-default) solid var(--borderColor-default);
+  background: var(--bgColor-neutral-muted);
+  border: var(--borderWidth-default) solid transparent;
   border-radius: var(--borderRadius-small);
   box-shadow: none;
 }

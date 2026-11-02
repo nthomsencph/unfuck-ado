@@ -20,11 +20,11 @@ const CSS = `
  * PR Overview: unified card theme (selectors verified live 2026-08-14 on PR
  * 6982). ADO paints every overview card with a depth-8 shadow and 4px
  * corners, and slices them with separator hairlines and 1px-outlined nested
- * boxes. Restyled as GitHub's Conversation-tab boxes: page-colored gh-Box
- * material (1px default border, 6px corners, no shadow — the heavy-shadow
- * cards are retired, spec 2026-11-02); chrome dividers go — icons, author
- * rows and spacing already group content — and nested boxes become muted
- * wells. ADO renders these cards in React, so the gh-Box look is applied by
+ * boxes. Restyled as GitHub's Conversation-tab boxes in gh-Box material,
+ * borderless (B1): --bgColor-muted surfaces on the canvas, 6px corners, no
+ * border, no shadow (the heavy-shadow cards are retired, spec 2026-11-02);
+ * chrome dividers go — icons, author rows and spacing already group
+ * content — and nested boxes become canvas-colored wells. ADO renders these cards in React, so the gh-Box look is applied by
  * CSS rather than by adding classes React would strip.
  * Scope: .shadow-padding is the Overview content column and exists ONLY
  * there — the Files view has none (verified live 2026-08-14), so the tuned
@@ -32,8 +32,8 @@ const CSS = `
  * tables) carry no bolt-* classes and are deliberately left alone.
  */
 .repos-pr-details-page .shadow-padding .bolt-card {
-  background: var(--bgColor-default) !important;
-  border: var(--borderWidth-default) solid var(--borderColor-default) !important;
+  background: var(--bgColor-muted) !important;
+  border: var(--borderWidth-default) solid transparent !important;
   box-shadow: none !important;
   border-radius: var(--borderRadius-medium) !important;
 }
@@ -52,24 +52,24 @@ const CSS = `
   border-top-color: transparent !important;
 }
 /* File-anchored comment cards (verified live 2026-08-17 on PR 7033): the
-   file-path header becomes GitHub's review-thread Box-header — muted fill,
-   default-border bottom edge, top corners following the card's. The code
-   preview's own top border (.comment-file-diff-container) goes: the header
-   edge already fences it. The blue .diff-comment underline marking the
+   file-path header becomes GitHub's review-thread Box-header — one tint up
+   from the card, no bottom edge (the tint step fences it), top corners
+   following the card's. The code preview's own top border
+   (.comment-file-diff-container) goes too. The blue .diff-comment underline marking the
    commented span is functional and stays. */
 .repos-pr-details-page .shadow-padding .comment-file-header {
-  background: var(--bgColor-muted) !important;
-  border-bottom: var(--borderWidth-default) solid var(--borderColor-default) !important;
+  background: var(--bgColor-neutral-muted) !important;
+  border-bottom: var(--borderWidth-default) solid transparent !important;
   border-radius: var(--borderRadius-medium) var(--borderRadius-medium) 0 0 !important;
 }
 .repos-pr-details-page .shadow-padding .comment-file-diff-container {
   border-top-color: transparent !important;
 }
-/* Nested boxes (checks, merge commit) as GitHub's muted wells: the
-   --bgColor-muted fill with a muted hairline, 6px like every Box. */
+/* Nested boxes (checks, merge commit) as wells sunk into the muted card:
+   canvas fill, no hairline, 6px like every Box. */
 .repos-pr-details-page .shadow-padding .status-details-container {
-  border: var(--borderWidth-default) solid var(--borderColor-muted) !important;
-  background: var(--bgColor-muted) !important;
+  border: var(--borderWidth-default) solid transparent !important;
+  background: var(--bgColor-default) !important;
   border-radius: var(--borderRadius-medium) !important;
 }
 /*

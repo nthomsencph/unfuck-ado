@@ -24,7 +24,9 @@ import { BRIDGE_ATTR } from "./theme";
 
 /*
  * Semantic map. Groups (spec): canvas → bgColor-default; overlays →
- * overlay-bgColor; text → fg tokens; borders → borderColor-*; ADO's
+ * overlay-bgColor; text → fg tokens; borders → borderColor-*, except the
+ * two that only ever draw row/section hairlines → transparent (borderless,
+ * B9; the rest of the borderless pass is ado.css); ADO's
  * "communication" blue → Primer accent; statuses → success / attention /
  * danger / accent families; focus → focus-outlineColor.
  */
@@ -36,7 +38,7 @@ export const SEMANTIC: Record<string, string> = {
   "--text-on-communication-background": "var(--fgColor-onEmphasis)",
   "--communication-foreground": "var(--fgColor-accent)",
   "--communication-background": "var(--bgColor-accent-emphasis)",
-  "--border-subtle-color": "var(--borderColor-muted)",
+  "--border-subtle-color": "transparent",
   "--splitter-border-color": "var(--borderColor-default)",
   "--callout-background-color": "var(--overlay-bgColor)",
   // Translucent in ADO (0.86) for its frosted callouts; GitHub overlays are opaque.
@@ -67,7 +69,7 @@ export const SEMANTIC: Record<string, string> = {
   "--component-grid-action-hover-color": "var(--control-transparent-bgColor-hover)",
   "--component-grid-selected-row-color": "var(--bgColor-accent-muted)",
   "--component-grid-action-selected-cell-hover-color": "var(--bgColor-accent-muted)",
-  "--component-grid-cell-bottom-border-color": "var(--borderColor-muted)",
+  "--component-grid-cell-bottom-border-color": "transparent",
   "--component-grid-focus-border-color": "var(--focus-outlineColor)",
   "--component-grid-drag-source-color": "var(--bgColor-neutral-muted)",
   "--component-grid-link-hover-color": "var(--fgColor-accent)",

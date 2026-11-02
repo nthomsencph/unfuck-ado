@@ -86,10 +86,11 @@ function render(): void {
       const num = document.createElement("span");
       num.className = "gh-Counter";
       chip.append(octicon("comment"), num);
-      // Upper right CORNER of the card (user 2026-08-18, third take):
-      // absolutely anchored — flex-end placement stopped short of the
-      // corner because the hover-only ⋮ menu reserves it. The chip
-      // fades on card hover so the ⋮ takes over.
+      // Upper right corner of the card (user 2026-08-18), IN FLOW as the
+      // ID line's last flex item: an absolutely anchored chip sat on top
+      // of long Kanban titles, which share that line (2026-11-02). The ⋮
+      // menu is absolute (live 2026-11-02), so it reserves nothing. The
+      // chip fades on card hover so the ⋮ takes over.
       line.append(chip);
     }
     const num = chip.lastElementChild;
@@ -115,13 +116,13 @@ const CSS = `
   position: relative;
 }
 .${CHIP_CLASS} {
-  position: absolute;
-  /* aligned with the ID line: .wit-card .card-content pads 20px 14px
-     (density.css); the 20px Counter centers on the ~19px id text as-is
-     (the old 16px glyph chip needed +2px — user screenshot 2026-08-18:
-     top:10px floated above the line) */
-  top: 20px;
-  right: 14px;
+  /* The ID line's last flex item: pushed to the right edge, and the
+     title beside it shrinks/wraps instead of running underneath. The
+     -2px block margins keep the 20px Counter from growing the 16px line. */
+  flex-shrink: 0;
+  align-self: flex-start;
+  margin: -2px 0 -2px auto;
+  padding-left: 8px;
   display: inline-flex;
   align-items: center;
   gap: 4px;

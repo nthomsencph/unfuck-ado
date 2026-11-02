@@ -5,6 +5,12 @@
  * match github.com (32px buttons, 28px small, 6px corners, 14px/12px type).
  * Injected before every feature sheet: feature rules win equal-specificity
  * ties against these.
+ *
+ * Borderless (user preference, 2026-11-02): surfaces separate by background
+ * steps — canvas --bgColor-default < surface --bgColor-muted < hover /
+ * selected tints — never by hairlines. Borders keep their width in
+ * transparent (geometry unchanged); overlays lift on a shadow instead; focus
+ * rings stay. See docs/plans/design-decisions-borderless.md.
  */
 
 /* ---- Buttons -------------------------------------------------------- */
@@ -27,21 +33,19 @@
   user-select: none;
   color: var(--button-default-fgColor-rest);
   background-color: var(--button-default-bgColor-rest);
-  border: var(--borderWidth-default) solid var(--button-default-borderColor-rest);
+  border: var(--borderWidth-default) solid transparent;
   border-radius: var(--borderRadius-medium);
-  box-shadow: var(--button-default-shadow-resting);
+  box-shadow: none;
   text-decoration: none;
   transition: background-color 80ms cubic-bezier(0.33, 1, 0.68, 1);
 }
 .gh-btn:hover:not(:disabled, [aria-disabled="true"]) {
   background-color: var(--button-default-bgColor-hover);
-  border-color: var(--button-default-borderColor-hover);
   text-decoration: none;
 }
 .gh-btn:active:not(:disabled, [aria-disabled="true"]),
 .gh-btn[aria-pressed="true"] {
   background-color: var(--button-default-bgColor-active);
-  border-color: var(--button-default-borderColor-active);
 }
 .gh-btn:focus-visible {
   outline: var(--focus-outline-width) solid var(--focus-outlineColor);
@@ -52,7 +56,6 @@
   cursor: not-allowed;
   color: var(--button-default-fgColor-disabled);
   background-color: var(--button-default-bgColor-disabled);
-  border-color: var(--button-default-borderColor-disabled);
   box-shadow: none;
 }
 .gh-btn .octicon {
@@ -70,7 +73,6 @@
 .gh-btn-primary {
   color: var(--button-primary-fgColor-rest);
   background-color: var(--button-primary-bgColor-rest);
-  border-color: var(--button-primary-borderColor-rest);
   box-shadow: var(--shadow-resting-small);
 }
 .gh-btn-primary .octicon {
@@ -78,11 +80,9 @@
 }
 .gh-btn-primary:hover:not(:disabled, [aria-disabled="true"]) {
   background-color: var(--button-primary-bgColor-hover);
-  border-color: var(--button-primary-borderColor-hover);
 }
 .gh-btn-primary:active:not(:disabled, [aria-disabled="true"]) {
   background-color: var(--button-primary-bgColor-active);
-  border-color: var(--button-primary-borderColor-active);
 }
 .gh-btn-primary:focus-visible {
   /* the focus ring would vanish against the green fill */
@@ -92,13 +92,11 @@
 .gh-btn-primary[aria-disabled="true"] {
   color: var(--button-primary-fgColor-disabled);
   background-color: var(--button-primary-bgColor-disabled);
-  border-color: var(--button-primary-borderColor-disabled);
 }
 
 .gh-btn-danger {
   color: var(--button-danger-fgColor-rest);
   background-color: var(--button-danger-bgColor-rest);
-  border-color: var(--button-danger-borderColor-rest);
 }
 .gh-btn-danger .octicon {
   color: var(--button-danger-iconColor-rest);
@@ -106,7 +104,6 @@
 .gh-btn-danger:hover:not(:disabled, [aria-disabled="true"]) {
   color: var(--button-danger-fgColor-hover);
   background-color: var(--button-danger-bgColor-hover);
-  border-color: var(--button-danger-borderColor-hover);
 }
 .gh-btn-danger:hover:not(:disabled, [aria-disabled="true"]) .octicon {
   color: var(--button-danger-iconColor-hover);
@@ -114,7 +111,6 @@
 .gh-btn-danger:active:not(:disabled, [aria-disabled="true"]) {
   color: var(--button-danger-fgColor-active);
   background-color: var(--button-danger-bgColor-active);
-  border-color: var(--button-danger-borderColor-active);
 }
 .gh-btn-danger:disabled,
 .gh-btn-danger[aria-disabled="true"] {
@@ -125,7 +121,6 @@
 .gh-btn-invisible {
   color: var(--button-invisible-fgColor-rest);
   background-color: var(--button-invisible-bgColor-rest);
-  border-color: var(--button-invisible-borderColor-rest);
   box-shadow: none;
 }
 .gh-btn-invisible .octicon {
@@ -134,7 +129,6 @@
 .gh-btn-invisible:hover:not(:disabled, [aria-disabled="true"]) {
   color: var(--button-invisible-fgColor-hover);
   background-color: var(--button-invisible-bgColor-hover);
-  border-color: var(--button-invisible-borderColor-hover);
 }
 .gh-btn-invisible:hover:not(:disabled, [aria-disabled="true"]) .octicon {
   color: var(--button-invisible-iconColor-hover);
@@ -147,7 +141,6 @@
 .gh-btn-invisible[aria-disabled="true"] {
   color: var(--button-invisible-fgColor-disabled);
   background-color: var(--button-invisible-bgColor-disabled);
-  border-color: var(--button-invisible-borderColor-disabled);
 }
 
 /* ---- Label (pill) --------------------------------------------------- */
@@ -162,33 +155,33 @@
   line-height: 18px;
   white-space: nowrap;
   color: var(--fgColor-default);
-  background-color: transparent;
-  border: var(--borderWidth-default) solid var(--borderColor-default);
+  /* Filled tint, not GitHub's outline (borderless). */
+  background-color: var(--bgColor-neutral-muted);
+  border: var(--borderWidth-default) solid transparent;
   border-radius: var(--borderRadius-full);
 }
 .gh-Label--secondary {
   color: var(--fgColor-muted);
-  border-color: var(--borderColor-default);
 }
 .gh-Label--accent {
   color: var(--fgColor-accent);
-  border-color: var(--borderColor-accent-emphasis);
+  background-color: var(--bgColor-accent-muted);
 }
 .gh-Label--success {
   color: var(--fgColor-success);
-  border-color: var(--borderColor-success-emphasis);
+  background-color: var(--bgColor-success-muted);
 }
 .gh-Label--attention {
   color: var(--fgColor-attention);
-  border-color: var(--borderColor-attention-emphasis);
+  background-color: var(--bgColor-attention-muted);
 }
 .gh-Label--danger {
   color: var(--fgColor-danger);
-  border-color: var(--borderColor-danger-emphasis);
+  background-color: var(--bgColor-danger-muted);
 }
 .gh-Label--done {
   color: var(--fgColor-done);
-  border-color: var(--borderColor-done-emphasis);
+  background-color: var(--bgColor-done-muted);
 }
 
 /* ---- Counter -------------------------------------------------------- */
@@ -203,36 +196,62 @@
   text-align: center;
   color: var(--fgColor-default);
   background-color: var(--bgColor-neutral-muted);
-  border: var(--borderWidth-default) solid var(--counter-borderColor);
+  border: var(--borderWidth-default) solid transparent;
   border-radius: 2em;
 }
 
 /* ---- Box ------------------------------------------------------------ */
+/* A muted surface on the canvas; its header one tint up. Rows are their own
+   muted tiles 2px apart — the gap shows the canvas (the one list recipe,
+   B2) — so a Box holding rows turns transparent. */
 .gh-Box {
   color: var(--fgColor-default);
-  background-color: var(--bgColor-default);
-  border: var(--borderWidth-default) solid var(--borderColor-default);
+  background-color: var(--bgColor-muted);
+  border: var(--borderWidth-default) solid transparent;
   border-radius: var(--borderRadius-medium);
 }
 .gh-Box-header {
   padding: 16px;
   margin: -1px -1px 0;
-  background-color: var(--bgColor-muted);
-  border: var(--borderWidth-default) solid var(--borderColor-default);
+  background-color: var(--bgColor-neutral-muted);
+  border: var(--borderWidth-default) solid transparent;
   border-top-left-radius: var(--borderRadius-medium);
   border-top-right-radius: var(--borderRadius-medium);
+}
+.gh-Box:has(> .gh-Box-row) {
+  background-color: transparent;
 }
 .gh-Box-row {
   padding: 16px;
   list-style-type: none;
-  border-top: var(--borderWidth-default) solid var(--borderColor-muted);
+  background-color: var(--bgColor-muted);
+}
+.gh-Box-row + .gh-Box-row {
+  margin-top: 2px;
 }
 .gh-Box-row:first-of-type {
-  border-top-color: transparent;
+  border-top-left-radius: var(--borderRadius-medium);
+  border-top-right-radius: var(--borderRadius-medium);
 }
 .gh-Box-row:last-of-type {
   border-bottom-left-radius: var(--borderRadius-medium);
   border-bottom-right-radius: var(--borderRadius-medium);
+}
+
+/* ---- Floating surfaces: lift by color + shadow, no ring --------------
+ * Primer's --shadow-floating-small starts with a 1px ring (0 0 0 1px …), a
+ * border by another name (user: color differences, not borders — B3 revised
+ * 2026-11-02). Same drop shadows, ring removed; and in dark the overlay sits
+ * one step UP from the canvas (--bgColor-muted) instead of Primer's darker
+ * --overlay-bgColor, so it separates by color.
+ */
+[data-color-mode="dark"] {
+  --adofix-shadow-floating: 0 6px 12px -3px #01040966, 0 6px 18px 0 #01040966;
+  --adofix-overlay-bgColor: var(--bgColor-muted);
+}
+[data-color-mode="light"] {
+  --adofix-shadow-floating: 0 6px 12px -3px #25292e0a, 0 6px 18px 0 #25292e1f;
+  --adofix-overlay-bgColor: var(--overlay-bgColor);
 }
 
 /* ---- Menu (SelectMenu / ActionList look) ---------------------------- */
@@ -240,9 +259,9 @@
   min-width: 192px;
   padding: var(--overlay-paddingBlock-condensed) 0;
   color: var(--fgColor-default);
-  background-color: var(--overlay-bgColor);
+  background-color: var(--adofix-overlay-bgColor);
   border-radius: var(--overlay-borderRadius);
-  box-shadow: var(--shadow-floating-small);
+  box-shadow: var(--adofix-shadow-floating);
   font-family: var(--fontStack-sansSerif);
   font-size: var(--text-body-size-medium);
 }
@@ -290,12 +309,13 @@
   cursor: not-allowed;
   background: transparent;
 }
+/* Groups part by space, not a rule (borderless): 1px + 2×8px as before. */
 .gh-menu-divider {
   display: block;
   height: 1px;
   margin: 8px 0;
   padding: 0;
-  background-color: var(--borderColor-muted);
+  background-color: transparent;
   border: none;
 }
 

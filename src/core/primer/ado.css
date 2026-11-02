@@ -1,0 +1,61 @@
+/*
+ * Borderless ADO (user preference, 2026-11-02; decisions B1–B…): ADO's own
+ * bolt components lose their divider and outline borders, so surfaces part
+ * by the bridge's background steps alone. Targeted selectors, not remapped
+ * palette variables: --palette-neutral-* and --palette-black-alpha-* also
+ * paint text, fills and controls (B9). Only the two variables ADO uses for
+ * nothing but row/section hairlines are remapped, in the bridge.
+ *
+ * Kept on purpose: focus rings and focused-field borders, error/warning
+ * field borders, checkbox / radio / toggle outlines (the control IS the
+ * outline), the timeline spine, the selected-row and "new activity" marker
+ * edges. Scoped like the bridge: never in ADO's high-contrast themes.
+ * Re-healed after ADO's lazy chunks with the bridge (index.ts).
+ */
+
+/* Section and toolbar dividers (azure-devops-ui 2.281.0 core.css). */
+html[data-adofix-bridge] .separator-line-top {
+  border-top-color: transparent !important;
+}
+html[data-adofix-bridge] .separator-line-bottom {
+  border-bottom-color: transparent !important;
+}
+html[data-adofix-bridge] .subtle-border,
+html[data-adofix-bridge] .bolt-tablist,
+html[data-adofix-bridge] .bolt-actions-container,
+html[data-adofix-bridge] .bolt-dropdown-header-container,
+html[data-adofix-bridge] .bolt-table-card.no-column-headers .bolt-card-header,
+html[data-adofix-bridge] .bolt-master-panel,
+html[data-adofix-bridge] .bolt-master-panel-header,
+html[data-adofix-bridge] .bolt-master-panel-search,
+html[data-adofix-bridge] .bolt-filter-item,
+html[data-adofix-bridge] .bolt-filter .bolt-button {
+  border-color: transparent !important;
+}
+
+/* Form fields: no outline; a translucent neutral fill instead, so they
+   still read as fields on any surface — canvas, card or header (B6).
+   Focused, error and warning fields keep ADO's colored border and ring.
+   Fields meant to read as text until hovered keep reading as
+   text: inline / hide-border / subtle ones (grid editors) and every field
+   of the work item form (title, state, assignee, rail values — ADO shows
+   their chrome only on hover, live 2026-11-02). Their hover outline turns
+   into the same fill. */
+html[data-adofix-bridge] [class*="work-item-"] .bolt-textfield:not(.focused, .disabled):hover {
+  border-color: transparent !important;
+  background-color: var(--bgColor-neutral-muted) !important;
+}
+html[data-adofix-bridge] .bolt-textfield:not(.focused, .bolt-textfield-inline, .hide-border, .subtle, .not-active, .bolt-textfield-error, .bolt-textfield-warning, .bolt-dropdown-filter):not([class*="work-item-"] *),
+html[data-adofix-bridge] .bolt-tag-picker {
+  border-color: transparent !important;
+  background-color: var(--bgColor-neutral-muted) !important;
+}
+html[data-adofix-bridge] .bolt-textfield:not(.focused, .bolt-textfield-inline, .hide-border, .subtle, .not-active, .bolt-textfield-error, .bolt-textfield-warning, .bolt-dropdown-filter):not([class*="work-item-"] *) .bolt-textfield-input {
+  background-color: transparent !important;
+}
+
+/* Outlined pills: filled with a wash of their own (ADO-set) color (B7). */
+html[data-adofix-bridge] .bolt-pill.outlined {
+  background-color: color-mix(in srgb, currentColor 15%, transparent) !important;
+  border-color: transparent !important;
+}

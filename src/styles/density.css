@@ -50,26 +50,49 @@
  * Kanban board surfaces as GitHub Projects' board view (stage 1 of the
  * GitHub makeover retired the canvas < lane < card layering, 2026-11-02):
  * the canvas is the Primer bridge's --bgColor-default, columns are
- * --bgColor-muted with a 1px border and 6px corners, and cards are flat
- * --bgColor-default boxes with a 1px border — no shadows. .wit-card covers
+ * --bgColor-muted with 6px corners, and cards are flat --bgColor-default
+ * boxes sunk into them — no borders, no shadows: the surfaces separate by
+ * color steps alone (borderless pass, B4). .wit-card covers
  * the sprint taskboard's cards too (.taskboard-card is a .wit-card);
  * overflow clips their state stripes to the rounded corners. Selectors
  * verified live 2026-08-18.
  */
 .kanban-board-column {
   background: var(--bgColor-muted) !important;
-  border: var(--borderWidth-default) solid var(--borderColor-default) !important;
+  border: var(--borderWidth-default) solid transparent !important;
   border-radius: var(--borderRadius-medium) !important;
 }
 .wit-card {
   background: var(--bgColor-default) !important;
-  border: var(--borderWidth-default) solid var(--borderColor-default) !important;
+  border: var(--borderWidth-default) solid transparent !important;
   box-shadow: none !important;
   border-radius: var(--borderRadius-medium) !important;
   overflow: hidden;
 }
+/*
+ * Card-style rules (Board settings → Styles, e.g. Priority = 1 → red) set
+ * the card's background inline and mark .card-content .light / .dark so
+ * ADO's `.wit-card .light { color: black }` keeps text readable on the RULE
+ * color. Our surface replaces that color, so the text follows our surface
+ * instead (title/id/values default, field labels muted), and the rule
+ * stays visible as a 14% tint of its color mixed into the surface —
+ * borderless, no stripe (B13). board-density.ts copies the inline color
+ * into --adofix-card-rule. Live 2026-11-02 (sprint taskboard, Priority 1
+ * cards): labels are .label-dark-secondary; .title-text carries its own
+ * black, the id and values inherit.
+ */
+.wit-card[style*="--adofix-card-rule"] {
+  background: color-mix(in srgb, var(--adofix-card-rule) 14%, var(--bgColor-default)) !important;
+}
+.wit-card .card-content:is(.light, .dark),
+.wit-card .card-content:is(.light, .dark) .title-text {
+  color: var(--fgColor-default) !important;
+}
+.wit-card .card-content:is(.light, .dark) [class*="label-"][class*="-secondary"] {
+  color: var(--fgColor-muted) !important;
+}
 /* ADO frames the content in its own 1px border (top/right/bottom; the
-   state flag covers the left) — the card's border IS the boundary, so the
+   state flag covers the left) — the card's fill IS the boundary, so the
    inner frame goes, and the freed edge becomes vertical breathing room
    (native padding is 12px all round). Covers kanban .boards-card and sprint
    .taskboard-card alike (user request 2026-08-18: borders + colors). */

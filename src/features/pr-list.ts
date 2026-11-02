@@ -142,12 +142,13 @@ export function sweepMetaLines(root: ParentNode): void {
 }
 
 const CSS = `
-/* The list card as GitHub's PR-list Box: flat page-colored container, 1px
-   default border, 6px corners, no shadow (the heavy-shadow card is retired,
-   spec 2026-11-02). Also covers the Mine tab's two section cards. */
+/* The list card as GitHub's PR-list Box, borderless (B2): the card itself
+   is transparent with 6px corners and no shadow; each row is a muted tile
+   and the canvas shows through 2px between them. Also covers the Mine
+   tab's two section cards. */
 .repos-pr-section-card.bolt-card {
-  background: var(--bgColor-default) !important;
-  border: var(--borderWidth-default) solid var(--borderColor-default) !important;
+  background: transparent !important;
+  border: var(--borderWidth-default) solid transparent !important;
   border-radius: var(--borderRadius-medium) !important;
   box-shadow: none !important;
 }
@@ -156,14 +157,19 @@ const CSS = `
   background: transparent !important;
   box-shadow: none !important;
 }
-/* Row hairlines: bolt-table-show-lines draws cell top borders — GitHub's
-   Box-row separator. */
-.repos-pr-list .bolt-table-cell {
-  border-top-color: var(--borderColor-muted) !important;
-}
-/* Box-row hover (rows are <a> elements). */
-.repos-pr-list a.bolt-table-row:hover {
+/* Row tiles. bolt-table-show-lines gives every cell a 1px top border and
+   bolt a 1px transparent bottom one; both take the canvas color, so two
+   adjacent rows sit 2px apart without the 60px row geometry moving. The
+   tint goes on the cells: they paint over the row's own background. */
+.repos-pr-list a.bolt-table-row > .bolt-table-cell {
   background: var(--bgColor-muted) !important;
+  border-top-color: var(--bgColor-default) !important;
+  border-bottom-color: var(--bgColor-default) !important;
+}
+/* Hover: the transparent hover tint layered over the tile (rows are <a>). */
+.repos-pr-list a.bolt-table-row:hover > .bolt-table-cell {
+  background: linear-gradient(var(--control-transparent-bgColor-hover), var(--control-transparent-bgColor-hover)),
+    var(--bgColor-muted) !important;
 }
 /* "New activity" left edge in GitHub's accent instead of ADO blue. Verified
    live 2026-08-20: the marker is a 2px border-left on the row's FIRST spacer
@@ -185,12 +191,12 @@ const CSS = `
 .repos-pr-list .bolt-coin.size32 {
   margin-top: 10px !important;
 }
-/* Pills as gh-Label: GitHub's 20px outline pill, 12px medium text. The
-   state pills (Draft/Declined/Required) are natively "outlined" in ADO's
-   semantic colors and keep them; only their geometry changes. The filled
-   "standard" tag pills (8% slabs) also go outline-only, in the default
-   border. ADO renders these in React, so the look is applied by CSS rather
-   than by adding gh- classes React would strip. */
+/* Pills as gh-Label: GitHub's 20px pill, 12px medium text, filled rather
+   than outlined (borderless, B7). The state pills (Draft/Declined/Required)
+   are natively "outlined" in ADO's semantic colors; core's ado.css swaps
+   every outlined pill's outline for a wash of its own color. The "standard" tag pills become a neutral tint. ADO
+   renders these in React, so the look is applied by CSS rather than by
+   adding gh- classes React would strip. */
 .repos-pr-list .bolt-pill {
   box-sizing: border-box !important;
   height: 20px !important;
@@ -203,9 +209,10 @@ const CSS = `
 }
 .repos-pr-list .bolt-pill.standard {
   color: var(--fgColor-default) !important;
-  background: transparent !important;
-  border: var(--borderWidth-default) solid var(--borderColor-default) !important;
+  background: var(--bgColor-neutral-muted) !important;
+  border: var(--borderWidth-default) solid transparent !important;
 }
+
 /* GitHub's muted meta line ("!id · Author · into branch", rewritten below).
    Same selector sweepMetaLines targets. */
 .repos-pr-list a[href*="/pullrequest/"] .secondary-text.body-s {

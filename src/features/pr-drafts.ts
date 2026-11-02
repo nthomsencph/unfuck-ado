@@ -50,7 +50,7 @@ const CARD_ID_ATTR = "data-adofix-draft-id";
 
 /*
  * Design language: GitHub's pending review. Drafts are GitHub's "Pending"
- * comments — an attention Label on a flat bordered comment box, the
+ * comments — an attention Label on a flat muted comment box, the
  * attention color marking drafted lines in the tree and gutter — and the
  * drafts panel is the "Finish your review" overlay with its green submit.
  * Buttons are gh-btn variants; .adofix-draft-btn / .adofix-primary stay as
@@ -89,17 +89,18 @@ const DRAFTS_CSS = `
 /* -- button row ------------------------------------------------------------ */
 .adofix-draft-actions { display: flex; gap: 4px; align-items: center; margin-left: auto; }
 
-/* Primer's form-control textarea. */
+/* Primer's form-control textarea, borderless: the translucent neutral
+   field fill, a step up from the card it sits in (B6). */
 .adofix-draft-inline-ta {
   display: block; width: 100%; min-height: 70px; box-sizing: border-box;
   margin-top: 8px; padding: 5px 12px;
   font-family: var(--fontStack-sansSerif);
   font-size: var(--text-body-size-medium); line-height: 20px;
   color: var(--fgColor-default);
-  background-color: var(--bgColor-default);
-  border: var(--borderWidth-default) solid var(--control-borderColor-rest);
+  background-color: var(--bgColor-neutral-muted);
+  border: var(--borderWidth-default) solid transparent;
   border-radius: var(--borderRadius-medium);
-  box-shadow: var(--shadow-inset);
+  box-shadow: none;
   resize: vertical;
 }
 .adofix-draft-inline-ta:focus,
@@ -110,7 +111,11 @@ const DRAFTS_CSS = `
 }
 
 /* -- drafts panel --------------------------------------------------------- */
-/* Overlay material comes from .adofix-surface (core BASE_CSS). */
+/* Overlay material comes from .adofix-surface (core BASE_CSS). Inside it
+   the list recipe (B2): each draft is a --bgColor-muted tile 2px from the
+   next, the overlay showing through between them and around head and
+   foot. (Dark's overlay is darker than the canvas, light's is white, so
+   muted is the step up in both.) */
 .adofix-drafts-panel {
   position: fixed; top: 120px; right: 24px; width: 380px; max-height: 70vh;
   display: flex; flex-direction: column; overflow: hidden; z-index: 99999;
@@ -119,15 +124,15 @@ const DRAFTS_CSS = `
 .adofix-drafts-panel-head {
   display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 16px;
   font-size: var(--text-body-size-medium); font-weight: var(--base-text-weight-semibold);
-  border-bottom: var(--borderWidth-default) solid var(--borderColor-muted);
 }
 .adofix-panel-close { margin-left: auto; }
 .adofix-drafts-panel-body { overflow-y: auto; flex: 1; }
-.adofix-draft-item { padding: 8px 16px; }
-.adofix-draft-item + .adofix-draft-item {
-  border-top: var(--borderWidth-default) solid var(--borderColor-muted);
+.adofix-draft-item { padding: 8px 16px; background-color: var(--bgColor-muted); }
+.adofix-draft-item + .adofix-draft-item { margin-top: 2px; }
+.adofix-draft-item:hover {
+  background: linear-gradient(var(--control-transparent-bgColor-hover), var(--control-transparent-bgColor-hover)),
+    var(--bgColor-muted);
 }
-.adofix-draft-item:hover { background-color: var(--bgColor-muted); }
 .adofix-draft-item-name { display: flex; align-items: center; gap: 8px; min-width: 0; min-height: 28px; }
 .adofix-draft-file {
   font-weight: var(--base-text-weight-semibold);
@@ -151,7 +156,6 @@ const DRAFTS_CSS = `
 }
 .adofix-drafts-panel-foot {
   display: flex; justify-content: flex-end; padding: 8px 16px;
-  border-top: var(--borderWidth-default) solid var(--borderColor-muted);
 }
 
 /* -- view-zone cards (single-file Monaco view) --------------------------- */

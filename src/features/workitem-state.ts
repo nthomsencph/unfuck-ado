@@ -35,7 +35,6 @@ const PICKER_CSS = `
   margin-bottom: 8px;
   font-weight: var(--base-text-weight-semibold);
   font-size: var(--text-body-size-medium);
-  border-bottom: var(--borderWidth-default) solid var(--borderColor-muted);
 }
 /* Fixed-width slot for the selected check so names stay aligned. */
 .adofix-picker-check {

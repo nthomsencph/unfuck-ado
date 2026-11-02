@@ -383,7 +383,7 @@ function trimCommentCount(): void {
   if (n && commentText.textContent !== n) commentText.textContent = n;
 }
 
-/** Description loses its section header (and with it the 1px border and the
+/** Description loses its section header (and with it ADO's 1px border and the
     collapse affordance). Text-matched: the bug form's Repro Steps / System
     Info headers in the same section keep theirs. */
 function hideDescriptionHeader(): void {
@@ -552,13 +552,13 @@ const CSS = `
   height: auto !important;
   min-height: 0 !important;
 }
-/* GitHub sidebar sections: muted 12px semibold headings, each section
-   closed by a 1px muted rule with 16px of air (D66). Icons keep their
-   own size. */
+/* GitHub sidebar sections: muted 12px semibold headings, sections parted
+   by 32px of air alone — GitHub's 1px rule between them is gone
+   (borderless, B2; was D66). Icons keep their own size. */
 .work-item-form-right .work-item-form-group:not(.adofix-wi-group-absorb, .adofix-wi-group-hide) {
   padding-bottom: 16px !important;
   margin-bottom: 16px !important;
-  border-bottom: var(--borderWidth-default) solid var(--borderColor-muted) !important;
+  border-bottom: var(--borderWidth-default) solid transparent !important;
 }
 .work-item-form-right .work-item-form-group:last-child {
   border-bottom: none !important;
@@ -571,6 +571,11 @@ const CSS = `
 }
 .work-item-form-right .work-item-form-collapsible-header {
   border-bottom: none !important;
+}
+/* Main-column section headers (Description, Repro Steps, …) keep their
+   height but lose ADO's 1px underline (borderless, B2). */
+.work-item-form-collapsible-header {
+  border-bottom-color: transparent !important;
 }
 /* Rail noise out. */
 .work-item-form-group:has([class*="deployments"]) {
@@ -586,19 +591,19 @@ const CSS = `
   flex-direction: column-reverse;
   gap: 16px;
 }
-/* Comments as GitHub timeline comments: a gh-Box (1px border, 6px
-   corners, canvas fill, no shadow). CSS rather than the gh-Box class —
+/* Comments as GitHub timeline comments in gh-Box material: a muted
+   surface on the canvas, 6px corners, no border, no shadow (B1). CSS rather than the gh-Box class —
    the comment nodes are React-owned and re-rendered, and a class added
    from enhance() would flicker off and back on (D41). */
 .comment-item.displayed-comment {
-  background: var(--bgColor-default) !important;
-  border: var(--borderWidth-default) solid var(--borderColor-default) !important;
+  background: var(--bgColor-muted) !important;
+  border: var(--borderWidth-default) solid transparent !important;
   border-radius: var(--borderRadius-medium) !important;
   box-shadow: none !important;
   padding: 8px 16px !important;
 }
 /* Section headers out: Discussion always (Description via text-matched
-   class — Repro Steps etc. keep theirs). The 1px divider lives ON the
+   class — Repro Steps etc. keep theirs). ADO's 1px divider lives ON the
    header, so it goes too, as does the collapse affordance. */
 .work-item-form-discussion .work-item-form-collapsible-header,
 .adofix-wi-header-hide {
@@ -617,10 +622,10 @@ const CSS = `
      measure AFTER this applies, so the overlaid controls follow the
      shifted rows automatically */
   padding-top: 32px !important;
-  /* GitHub's issue header: a 1px rule between the title block and the
-     body, 16px of air above it (D65). */
+  /* GitHub's issue header, minus its 1px rule (borderless, B2): the
+     title block and the body part by 16px of air (D65). */
   padding-bottom: 16px !important;
-  border-bottom: var(--borderWidth-default) solid var(--borderColor-default) !important;
+  border-bottom: var(--borderWidth-default) solid transparent !important;
 }
 /* Issue title type: GitHub's large title (32px, regular weight) on the
    title row's text field (D65, PROVISIONAL — selector is the title row
@@ -782,7 +787,7 @@ ${stubHide(".adofix-wi-group-absorb")}
 /* The adofix "Details" group at the top of the rail. */
 #adofix-wi-details {
   padding: 0 0 16px;
-  border-bottom: var(--borderWidth-default) solid var(--borderColor-muted);
+  border-bottom: var(--borderWidth-default) solid transparent;
   margin-bottom: 16px;
 }
 /* The tab strip goes (Details is the only content tab left — Attachments
@@ -914,21 +919,30 @@ ${stubHide(".adofix-wi-group-absorb")}
 .work-item-form-page .html-command-bar-button:not(:hover):not(.is-checked) {
   background: transparent !important;
 }
-/* Discussion composer: flat on the canvas, the text field itself a
-   GitHub comment-box (1px border, 6px corners) — user 2026-08-18 put the
-   material on the field, not the composer. */
+/* Discussion composer: flat on the canvas, the text field itself a 6px
+   box in the translucent field fill, no border (B6) — user 2026-08-18 put
+   the material on the field, not the composer. The field's html-editor
+   gets the same scoped --background-color trick as above (transparent, so
+   the field fill shows through). */
 .discussion-new-comment {
   background: transparent !important;
   box-shadow: none !important;
 }
 .discussion-new-comment .markdown-editor,
-.discussion-new-comment .bolt-textfield,
-.discussion-new-comment .bolt-textfield-input {
-  background: var(--bgColor-default) !important;
+.discussion-new-comment .bolt-textfield {
+  background: var(--bgColor-neutral-muted) !important;
   border-radius: var(--borderRadius-medium) !important;
 }
+/* Inside the field: no second layer of the translucent fill. */
+.discussion-new-comment .bolt-textfield-input {
+  background: transparent !important;
+  border-radius: var(--borderRadius-medium) !important;
+}
+.discussion-new-comment .html-editor {
+  --background-color: transparent;
+}
 .discussion-new-comment .markdown-editor {
-  border: var(--borderWidth-default) solid var(--borderColor-default) !important;
+  border: var(--borderWidth-default) solid transparent !important;
 }
 /* (.deployments-zero-data / .links-control-zero-state card styling removed:
    workitem-layout hides both containers outright, so the rules were dead.) */

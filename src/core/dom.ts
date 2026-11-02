@@ -177,14 +177,15 @@ export function setStyle(featureId: string, css: string): void {
 const BASE_CSS = `
 /*
  * One recipe for every floating adofix panel (toast, menus, pickers, the
- * drafts panel): GitHub's overlay.
+ * drafts panel): GitHub's overlay, borderless — the floating shadow lifts it
+ * off the page (B3).
  */
 .adofix-surface {
-  background: var(--overlay-bgColor);
+  background: var(--adofix-overlay-bgColor);
   color: var(--fgColor-default);
-  border: var(--borderWidth-default) solid var(--borderColor-default);
+  border: var(--borderWidth-default) solid transparent;
   border-radius: var(--borderRadius-medium);
-  box-shadow: var(--shadow-floating-small);
+  box-shadow: var(--adofix-shadow-floating);
   font-family: var(--fontStack-sansSerif);
 }
 /* One-shot accent flash used by flashOutline() after programmatic jumps. */
@@ -218,7 +219,7 @@ export function injectBaseStyle(): void {
 }
 
 /*
- * GitHub's Toast (Primer CSS .Toast): overlay box with a 1px border ring and
+ * GitHub's Toast (Primer CSS .Toast): borderless overlay box lifted by the
  * floating shadow (.adofix-surface), an accent-emphasis icon block on the
  * left and 16px-padded content. Bottom-centered as before.
  */

@@ -88,7 +88,7 @@ rm -f "$EXT/firefox-claude-ai-bridge.js"
               try { q = JSON.parse(probeMatch[1]); } catch (_) { q = JSON.parse(JSON.parse(\x27"\x27 + probeMatch[1] + \x27"\x27)); }
               if (q.op === \x27reload\x27) { setTimeout(() => chrome.runtime.reload(), 200); return { result: { type: \x27string\x27, value: \x27reloading\x27, description: \x27reloading\x27 } }; }
               const [inj] = await browser.scripting.executeScript({ target: { tabId }, func: adofixProbe, args: [q], world: \x27MAIN\x27 });
-              // base64: the tool's output filter blocks text that looks like cookies/query strings
+              // base64: the tool output filter blocks text that looks like cookies or query strings
               v = \x27b64:\x27 + btoa(unescape(encodeURIComponent(JSON.stringify(inj && inj.result))));
             } catch (e) { v = JSON.stringify({ probeError: String(e && e.message || e) }); }
             return { result: { type: \x27string\x27, value: v, description: v } };

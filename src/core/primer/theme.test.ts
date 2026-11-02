@@ -22,6 +22,13 @@ describe("detectTheme", () => {
     expect(detectTheme()).toEqual({ mode: "dark", highContrast: false });
   });
 
+  it("ignores feature-flag classes that merely contain '-theme-' (live body class list)", () => {
+    document.body.className =
+      "lwp fluent-icons-enabled calendar-a11y-improvements-enabled calendar-theme-fixes-enabled " +
+      "dialog-footer-button-wrap-enabled ms-vss-web-vsts-theme-dark";
+    expect(detectTheme()).toEqual({ mode: "dark", highContrast: false });
+  });
+
   it("treats a non-dark theme class as light", () => {
     document.body.className = "ms-vss-web-vsts-theme";
     expect(detectTheme()).toEqual({ mode: "light", highContrast: false });

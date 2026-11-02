@@ -51,7 +51,10 @@ export function parseCssColor(value: string): [number, number, number] | null {
  * present at all.
  */
 function themeClass(body: HTMLElement): string | undefined {
-  return [...body.classList].find((c) => /(^|-)theme(-|$)/.test(c));
+  // Prefix match, not "-theme-": body also carries feature flags like
+  // `calendar-theme-fixes-enabled` (live 2026-11-02), listed BEFORE the theme
+  // class — a loose match read that flag as "light".
+  return [...body.classList].find((c) => /^ms-vss-web-vsts-theme(-|$)/.test(c));
 }
 
 /**
